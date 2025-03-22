@@ -40,7 +40,6 @@
   /* === Navbar Styling === */
   .navbar {
     background-color: #064e3b;
-    position: static;
     width: 100%;
     z-index: 100;
   }

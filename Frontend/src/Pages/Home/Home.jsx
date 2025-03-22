@@ -15,11 +15,20 @@ import {
 const Navbar = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
 
+  const scrollToSection = (sectionId, event) => {
+    event.preventDefault();
+    const section = document.getElementById(sectionId);
+    if (section) {
+      section.scrollIntoView({ behavior: 'smooth' });
+    }
+    setMobileMenuOpen(false); // Close mobile menu after clicking
+  };
+
   return (
     <nav className="navbar">
       <div className="container navbar-container">
         <div className="navbar-logo">
-          <a href="/" className="logo">GreenLance</a>
+          <a href="/" className="logo">Skillify</a>
         </div>
         
         <div className={`navbar-menu ${mobileMenuOpen ? 'active' : ''}`}>
@@ -28,13 +37,13 @@ const Navbar = () => {
               <a href="/" className="nav-link">Home</a>
             </li>
             <li className="nav-item">
-              <a href="/find-talent" className="nav-link">Find Talent</a>
+              <a href="/find-talent" className="nav-link" onClick={(e) => scrollToSection('category-section', e)}>Find Talent</a>
             </li>
             <li className="nav-item">
-              <a href="/find-work" className="nav-link">Find Work</a>
+              <a href="/find-work" className="nav-link" onClick={(e) => scrollToSection('cta-section', e)}>Find Work</a>
             </li>
             <li className="nav-item">
-              <a href="/how-it-works" className="nav-link">How It Works</a>
+              <a href="#how-it-works" className="nav-link" onClick={(e) => scrollToSection('how-it-works', e)} >How It Works</a>
             </li>
           </ul>
         </div>
@@ -66,6 +75,15 @@ const Home = () => {
     }
   };
 
+  const scrollToSection = (sectionId, event) => {
+    event.preventDefault();
+    const section = document.getElementById(sectionId);
+    if (section) {
+      section.scrollIntoView({ behavior: 'smooth' });
+    }
+    setMobileMenuOpen(false); // Close mobile menu after clicking
+  };
+
   const scrollRight = () => {
     if (sliderRef.current) {
       sliderRef.current.scrollBy({ left: 300, behavior: 'smooth' });
@@ -74,6 +92,7 @@ const Home = () => {
 
   return (
     <div className="home-wrapper">
+      {/* Pass howItWorksRef as a prop to Navbar */}
       <Navbar />
       
       {/* Hero Section */}
@@ -84,11 +103,11 @@ const Home = () => {
               Find the perfect <span>freelance</span> services for your business
             </h1>
             <p className="hero-description">
-              Connect with talented freelancers within minutes. Maintain full control of your projects with GreenLance.
+              Connect with talented freelancers within minutes. Maintain full control of your projects with Skillify.
             </p>
             <div className="hero-buttons">
-              <button className="btn-primary">Get Started</button>
-              <button className="btn-white">How It Works</button>
+              <button className="btn-primary" onClick={(e) => scrollToSection('cta-section', e)}>Get Started</button>
+              <button className="btn-white" onClick={(e) => scrollToSection('how-it-works', e)}>How It Works</button>
             </div>
           </div>
           <div className="services-card">
@@ -108,7 +127,7 @@ const Home = () => {
       </section>
 
       {/* Category Slider */}
-      <section className="category-section">
+      <section className="category-section" id="category-section">
         <div className="container">
           <div className="category-header">
             <h2 className="category-title">Explore Popular Categories</h2>
@@ -146,11 +165,11 @@ const Home = () => {
       </section>
 
       {/* How It Works Section */}
-      <section className="how-section">
+      <section className="how-section" id="how-it-works">
         <div className="container">
           <h2 className="how-title">How GreenLance Works</h2>
           <p className="how-description">
-            GreenLance makes it simple to connect with skilled professionals to get your projects done quickly and efficiently.
+            Skillify makes it simple to connect with skilled professionals to get your projects done quickly and efficiently.
           </p>
           <div className="steps-container">
             <div className="step-card">
@@ -181,9 +200,9 @@ const Home = () => {
       {/* Features Section */}
       <section className="features-section">
         <div className="container">
-          <h2 className="features-title">Why Choose GreenLance</h2>
+          <h2 className="features-title">Why Choose Skillify</h2>
           <p className="features-description">
-            Join thousands of businesses and freelancers who trust GreenLance for their project needs.
+            Join thousands of businesses and freelancers who trust Skillify for their project needs.
           </p>
           <div className="features-grid">
             <div className="feature-item">
@@ -245,7 +264,7 @@ const Home = () => {
       </section>
 
       {/* CTA Section */}
-      <section className="cta-section">
+      <section className="cta-section" id="cta-section">
         <div className="container">
           <h2 className="cta-title">Ready to get started?</h2>
           <p className="cta-description">
@@ -304,7 +323,7 @@ const Home = () => {
             </div>
           </div>
           <div className="footer-bottom">
-            <p className="footer-copyright">© 2023 GreenLance. All rights reserved.</p>
+            <p className="footer-copyright">© 2023 Skillify. All rights reserved.</p>
             <div className="social-icons">
               <a href="#" className="social-icon"><i className="fab fa-facebook-f"></i></a>
               <a href="#" className="social-icon"><i className="fab fa-twitter"></i></a>
