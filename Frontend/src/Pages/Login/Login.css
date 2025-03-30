@@ -94,23 +94,26 @@
 
 .input-with-icon {
   position: relative;
+  display: flex;
+  align-items: center;
 }
 
 .input-icon {
   position: absolute;
   left: 14px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: #94a3b8;
+  color: #9ca3af;
+  font-size: 16px;
+  pointer-events: none;
 }
 
 .form-group input {
   width: 100%;
-  padding: 12px 12px 12px 42px;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  font-size: 1rem;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  padding: 12px 12px 12px 40px;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  font-size: 16px;
+  transition: border-color 0.2s;
+  background-color: transparent;
 }
 
 .form-group input:focus {
@@ -120,7 +123,7 @@
 }
 
 .form-group input::placeholder {
-  color: #cbd5e1;
+  color: #9ca3af;
 }
 
 .remember-me {
@@ -239,6 +242,7 @@
 
 #email, #password{
 background-color: white;
+color:black;
 }
 
 /* Responsive styling */

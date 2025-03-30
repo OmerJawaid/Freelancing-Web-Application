@@ -2,9 +2,8 @@ import { useState } from 'react'
 import { createBrowserRouter, RouterProvider, Navigate } from "react-router-dom";
 import './App.css'
 import Home from'./Pages/Home/Home.jsx'
-import Login from './Pages/Login.jsx'
-
-
+import Login from './Pages/Login/Login.jsx';
+import Signup from './Pages/Signup/Signup.jsx';
 
 function App() {
   const router = createBrowserRouter([
@@ -16,6 +15,10 @@ function App() {
     {
       path: "/login",
       element: <Login />,
+    },
+    {
+      path:'/signup',
+      element:<Signup/>
     }
   ]);
 

@@ -1,0 +1,287 @@
+.user-type-selection {
+  margin-bottom: 30px;
+}
+
+.user-type-selection h3 {
+  color: #334155;
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 15px;
+}
+
+.type-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+}
+
+.type-button {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 15px;
+  border: 2px solid #e2e8f0;
+  border-radius: 10px;
+  background-color: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+  width: 100%;
+}
+
+.type-button:hover {
+  border-color: #10b981;
+  background-color: #f0fdf4;
+}
+
+.type-button.active {
+  border-color: #10b981;
+  background-color: #f0fdf4;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+}
+
+.type-icon {
+  font-size: 24px;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #f8fafc;
+  border-radius: 8px;
+}
+
+.type-content {
+  flex: 1;
+}
+
+.type-content h4 {
+  color: #0f172a;
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0 0 4px 0;
+}
+
+.type-content p {
+  color: #64748b;
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+/* Responsive styles */
+@media (max-width: 640px) {
+  .type-buttons {
+    grid-template-columns: 1fr;
+  }
+  
+  .type-button {
+    padding: 12px;
+  }
+}
+
+/* Signup.css */
+.signup-page {
+  min-height: 100vh;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: #f9fafb;
+}
+
+.signup-card {
+  width: 100%;
+  max-width: 440px;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  padding: 32px;
+}
+
+.signup-header {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.signup-header h1 {
+  font-size: 24px;
+  font-weight: 600;
+  color: #111827;
+  margin-bottom: 8px;
+}
+
+.signup-header p {
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  font-size: 16px;
+  transition: border-color 0.2s;
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: #10b981;  /* Green theme */
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+}
+
+.form-group input::placeholder {
+  color: #9ca3af;
+}
+
+.signup-button {
+  width: 100%;
+  padding: 12px;
+  background-color: #10b981;  /* Green theme */
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  margin-bottom: 16px;
+}
+
+.signup-button:hover {
+  background-color: #059669;  /* Darker green */
+}
+
+.remember-me {
+  margin-bottom: 24px;
+}
+
+.checkbox-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #4b5563;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.signup-divider {
+  text-align: center;
+  margin: 20px 0;
+  position: relative;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.signup-divider p {
+  position: relative;
+  background-color: white;
+  padding: 0 10px;
+  display: inline-block;
+}
+
+.signup-divider::before {
+  content: "";
+  display: block;
+  height: 1px;
+  width: 100%;
+  background-color: #e5e7eb;
+  position: absolute;
+  top: 50%;
+  z-index: -1;
+}
+
+.social-signup {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.social-btn {
+  flex: 1;
+  padding: 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  background-color: white;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.social-btn:hover {
+  background-color: #f9fafb;
+}
+
+.google-btn {
+  color: #ea4335;
+}
+
+.linkedin-btn {
+  color: #0077b5;
+}
+
+.sso-btn {
+  color: #4b5563;
+}
+
+.login-prompt {
+  text-align: center;
+  font-size: 14px;
+  color: #4b5563;
+}
+
+.login-link {
+  color: #10b981;  /* Green theme */
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.login-link:hover {
+  text-decoration: underline;
+}
+
+/* Add these styles to your existing Signup.css file */
+
+.user-type-container {
+  margin-bottom: 24px;
+}
+
+.user-type-label {
+  margin-bottom: 8px;
+  font-size: 14px;
+  color: #4b5563;
+}
+
+.user-type-buttons {
+  display: flex;
+  width: 100%;
+  gap: 10px;
+}
+
+.user-type-btn {
+  flex: 1;
+  padding: 10px 16px;
+  background-color: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  font-size: 14px;
+  color: #4b5563;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.user-type-btn:hover {
+  border-color: #10b981;
+  color: #10b981;
+}
+
+.user-type-btn.active {
+  background-color: #10b981;
+  border-color: #10b981;
+  color: white;
+} 

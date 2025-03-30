@@ -16,6 +16,7 @@
     "@mui/icons-material": "^6.4.7",
     "@mui/material": "^6.4.7",
     "@mui/system": "^6.4.7",
+    "axios": "^1.8.4",
     "bootstrap": "^5.3.3",
     "dom": "^0.0.3",
     "react": "^19.0.0",

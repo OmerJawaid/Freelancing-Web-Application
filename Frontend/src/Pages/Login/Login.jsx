@@ -1,9 +1,49 @@
-import React from "react";
+import React, { useState } from "react";
 import { FaUser, FaLock, FaArrowLeft, FaGoogle } from "react-icons/fa";
 import { Link } from "react-router-dom";
 import "./Login.css";
+import axios from 'axios'
+import { useNavigate } from "react-router-dom";
+
 
 const Login = () => {
+  const navigate=useNavigate()
+
+  const [email, setEmail] = useState();
+  const [password, setPassword] = useState();
+  const [rememberMe, setRememberMe] = useState(false);
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+  };
+  const handleEmailChange =(e)=>{
+    
+    setEmail(e.target.value);
+    console.log(e.target.value)
+  }
+  const handlePasswordChange=(e)=>{
+    setPassword(e.target.value);
+    console.log(e.target.value)
+  }
+
+  const LoginButton=async()=>{
+    try{
+      console.log(email+" "+password)
+      authentication_responce=await axios.post("http://localhost:8081/login", {email:email, password:password});
+      
+      if(authentication_responce.data.Authenticate){
+      console.log("Sucessfully Logged in");
+      navigate('/signup');
+      }
+      else
+      {
+        console.log("Failed to Logged in")
+      }
+    }
+    catch(err){
+      console.log("Error in Logging in")
+    }
+  }
   return (
     <div className="login-page">
       <div className="login-container">
@@ -30,7 +70,8 @@ const Login = () => {
                   id="email" 
                   name="email" 
                   placeholder="Enter your email" 
-                  required 
+                  required
+                  onChange={handleEmailChange} 
                 />
               </div>
             </div>
@@ -48,6 +89,7 @@ const Login = () => {
                   name="password" 
                   placeholder="Enter your password" 
                   required 
+                  onChange={handlePasswordChange}
                 />
               </div>
             </div>
@@ -60,7 +102,7 @@ const Login = () => {
               </label>
             </div>
             
-            <button type="submit" className="login-button">Log In</button>
+            <button type="submit" className="login-button" onClick={LoginButton}>Log In</button>
             
             <div className="login-divider">
               <span>OR</span>
