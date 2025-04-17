@@ -50,7 +50,7 @@ const Navbar = () => {
         
         <div className="navbar-auth">
           <a href="/login" className="login-button">Log in</a>
-          <a href="/signup" className="signup-button">Sign Up</a>
+          <a href="/signup" className="signup-button" style={{'marginBottom': '0px'}}>Sign Up</a>
         </div>
         
         <div className="navbar-toggle">

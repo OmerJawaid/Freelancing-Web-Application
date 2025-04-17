@@ -18,10 +18,10 @@ const database_pool = mysql.createPool({
 //Registering a new user: Inserting data into table user
 app.post('/signup',async(req,res)=>{
    try{
-      const {Email , Password} = req.body;
+      const {Name,Email , Password,User_Type} = req.body;
       //Empty Inputs
-      if(!Email||!Password){
-         return res.status(400).json({message:"Email or Password is Empty"})
+      if(!Email||!Password||!Name||!User_Type){
+         return res.status(400).json({message:"Name,Email,Password or UserType is Empty"})
       }
       //Existing account(Email)
       const [existing]=await database_pool.query('Select * From user where Email=?', Email)
@@ -30,8 +30,27 @@ app.post('/signup',async(req,res)=>{
       }
       //Registering New User
       const [result]=await database_pool.query('INSERT INTO user(Email, Password, created_at) VALUES(?,?,?)',
-         [Email,Password,new Date])
-         return res.status(201).json({ message: "User created successfully", userId: result.insertId})
+         [Email,Password,new Date]);
+      if(User_Type=="freelancer"){
+         try{
+         const[Freelancer_Rows]=await database_pool.query('Insert INTO freelancers(Id,Name) VALUES(?,?)',
+            [result.insertId,Name]
+         );
+         }
+         catch(err){
+            return res.status(404).json({ message: err});   
+         }
+      }
+      else if(User_Type == "client"){
+         const[Client_Rows]=await database_pool.query('Insert INTO clients(Id,Name) VALUES(?,?)',
+            [result.insertId,Name]
+         );
+      }
+      else{
+         return res.status(404).json({ message: "Invalid User Type"});
+      }
+         return res.status(201).json({Signup_Sucess:true, message: "User created successfully", userId: result.insertId});
+
    }
    catch(err){
       console.log(err) 
@@ -54,8 +73,23 @@ app.post('/login',async (req,res)=>{
       }
    }
    catch(err){
+      console.log(err) 
    }
 })
+
+//let gigs=await axios.get("http://localhost:8081/freelancer-gigs");
+app.get('/freelancer-gigs',async(req,res)=>{
+   try{
+      const [result]=await database_pool.query('SELECT freelancers.Id, freelancers.Name, freelancers.Rating,freelancers.Image as freelancerimage, user.Email, gigs.Title, gigs.Description, gigs.Category, gigs.Price, gigs.Image FROM skillify.freelancers  JOIN skillify.user ON skillify.freelancers.id = skillify.user.id JOIN skillify.gigs ON skillify.gigs.Freelancer_Id = skillify.freelancers.id;')
+      return res.status(201).json(result)
+   }
+   catch(err){
+      console.log(err)
+   }
+})
+
+//Client Dashboard: Getting Data of freelancer
+app.get('/')
 
 //Testing next
 const middleware = (req, res, next) => {

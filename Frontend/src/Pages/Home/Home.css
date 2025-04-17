@@ -58,7 +58,7 @@
   .logo {
     font-size: 1.8rem;
     font-weight: 700;
-    color: white;
+    color: var(--primary-color);
   }
   
   .navbar-toggle {
@@ -95,7 +95,6 @@
     display: inline-block;
     padding: 8px 0;
     font-weight: 500;
-    color: rgba(255, 255, 255, 0.9);
     position: relative;
     font-size: 1.05rem;
   }
@@ -109,11 +108,6 @@
     height: 3px;
     background-color: var(--primary-color-light);
     transition: width 0.3s ease;
-  }
-  
-  .nav-item.active .nav-link, 
-  .nav-link:hover {
-    color: white;
   }
   
   .nav-item.active .nav-link::after,
@@ -141,7 +135,7 @@
   }
   
   .login-button:hover {
-    background-color: rgba(255, 255, 255, 0.1);
+    color:black;
   }
   
   .signup-button {
@@ -151,10 +145,13 @@
     padding: 10px 18px;
     border-radius: 8px;
     transition: background-color 0.3s ease;
+    text-wrap: nowrap;
+    margin-bottom: 0px;
   }
   
   .signup-button:hover {
     background-color: rgba(255, 255, 255, 0.9);
+    color: rgb(0, 0, 0);
   }
   
   /* Responsive Navbar */

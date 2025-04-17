@@ -8,7 +8,6 @@ import '@fontsource/inter/600.css'; // Semi-bold
 import '@fontsource/inter/700.css'; // Bold
 
 createRoot(document.getElementById('root')).render(
-  <StrictMode>
     <App />
-  </StrictMode>,
+,
 )

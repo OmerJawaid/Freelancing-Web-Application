@@ -1,10 +1,37 @@
 import React, { useState } from 'react';
 import { FaUser, FaLock, FaArrowLeft, FaEnvelope, FaGoogle } from "react-icons/fa";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import "./Signup.css";
+import axios from 'axios';
 
 const Signup = () => {
+
+  const navigate=useNavigate()
   const [userType, setUserType] = useState(''); // 'freelancer' or 'client'
+  const [Name,setName]=useState('')
+  const [Email,setEmail]=useState('')
+  const [Password,setPassword]=useState('')
+  const NameInputOnChange=(e)=>{
+    setName(e.target.value)
+    console.log(e.target.value);
+  }
+  const EmailInputOnChange=(e)=>{
+    setEmail(e.target.value)
+  }
+  const PasswordInputOnChange=(e)=>{
+    setPassword(e.target.value);
+    console.log(e.target.value);
+  }
+  const SignupButtonOnClick=async()=>{
+    const result = await axios.post("http://localhost:8081/signup", {Name:Name,Email:Email,Password:Password,User_Type:userType});
+    if(result.data.Signup_Sucess){
+      navigate('/login')
+    }
+    else
+    {alert("Can't Create your Account check your information")}
+  }
+
+  
 
   return (
     <div className="signup-page">
@@ -43,6 +70,7 @@ const Signup = () => {
               name="name" 
               placeholder="Name" 
               required 
+              onChange={NameInputOnChange}
             />
           </div>
           
@@ -53,6 +81,7 @@ const Signup = () => {
               name="email" 
               placeholder="Email" 
               required 
+              onChange={EmailInputOnChange}
             />
           </div>
           
@@ -63,10 +92,11 @@ const Signup = () => {
               name="password" 
               placeholder="Password" 
               required 
+              onChange={PasswordInputOnChange}
             />
           </div>
           
-          <button type="submit" className="signup-button">Sign up</button>
+          <button type="submit" className="signup-button" onClick={SignupButtonOnClick}>Sign up</button>
           
           <div className="remember-me">
             <label className="checkbox-container">
@@ -95,4 +125,4 @@ const Signup = () => {
   );
 };
 
-export default Signup; 
+export default Signup;                                                 

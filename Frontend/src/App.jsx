@@ -4,6 +4,8 @@ import './App.css'
 import Home from'./Pages/Home/Home.jsx'
 import Login from './Pages/Login/Login.jsx';
 import Signup from './Pages/Signup/Signup.jsx';
+import ClientDashboard from './Pages/Dashboard/ClientDashboard.jsx';
+import FreelancerDashboard from './Pages/Dashboard/FreelancerDashboard.jsx';
 
 function App() {
   const router = createBrowserRouter([
@@ -19,6 +21,14 @@ function App() {
     {
       path:'/signup',
       element:<Signup/>
+    },
+    {
+      path:'/client',
+      element:<ClientDashboard/>
+    },
+    {
+      path:'/freelancer',
+      element:<FreelancerDashboard/>
     }
   ]);
 

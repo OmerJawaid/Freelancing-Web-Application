@@ -93,33 +93,44 @@
 }
 
 .input-with-icon {
-  position: relative;
   display: flex;
   align-items: center;
+  width: 100%; /* Ensure the container takes full width */
+  border: 1px solid #e5e7eb; /* Add border to the entire container */
+  border-radius: 4px;
+  background-color: transparent;
+}
+
+.icon-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px; /* Match the input padding for consistent height */
+  color: #9ca3af;
 }
 
 .input-icon {
-  position: absolute;
-  left: 14px;
-  color: #9ca3af;
-  font-size: 16px;
-  pointer-events: none;
+  font-size: 16px; /* Icon size */
+  
+}
+
+.input-container {
+  flex: 1; /* Take up the remaining space */
 }
 
 .form-group input {
   width: 100%;
-  padding: 12px 12px 12px 40px;
-  border: 1px solid #e5e7eb;
-  border-radius: 4px;
+  padding: 12px; /* Simplified padding since the icon is no longer inside */
+  border: none; /* Remove border since the parent container has it */
   font-size: 16px;
   transition: border-color 0.2s;
   background-color: transparent;
-}
+  box-sizing: border-box;
+} 
 
 .form-group input:focus {
   outline: none;
-  border-color: #10b981;
-  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+  box-shadow: none; /* Remove shadow since the container has the border */
 }
 
 .form-group input::placeholder {
@@ -128,8 +139,7 @@
 
 .remember-me {
   margin-bottom: 24px;
-}
-
+} 
 .checkbox-container {
   display: flex;
   align-items: center;

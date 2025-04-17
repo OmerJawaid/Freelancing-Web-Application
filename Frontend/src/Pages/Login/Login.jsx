@@ -29,12 +29,12 @@ const Login = () => {
   const LoginButton=async()=>{
     try{
       console.log(email+" "+password)
-      authentication_responce=await axios.post("http://localhost:8081/login", {email:email, password:password});
+      const authentication_responce=await axios.post("http://localhost:8081/login", {email:email, password:password});
       
       if(authentication_responce.data.Authenticate){
       console.log("Sucessfully Logged in");
-      navigate('/signup');
-      }
+      navigate('/client');
+      } 
       else
       {
         console.log("Failed to Logged in")
@@ -64,7 +64,11 @@ const Login = () => {
             <div className="form-group">
               <label htmlFor="email">Email</label>
               <div className="input-with-icon">
+
+              <div className="icon-container">
                 <FaUser className="input-icon" />
+                </div>
+                <div className="input-container">
                 <input 
                   type="email" 
                   id="email" 
@@ -73,6 +77,7 @@ const Login = () => {
                   required
                   onChange={handleEmailChange} 
                 />
+                </div>
               </div>
             </div>
             
@@ -82,16 +87,20 @@ const Login = () => {
                 <a href="/forgot-password" className="forgot-password">Forgot password?</a>
               </div>
               <div className="input-with-icon">
-                <FaLock className="input-icon" />
-                <input 
-                  type="password" 
-                  id="password" 
-                  name="password" 
-                  placeholder="Enter your password" 
-                  required 
-                  onChange={handlePasswordChange}
-                />
-              </div>
+  <div className="icon-container">
+    <FaLock className="input-icon" />
+  </div>
+  <div className="input-container">
+    <input
+      type="password"
+      id="password"
+      name="password"
+      placeholder="Enter your password"
+      required
+      onChange={handlePasswordChange}
+    />
+  </div>
+</div>
             </div>
             
             <div className="remember-me">
@@ -102,7 +111,7 @@ const Login = () => {
               </label>
             </div>
             
-            <button type="submit" className="login-button" onClick={LoginButton}>Log In</button>
+            <button type="button" className="login-button" onClick={LoginButton}>Log In</button>
             
             <div className="login-divider">
               <span>OR</span>
