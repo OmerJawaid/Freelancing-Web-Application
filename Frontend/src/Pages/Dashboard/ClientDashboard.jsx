@@ -81,7 +81,9 @@ const ClientDashboard = () => {
 
           {/* Gigs Grid */}
           <div className="gigs-grid">
-            {gigs.map((gig) => (
+            
+            {gigs.filter((gig) => selectedCategory==='All'||gig.Category === selectedCategory)
+              .map((gig) => (
               <div key={gig.Id} className="gig-card">
                 <div className="gig-image">
                   <img src={gig.Image} alt={gig.Title} />
