@@ -8,7 +8,7 @@ import "./Login.css";
 import { AuthContext } from "../../context/Authcontext";
 import axios from 'axios'
 import {toast} from 'react-toastify'
-import { useNavigate } from "react-router-dom";
+
 
 
 const Login = () => {
@@ -20,7 +20,6 @@ const Login = () => {
     password: ""
   });
   const [rememberMe, setRememberMe] = useState(false);
-  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   // Load remembered email if exists
@@ -32,6 +31,8 @@ const Login = () => {
     }
   }, []);
 
+
+
   // Handle navigation after successful login
   useEffect(() => {
     if (isAuthenticated && user && user.User_Type) {
@@ -41,44 +42,28 @@ const Login = () => {
     }
   }, [isAuthenticated, user, navigate]);
 
+
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
       [name]: value
     }));
-    // Clear error when user starts typing
-    if (error) setError("");
-  };
-
-  const validateForm = () => {
-    if (!formData.email.trim()) {
-      setError("Email is required");
-      return false;
-    }
-    if (!formData.email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
-      setError("Please enter a valid email address");
-      return false;
-    }
-    if (!formData.password) {
-      setError("Password is required");
-      return false;
-    }
-    return true;
-  };
+  }; 
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.email || !formData.password) {
-      setError("Please enter both email and password");
+      toast.error("Email or Password is Incorrect")
       return;
     }
 
     setLoading(true);
-    setError("");
 
     try {
       const result = await login(formData.email, formData.password);
+console.log("Login result:", result); // Add this
       
 
 //       if (result.success) {
@@ -89,17 +74,25 @@ const Login = () => {
 //         }
 //       } else {
 //         setError(result.message || "Login failed"
-      if(authentication_responce.data.Authenticate){
-      console.log("Sucessfully Logged in");
-      navigate('/client');
-      } 
-      else
-      {
-        toast.error('Failed to Logged in')
-        console.log("Failed to Logged in")
-      }
+
+if (result.success) {
+  if (rememberMe) {
+    localStorage.setItem('userEmail', formData.email);
+  } else {
+    localStorage.removeItem('userEmail');
+  }
+
+  console.log("Successfully Logged in");
+
+  const path = result.userType === 'freelancer' ? '/freelancer' : '/client';
+  navigate(path);
+} else {
+  toast.error(result.message || 'Login failed');
+  console.log("Login failed:", result.message);
+}
+
     } catch (err) {
-      setError("An error occurred during login");
+      toast.error("An error occurred during login");
       console.error('Login error:', err);
     } finally {
       setLoading(false);
@@ -121,8 +114,6 @@ const Login = () => {
             <h2>Welcome Back</h2>
             <p>Log in to your account to continue your freelancing journey</p>
           </div>
-          
-          {error && <div className="error-message">{error}</div>}
           
           <form className="login-form" onSubmit={handleSubmit}>
             <div className="form-group">

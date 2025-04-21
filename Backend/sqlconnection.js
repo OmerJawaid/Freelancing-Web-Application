@@ -33,7 +33,7 @@ app.use(session({
 const database_pool = mysql.createPool({
     host: 'localhost',
     user: 'root',
-    password: 'Ahmad123',
+    password: 'Hina@1976',
     database: 'skillify',
     waitForConnections: true,
     connectionLimit: 10,
@@ -135,15 +135,16 @@ app.post('/login', async (req, res) => {
         };
 
         return res.status(200).json({
-            Authenticate: true,
-            message: "Login successful",
-            user: {
-                id: user.id,
-                email: user.Email,
-                name: user.Name,
-                User_Type: user.User_Type
-            }
-        });
+         Authenticate: true,
+         message: "Login successful",
+         user: {
+           id: user.id,
+           email: user.Email,
+           name: user.Name,
+           User_Type: user.User_Type
+         }
+       })
+       
 
     } catch (error) {
         return res.status(500).json({

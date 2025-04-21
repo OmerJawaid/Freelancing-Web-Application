@@ -15,6 +15,7 @@ createRoot(document.getElementById('root')).render(
   <StrictMode>
     <AuthProvider>
       <App />
+      <ToastContainer position="top-right" autoClose={3000} />
     </AuthProvider>
   </StrictMode>
 );

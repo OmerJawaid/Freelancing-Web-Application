@@ -59,7 +59,7 @@ export const AuthProvider = ({ children }) => {
         return { 
           success: true, 
           userType: response.data.user.User_Type
-        };
+        }
       }
       
       return {
