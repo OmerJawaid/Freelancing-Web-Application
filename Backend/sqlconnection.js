@@ -77,14 +77,32 @@ app.post('/login',async (req,res)=>{
    }
 })
 
-//let gigs=await axios.get("http://localhost:8081/freelancer-gigs");
+//let gigs=await axios.get("http://localhost:8081/freelancer-gigs"); 
 app.get('/freelancer-gigs',async(req,res)=>{
    try{
-      const [result]=await database_pool.query('SELECT freelancers.Id, freelancers.Name, freelancers.Rating,freelancers.Image as freelancerimage, user.Email, gigs.Title, gigs.Description, gigs.Category, gigs.Price, gigs.Image FROM skillify.freelancers  JOIN skillify.user ON skillify.freelancers.id = skillify.user.id JOIN skillify.gigs ON skillify.gigs.Freelancer_Id = skillify.freelancers.id;')
+      const [result]=await database_pool.query('SELECT freelancers.Id, freelancers.Name, freelancers.Rating,freelancers.Image as freelancerimage, user.Email, gigs.Title, gigs.Description, gigs.Category, gigs.Price, gigs.Image FROM freelancers  JOIN skillify.user ON skillify.freelancers.id = skillify.user.id JOIN skillify.gigs ON skillify.gigs.Freelancer_Id = skillify.freelancers.id;')
       return res.status(201).json(result)
    }
    catch(err){
       console.log(err)
+   }
+})
+
+app.get('/retrive-gigs', async(req,res)=>{
+   try{ 
+      const{freelancer_Id}=req.query;
+      if (!freelancer_Id) {
+         return res.status(400).json({ message: "freelancer_Id is required" });
+       }
+      const [result]= await database_pool.query('SELECT gigs.*, freelancers.Name, freelancers.bio, freelancers.Rating, freelancers.Image as UserImage FROM gigs JOIN freelancers ON freelancers.Id = gigs.Freelancer_Id WHERE Freelancer_id = ?',[freelancer_Id])
+      if(!result|| result.length === 0){
+         return res.status(404).json({ message: "No gigs found for this freelancer" });
+      }
+      return res.json(result)
+   }
+   catch(err){
+      console.error(err);
+      res.status(500).json({ message: "Unable to retrieve gigs data" });
    }
 })
 
