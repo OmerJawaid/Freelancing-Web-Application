@@ -1,9 +1,15 @@
+
 // Frontend/src/Pages/Login/Login.jsx
 import React, { useState, useContext, useEffect } from "react";
 import { FaUser, FaLock, FaArrowLeft, FaGoogle } from "react-icons/fa";
 import { Link, useNavigate } from "react-router-dom";
 import "./Login.css";
+
 import { AuthContext } from "../../context/Authcontext";
+import axios from 'axios'
+import {toast} from 'react-toastify'
+import { useNavigate } from "react-router-dom";
+
 
 const Login = () => {
   const navigate = useNavigate();
@@ -74,14 +80,23 @@ const Login = () => {
     try {
       const result = await login(formData.email, formData.password);
       
-      if (result.success) {
-        if (rememberMe) {
-          localStorage.setItem('userEmail', formData.email);
-        } else {
-          localStorage.removeItem('userEmail');
-        }
-      } else {
-        setError(result.message || "Login failed");
+
+//       if (result.success) {
+//         if (rememberMe) {
+//           localStorage.setItem('userEmail', formData.email);
+//         } else {
+//           localStorage.removeItem('userEmail');
+//         }
+//       } else {
+//         setError(result.message || "Login failed"
+      if(authentication_responce.data.Authenticate){
+      console.log("Sucessfully Logged in");
+      navigate('/client');
+      } 
+      else
+      {
+        toast.error('Failed to Logged in')
+        console.log("Failed to Logged in")
       }
     } catch (err) {
       setError("An error occurred during login");

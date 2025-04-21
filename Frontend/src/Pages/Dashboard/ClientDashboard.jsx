@@ -67,6 +67,7 @@ const ClientDashboard = () => {
     <div className="dashboard">
       <Navbar onLogout={handleLogout} />
       <div className="dashboard-content">
+        
         {/* Sidebar with Filters */}
         <aside className="sidebar">
           <div className="filter-section">
@@ -111,6 +112,7 @@ const ClientDashboard = () => {
 
         {/* Main Content Area */}
         <main className="main-content">
+
           {/* Search Bar */}
           <div className="search-bar">
             <input
@@ -125,27 +127,50 @@ const ClientDashboard = () => {
 
           {/* Gigs Grid */}
           <div className="gigs-grid">
-            {filteredGigs.length > 0 ? (
-              filteredGigs.map((gig) => (
-                <div key={gig.Id} className="gig-card">
-                  <div className="gig-image">
-                    <img src={gig.Image} alt={gig.Title} />
-                  </div>
-                  <div className="gig-details">
-                    <h3 className="gig-title">{gig.Title}</h3>
-                    <p className="gig-description">{gig.Description}</p>
-                    <div className="freelancer-info">
-                      <img
-                        src={gig.freelancerimage}
-                        alt={gig.Name}
-                        className="freelancer-image"
-                      />
-                      <div className="freelancer-details">
-                        <span className="freelancer-name">{gig.Name}</span>
-                        <div className="rating">
-                          <span className="stars">{'⭐'.repeat(Math.floor(gig.Rating))}</span>
-                          <span className="rating-number">({gig.Rating})</span>
-                        </div>
+
+//             {filteredGigs.length > 0 ? (
+//               filteredGigs.map((gig) => (
+//                 <div key={gig.Id} className="gig-card">
+//                   <div className="gig-image">
+//                     <img src={gig.Image} alt={gig.Title} />
+//                   </div>
+//                   <div className="gig-details">
+//                     <h3 className="gig-title">{gig.Title}</h3>
+//                     <p className="gig-description">{gig.Description}</p>
+//                     <div className="freelancer-info">
+//                       <img
+//                         src={gig.freelancerimage}
+//                         alt={gig.Name}
+//                         className="freelancer-image"
+//                       />
+//                       <div className="freelancer-details">
+//                         <span className="freelancer-name">{gig.Name}</span>
+//                         <div className="rating">
+//                           <span className="stars">{'⭐'.repeat(Math.floor(gig.Rating))}</span>
+//                           <span className="rating-number">({gig.Rating})</span>
+//                         </div>
+            {
+              gigs
+              .filter((gig) => selectedCategory==='All'||gig.Category === selectedCategory)
+              .map((gig) => (
+              <div key={gig.Id} className="gig-card">
+                <div className="gig-image">
+                  <img src={gig.Image} alt={gig.Title} />
+                </div>
+                <div className="gig-details">
+                  <h3 className="gig-title">{gig.Title}</h3>
+                  <p className="gig-description">{gig.Description}</p>
+                  <div className="freelancer-info">
+                    <img
+                      src={gig.freelancerimage}
+                      alt={gig.Name}
+                      className="freelancer-image"
+                    />
+                    <div className="freelancer-details">
+                      <span className="freelancer-name">{gig.Name}</span>
+                      <div className="rating">
+                        <span className="stars">{'⭐'.repeat(Math.floor(gig.Rating))}</span>
+                        <span className="rating-number">({gig.Rating})</span>
                       </div>
                     </div>
                     <div className="gig-footer">
