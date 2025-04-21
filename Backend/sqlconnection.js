@@ -1,19 +1,54 @@
+
 const express = require('express')
 const mysql = require('mysql2');
+const cors = require('cors');
+const session = require('express-session');
+const cookieParser = require('cookie-parser');
 
-const app= express();
-const cors = require('cors')
-app.use(cors())
-app.use(express.json())
+const app = express();
 
+// Middleware
+app.use(cookieParser());
+app.use(express.json());
+app.use(cors({
+    origin: 'http://localhost:5173',
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+}));
 
+// Session configuration
+app.use(session({
+    secret: 'your-secret-key',
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+        secure: process.env.NODE_ENV === 'production',
+        httpOnly: true,
+        maxAge: 2 * 60 * 1000  // 2 minutes in milliseconds
+    }
+}));
+
+// Database connection
 const database_pool = mysql.createPool({
-  host: 'localhost',
-  user: 'root',
-  password: 'Hina@1976',
-  database: 'skillify'
+    host: 'localhost',
+    user: 'root',
+    password: 'Ahmad123',
+    database: 'skillify',
+    waitForConnections: true,
+    connectionLimit: 10,
+    queueLimit: 0
 }).promise();
 
+// Test database connection
+database_pool.getConnection()
+    .then(connection => {
+        console.log('Database connected successfully');
+        connection.release();
+    })
+    .catch(err => {
+        console.error('Error connecting to the database:', err);
+    });
 
 //Registering a new user: Inserting data into table user
 app.post('/signup',async(req,res)=>{
@@ -57,25 +92,95 @@ app.post('/signup',async(req,res)=>{
    }
 }) 
 
-//Login: Verifying user credentials
-app.post('/login',async (req,res)=>{
-   const {email,password} = req.body;
-   try{
-      const [result] = await database_pool.query('SELECT * FROM user WHERE Email = ? AND Password = ?', [email,password])
-      console.log(email,password)
-      if(result.length>0){
-         console.log("Sucessfully Login");
-         return res.status(201).json({Authenticate: true,message: "Successfully Logged in", userId: result.insertId})
-      }
-      else{ 
-         console.log("Invalid credentials");
-         return res.status(201).json({Authenticate: false,message: "Invalid Credentials", userId: result.insertId})
-      }
-   }
-   catch(err){
-      console.log(err) 
-   }
-})
+// Login route
+app.post('/login', async (req, res) => {
+    try {
+        const { Email, Password } = req.body;
+
+        if (!Email || !Password) {
+            return res.status(400).json({
+                Authenticate: false,
+                message: "Email and password are required"
+            });
+        }
+
+        const [users] = await database_pool.query(`
+            SELECT 
+                u.*,
+                COALESCE(f.Name, c.Name) as Name,
+                CASE 
+                    WHEN f.Id IS NOT NULL THEN 'freelancer'
+                    WHEN c.Id IS NOT NULL THEN 'client'
+                END as User_Type
+            FROM user u
+            LEFT JOIN freelancers f ON u.id = f.Id
+            LEFT JOIN clients c ON u.id = c.Id
+            WHERE u.Email = ?
+        `, [Email]);
+
+        if (users.length === 0 || users[0].Password !== Password) {
+            return res.status(401).json({
+                Authenticate: false,
+                message: "Invalid email or password"
+            });
+        }
+
+        const user = users[0];
+
+        req.session.user = {
+            id: user.id,
+            email: user.Email,
+            name: user.Name,
+            User_Type: user.User_Type
+        };
+
+        return res.status(200).json({
+            Authenticate: true,
+            message: "Login successful",
+            user: {
+                id: user.id,
+                email: user.Email,
+                name: user.Name,
+                User_Type: user.User_Type
+            }
+        });
+
+    } catch (error) {
+        return res.status(500).json({
+            Authenticate: false,
+            message: "An error occurred during login"
+        });
+    }
+});
+
+// Check authentication status
+app.get('/check-auth', (req, res) => {
+    if (req.session.user) {
+        res.json({
+            authenticated: true,
+            user: req.session.user
+        });
+    } else {
+        res.json({ authenticated: false });
+    }
+});
+
+// Logout route
+app.post('/logout', (req, res) => {
+    req.session.destroy((err) => {
+        if (err) {
+            return res.status(500).json({
+                success: false,
+                message: 'Failed to logout'
+            });
+        }
+        res.clearCookie('connect.sid');
+        res.json({
+            success: true,
+            message: 'Logged out successfully'
+        });
+    });
+});
 
 //let gigs=await axios.get("http://localhost:8081/freelancer-gigs"); 
 app.get('/freelancer-gigs',async(req,res)=>{
@@ -121,8 +226,16 @@ const middleware = (req, res, next) => {
    res.send('Hello, World!')
  })
 
+// Error handling middleware
+app.use((err, req, res, next) => {
+    console.error('Server error:', err);
+    res.status(500).json({
+        message: 'Internal server error',
+        error: err.message
+    });
+});
 
+const PORT = 8081;
+app.listen(PORT, () => {});
 
-app.listen(8081, ()=>{
-   console.log("Server is running on port 8081")
-})
+module.exports = app;
