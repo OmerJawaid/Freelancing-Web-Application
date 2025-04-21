@@ -1,8 +1,9 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { FaUser, FaLock, FaArrowLeft, FaGoogle } from "react-icons/fa";
 import { Link } from "react-router-dom";
 import "./Login.css";
 import axios from 'axios'
+import {toast} from 'react-toastify'
 import { useNavigate } from "react-router-dom";
 
 
@@ -37,6 +38,7 @@ const Login = () => {
       } 
       else
       {
+        toast.error('Failed to Logged in')
         console.log("Failed to Logged in")
       }
     }

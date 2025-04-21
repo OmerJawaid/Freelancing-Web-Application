@@ -29,6 +29,7 @@ const ClientDashboard = () => {
     <div className="dashboard">
       <Navbar/>
       <div className="dashboard-content">
+        
         {/* Sidebar with Filters */}
         <aside className="sidebar">
           <div className="filter-section">
@@ -67,6 +68,7 @@ const ClientDashboard = () => {
 
         {/* Main Content Area */}
         <main className="main-content">
+
           {/* Search Bar */}
           <div className="search-bar">
             <input
@@ -81,8 +83,9 @@ const ClientDashboard = () => {
 
           {/* Gigs Grid */}
           <div className="gigs-grid">
-            
-            {gigs.filter((gig) => selectedCategory==='All'||gig.Category === selectedCategory)
+            {
+              gigs
+              .filter((gig) => selectedCategory==='All'||gig.Category === selectedCategory)
               .map((gig) => (
               <div key={gig.Id} className="gig-card">
                 <div className="gig-image">

@@ -1,7 +1,25 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import './Dashboard.css';
+import Navbar from '../../Components/Navbar Client/Navbar';
+import axios from 'axios';
 
 const FreelancerDashboard = () => {
+  const[gigs, changegig]=useState([]);
+  const status = gigs.State === 1 ? 'Active' : 'Pause';
+
+  useEffect(()=>{
+    async function  Gig_Retrival(){
+      const result=await axios.get('http://localhost:8081/retrive-gigs',{
+        params: { freelancer_Id: 19 }
+      })
+      if(!result.data){
+        console.log("Error in getting gigs data")
+      }
+      console.log(result.data)
+      changegig(result.data)
+    }
+    Gig_Retrival()
+  },[])
   const [myGigs, setMyGigs] = useState([
     {
       id: 1,
@@ -35,19 +53,7 @@ const FreelancerDashboard = () => {
   return (
     <div className="dashboard">
       {/* Navigation Bar */}
-      <nav className="navbar">
-        <div className="nav-left">
-          <h1 className="nav-logo">FreelanceHub</h1>
-        </div>
-        <div className="nav-right">
-          <div className="user-profile">
-            <img src="https://via.placeholder.com/40" alt="Profile" className="profile-image" />
-            <span className="username">John Freelancer</span>
-          </div>
-          <button className="nav-button">Messages</button>
-          <button className="nav-button">Logout</button>
-        </div>
-      </nav>
+      <Navbar/>
 
       <div className="dashboard-content">
         {/* Sidebar */}
@@ -91,17 +97,17 @@ const FreelancerDashboard = () => {
           </div>
 
           <div className="gigs-grid">
-            {myGigs.map((gig) => (
-              <div key={gig.id} className="gig-card freelancer-gig">
+            {gigs.map((gig) => (
+              <div key={gig.Id} className="gig-card freelancer-gig">
                 <div className="gig-image">
-                  <img src={gig.Image} alt={gig.title} />
-                  <div className={`status-badge ${gig.status}`}>
-                    {gig.status.charAt(0).toUpperCase() + gig.status.slice(1)}
-                  </div>
+                  <img src={gig.Image} alt={gig.Title} />
+                  <div className={`status-badge ${status}`}>
+                    {status.charAt(0).toUpperCase() + status.slice(1)}
+                </div>
                 </div>
                 <div className="gig-details">
-                  <h3 className="gig-title">{gig.title}</h3>
-                  <p className="gig-description">{gig.description}</p>
+                  <h3 className="gig-title">{gig.Title}</h3>
+                  <p className="gig-description">{gig.Description}</p>
                   <div className="gig-stats">
                     <div className="stat">
                       <span className="stat-label">Orders</span>
@@ -109,17 +115,17 @@ const FreelancerDashboard = () => {
                     </div>
                     <div className="stat">
                       <span className="stat-label">Views</span>
-                      <span className="stat-value">{gig.views}</span>
+                      <span className="stat-value">{gig.Views}</span>
                     </div>
                     <div className="stat">
                       <span className="stat-label">Price</span>
-                      <span className="stat-value">${gig.price}</span>
+                      <span className="stat-value">${gig.Price}</span>
                     </div>
                   </div>
                   <div className="gig-actions">
                     <button className="edit-button">Edit</button>
                     <button className="pause-button">
-                      {gig.status === 'active' ? 'Pause' : 'Activate'}
+                      {gig.State === 1 ? 'Pause' : 'Activate'}
                     </button>
                   </div>
                 </div>
