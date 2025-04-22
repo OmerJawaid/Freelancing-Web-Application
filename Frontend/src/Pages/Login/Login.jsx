@@ -55,7 +55,7 @@ const Login = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.email || !formData.password) {
-      toast.error("Email or Password is Incorrect")
+      toast.error("Login Credentials are Incorrect")
       return;
     }
 
@@ -64,16 +64,6 @@ const Login = () => {
     try {
       const result = await login(formData.email, formData.password);
 console.log("Login result:", result); // Add this
-      
-
-//       if (result.success) {
-//         if (rememberMe) {
-//           localStorage.setItem('userEmail', formData.email);
-//         } else {
-//           localStorage.removeItem('userEmail');
-//         }
-//       } else {
-//         setError(result.message || "Login failed"
 
 if (result.success) {
   if (rememberMe) {

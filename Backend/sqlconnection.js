@@ -13,7 +13,6 @@ app.use(express.json());
 app.use(cors({
     origin: 'http://localhost:5173',
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
     allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
@@ -25,7 +24,7 @@ app.use(session({
     cookie: {
         secure: process.env.NODE_ENV === 'production',
         httpOnly: true,
-        maxAge: 2 * 60 * 1000  // 2 minutes in milliseconds
+        maxAge: 24 * 60 * 60 * 1000 //24 Hours
     }
 }));
 
@@ -54,7 +53,6 @@ database_pool.getConnection()
 app.post('/signup',async(req,res)=>{
    try{
       const {Name,Email , Password,User_Type} = req.body;
-      //Empty Inputs
       if(!Email||!Password||!Name||!User_Type){
          return res.status(400).json({message:"Name,Email,Password or UserType is Empty"})
       }
@@ -183,7 +181,6 @@ app.post('/logout', (req, res) => {
     });
 });
 
-//let gigs=await axios.get("http://localhost:8081/freelancer-gigs"); 
 app.get('/freelancer-gigs',async(req,res)=>{
    try{
       const [result]=await database_pool.query('SELECT freelancers.Id, freelancers.Name, freelancers.Rating,freelancers.Image as freelancerimage, user.Email, gigs.Title, gigs.Description, gigs.Category, gigs.Price, gigs.Image FROM freelancers  JOIN skillify.user ON skillify.freelancers.id = skillify.user.id JOIN skillify.gigs ON skillify.gigs.Freelancer_Id = skillify.freelancers.id;')
@@ -211,21 +208,6 @@ app.get('/retrive-gigs', async(req,res)=>{
       res.status(500).json({ message: "Unable to retrieve gigs data" });
    }
 })
-
-//Client Dashboard: Getting Data of freelancer
-app.get('/')
-
-//Testing next
-const middleware = (req, res, next) => {
-   console.log('Middleware executed')
-   next() // Moves to the next middleware or route handler
- }
- 
- app.use(middleware)
- 
- app.get('/', (req, res) => {
-   res.send('Hello, World!')
- })
 
 // Error handling middleware
 app.use((err, req, res, next) => {
