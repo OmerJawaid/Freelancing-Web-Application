@@ -9,6 +9,7 @@ import ClientDashboard from './Pages/Dashboard/ClientDashboard.jsx';
 import FreelancerDashboard from './Pages/Dashboard/FreelancerDashboard.jsx';
 import ProtectedRoute from './components/protectedRoute.jsx';
 import { AuthContext } from './context/Authcontext.jsx';
+import Gig from './Pages/Gig Display/GigDsplay.jsx';
 
 function App() {
   const { loading } = useContext(AuthContext);
@@ -34,6 +35,10 @@ function App() {
           <ClientDashboard />
         </ProtectedRoute>
       )
+    },
+    {
+      path:'/client/:id',
+      element:(<Gig/>)
     },
     {
       path: '/freelancer',

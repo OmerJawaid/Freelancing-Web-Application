@@ -6,7 +6,6 @@ import { Link, useNavigate } from "react-router-dom";
 import "./Login.css";
 
 import { AuthContext } from "../../context/Authcontext";
-import axios from 'axios'
 import {toast} from 'react-toastify'
 
 
@@ -38,10 +37,9 @@ const Login = () => {
     if (isAuthenticated && user && user.User_Type) {
       const path = user.User_Type === 'freelancer' ? '/freelancer' : '/client';
       console.log('Navigating to:', path);
-      navigate(path, { replace: true }); // Use replace to prevent back navigation
+      navigate(path, { replace: true });
     }
   }, [isAuthenticated, user, navigate]);
-
 
 
   const handleInputChange = (e) => {

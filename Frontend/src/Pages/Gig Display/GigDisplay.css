@@ -1,0 +1,633 @@
+/* Gig Display Page Styles */
+:root {
+  --primary-color: #10b981;
+  --primary-color-dark: #059669;
+  --primary-color-light: #34d399;
+  --secondary-color: #1f2937;
+  --secondary-color-light: #4b5563;
+  --background-color: #ffffff;
+  --border-color: #e5e7eb;
+  --text-color: #1f2937;
+  --text-color-light: #6b7280;
+  --accent-color: #064e3b;
+  --success-color: #10b981;
+  --warning-color: #f59e0b;
+  --danger-color: #ef4444;
+  --box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Loading State */
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  min-height: 60vh;
+  padding: 2rem;
+}
+
+.loader {
+  width: 50px;
+  height: 50px;
+  border: 5px solid #f3f3f3;
+  border-top: 5px solid var(--primary-color);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 1rem;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Error Container */
+.error-container {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  min-height: 50vh;
+  padding: 2rem;
+  text-align: center;
+}
+
+.error-container h2 {
+  color: var(--text-color);
+  margin-bottom: 1rem;
+  font-size: 1.5rem;
+}
+
+.error-container p {
+  color: var(--text-color-light);
+  max-width: 600px;
+}
+
+.gig-display-container {
+  min-height: 100vh;
+  background-color: #f9fafb;
+  padding-bottom: 2rem;
+}
+
+.gig-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
+
+/* Gig Header */
+.gig-header {
+  margin-bottom: 2rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.gig-title {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--text-color);
+  margin-bottom: 1rem;
+}
+
+.gig-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.freelancer-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.freelancer-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.freelancer-details h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-color);
+  margin-bottom: 0.25rem;
+}
+
+.rating {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.star-icon {
+  color: #fbbf24;
+}
+
+.review-count {
+  color: var(--text-color-light);
+  font-size: 0.9rem;
+}
+
+.gig-actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.action-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid var(--border-color);
+  background-color: white;
+  color: var(--text-color);
+}
+
+.save-button {
+  color: var(--danger-color);
+}
+
+.save-button:hover {
+  background-color: #fee2e2;
+}
+
+.share-button:hover {
+  background-color: #f3f4f6;
+}
+
+/* Gig Body Layout */
+.gig-body {
+  display: grid;
+  grid-template-columns: 1fr 350px;
+  gap: 2rem;
+}
+
+/* Main Content */
+.gig-main {
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: var(--box-shadow);
+  overflow: hidden;
+}
+
+/* Gallery */
+.gig-gallery {
+  margin-bottom: 2rem;
+}
+
+.main-image {
+  width: 100%;
+  height: 450px;
+  overflow: hidden;
+  border-radius: 8px 8px 0 0;
+}
+
+.main-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.thumbnail-list {
+  display: flex;
+  gap: 0.75rem;
+  padding: 1rem;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.thumbnail {
+  width: 100px;
+  height: 60px;
+  border-radius: 4px;
+  overflow: hidden;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.thumbnail.active {
+  border-color: var(--primary-color);
+}
+
+.thumbnail img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Description Section */
+.gig-description, .gig-features, .freelancer-profile {
+  padding: 2rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.gig-description h2, .gig-features h2, .freelancer-profile h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--text-color);
+  margin-bottom: 1rem;
+}
+
+.gig-description p {
+  color: var(--text-color-light);
+  line-height: 1.7;
+}
+
+/* Features List */
+.features-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 1rem;
+  list-style: none;
+}
+
+.feature-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.check-icon {
+  color: var(--success-color);
+  font-size: 1rem;
+}
+
+/* Freelancer Profile */
+.freelancer-profile-content {
+  display: flex;
+  gap: 1.5rem;
+}
+
+.freelancer-profile-image {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.freelancer-profile-details {
+  flex: 1;
+}
+
+.freelancer-profile-details h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.freelancer-profile-details p {
+  color: var(--text-color-light);
+  margin-bottom: 1rem;
+  line-height: 1.6;
+}
+
+.contact-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background-color: var(--accent-color);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.contact-button:hover {
+  background-color: #043d2e;
+}
+
+/* Sidebar */
+.gig-sidebar {
+  position: sticky;
+  top: 2rem;
+}
+
+.pricing-card {
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: var(--box-shadow);
+  overflow: hidden;
+  margin-bottom: 1.5rem;
+}
+
+.package-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.package-tab {
+  flex: 1;
+  padding: 1rem;
+  text-align: center;
+  background: none;
+  border: none;
+  font-weight: 500;
+  color: var(--text-color-light);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.package-tab.active {
+  color: var(--accent-color);
+  border-bottom: 2px solid var(--accent-color);
+}
+
+.selected-package {
+  padding: 1.5rem;
+}
+
+.selected-package h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-color);
+  margin-bottom: 0.5rem;
+}
+
+.package-price {
+  margin-bottom: 1rem;
+}
+
+.price-amount {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--accent-color);
+}
+
+.package-description {
+  color: var(--text-color-light);
+  margin-bottom: 1.5rem;
+  font-size: 0.95rem;
+}
+
+.package-details {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.detail-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text-color-light);
+}
+
+.detail-icon {
+  color: var(--accent-color);
+}
+
+.package-features {
+  list-style: none;
+  margin-bottom: 1.5rem;
+}
+
+.package-feature {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+  color: var(--text-color);
+}
+
+.order-button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  background-color: var(--accent-color);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.order-button:hover {
+  background-color: #043d2e;
+  transform: translateY(-2px);
+}
+
+/* Gig Stats */
+.gig-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: var(--box-shadow);
+  padding: 1.5rem;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.stat-item span {
+  font-size: 0.875rem;
+  color: var(--text-color-light);
+  margin-bottom: 0.25rem;
+}
+
+.stat-item strong {
+  font-size: 1rem;
+  color: var(--text-color);
+}
+
+/* Reviews Section Styling */
+.reviews-section {
+  margin-top: 2rem;
+  padding: 1.5rem;
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.reviews-section h2 {
+  margin-bottom: 1.5rem;
+  font-size: 1.5rem;
+  color: #333;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 0.75rem;
+}
+
+.reviews-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.review-card {
+  padding: 1.25rem;
+  border-radius: 8px;
+  background-color: #f9f9f9;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.review-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.review-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.reviewer-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.reviewer-image {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #fff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.reviewer-details h4 {
+  margin: 0;
+  font-size: 1rem;
+  color: #333;
+}
+
+.star-rating {
+  display: flex;
+  gap: 2px;
+  margin-top: 0.25rem;
+}
+
+.star-filled, .star-empty {
+  font-size: 0.9rem;
+}
+
+.review-content {
+  margin-top: 0.75rem;
+}
+
+.review-title {
+  font-size: 1.1rem;
+  margin-bottom: 0.5rem;
+  color: #444;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.quote-icon {
+  color: #999;
+  font-size: 0.9rem;
+}
+
+.review-description {
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: #555;
+  margin: 0;
+}
+
+.no-reviews-message {
+  padding: 1.5rem;
+  text-align: center;
+  color: #777;
+  background-color: #f9f9f9;
+  border-radius: 8px;
+  font-style: italic;
+}
+
+/* Responsive Design */
+@media (max-width: 992px) {
+  .gig-body {
+    grid-template-columns: 1fr;
+  }
+  
+  .gig-sidebar {
+    position: static;
+  }
+}
+
+@media (max-width: 768px) {
+  .gig-meta {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .freelancer-profile-content {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+  
+  .freelancer-profile-image {
+    margin-bottom: 1rem;
+  }
+  
+  .features-list {
+    grid-template-columns: 1fr;
+  }
+  
+  .gig-stats {
+    grid-template-columns: 1fr;
+  }
+  
+  .review-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .reviewer-info {
+    margin-bottom: 0.5rem;
+  }
+}
+
+@media (max-width: 576px) {
+  .gig-title {
+    font-size: 1.5rem;
+  }
+  
+  .main-image {
+    height: 300px;
+  }
+  
+  .gig-description, .gig-features, .freelancer-profile {
+    padding: 1.5rem;
+  }
+  
+  .package-tabs {
+    flex-direction: column;
+  }
+  
+  .package-tab {
+    padding: 0.75rem;
+    border-bottom: 1px solid var(--border-color);
+  }
+  
+  .package-tab.active {
+    border-bottom: 2px solid var(--accent-color);
+  }
+}

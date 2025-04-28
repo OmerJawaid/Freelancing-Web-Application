@@ -106,8 +106,14 @@ const FreelancerDashboard = () => {
                 </div>
                 </div>
                 <div className="gig-details">
-                  <h3 className="gig-title">{gig.Title}</h3>
-                  <p className="gig-description">{gig.Description}</p>
+                  <h3 className="gig-title" title={gig.Title}>{gig.Title}</h3>
+                  <p className="gig-description" title={gig.Description}>
+                    {gig.Description ? 
+                      (gig.Description.length > 100 
+                        ? gig.Description.substring(0, 100).trim() + '...' 
+                        : gig.Description)
+                      : "No description available"}
+                  </p>
                   <div className="gig-stats">
                     <div className="stat">
                       <span className="stat-label">Orders</span>
