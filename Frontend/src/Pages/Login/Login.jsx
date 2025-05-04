@@ -8,9 +8,8 @@ import "./Login.css";
 import { AuthContext } from "../../context/Authcontext";
 import {toast} from 'react-toastify'
 
-
-
 const Login = () => {
+
   const navigate = useNavigate();
   const { login, isAuthenticated, user } = useContext(AuthContext);
 

@@ -215,13 +215,15 @@
   color: #1f2937;
 }
 
-.messages-container {
+.chat-messages {
   flex: 1;
-  padding: 20px;
-  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 16px;
+  padding: 20px;
+  overflow-y: auto;
+  background: #fff;
+  min-height: 0;
 }
 
 .message {
@@ -384,4 +386,20 @@
 .conversations-list::-webkit-scrollbar-thumb:hover,
 .messages-container::-webkit-scrollbar-thumb:hover {
   background-color: #d1d5db;
+}
+
+.no-conversations {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #6b7280;
+  text-align: center;
+  padding: 20px;
+}
+
+.no-conversations p {
+  margin: 5px 0;
+  font-size: 0.95rem;
 } 

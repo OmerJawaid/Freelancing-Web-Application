@@ -1,6 +1,7 @@
 // Frontend/src/context/AuthContext.jsx
-import React, { createContext, useState, useEffect } from 'react';
+import React, { createContext, useState, useEffect, useRef } from 'react';
 import axios from 'axios';
+import { io } from 'socket.io-client';
 
 export const AuthContext = createContext();
 
@@ -17,35 +18,57 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(DEFAULT_USER);
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const socketRef = useRef(null);
 
   // Configure axios
   axios.defaults.withCredentials = true;
 
   // Initial auth check
   useEffect(() => {
-    checkAuthStatus();
+    const getUserData = async () => {
+      const userData = await checkAuthStatus();
+
+      if (userData) {
+        if (!socketRef.current) {
+          socketRef.current = io('http://localhost:8081'); // create only once
+        }
+        socketRef.current.emit('register', userData.id);
+        console.log("Socket registered:", userData);
+      }
+    };
+
+    getUserData();
     
     // Update interval to 2 minutes
     const interval = setInterval(() => {
       checkAuthStatus();
     }, 2 * 60 * 1000);
     
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      if (socketRef.current) {
+        socketRef.current.disconnect(); // 🔌 cleanup on unmount
+        socketRef.current = null;
+      }
+    };
+
   }, []);
 
   const checkAuthStatus = async () => {
+    let userData = null; // Ensure userData is always initialized
+
     try {
       const response = await axios.get('http://localhost:8081/check-auth');
       if (response.data.authenticated && response.data.user) {
-        // Process user data to ensure all required fields exist
-        const userData = response.data.user;
-        
+        userData = response.data.user;
+
         // Ensure Image property is never null
         if (!userData.Image) {
           userData.Image = DEFAULT_USER.Image;
         }
-        
+
         setUser(userData);
+        console.log(userData);
         setIsAuthenticated(true);
       } else {
         setUser(DEFAULT_USER);
@@ -58,6 +81,8 @@ export const AuthProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
+
+    return userData;
   };
 
   const login = async (email, password) => {
@@ -77,6 +102,9 @@ export const AuthProvider = ({ children }) => {
         if (!userData.Image) {
           userData.Image = DEFAULT_USER.Image;
         }
+        
+        // Store user data in localStorage
+        localStorage.setItem('user', JSON.stringify(userData));
         
         // Update authentication state
         setUser(userData);
@@ -107,6 +135,7 @@ export const AuthProvider = ({ children }) => {
       setUser(DEFAULT_USER);
       setIsAuthenticated(false);
       localStorage.removeItem('userEmail');
+      localStorage.removeItem('user'); // Clear user data from localStorage
     } catch (error) {
       console.error('Logout error:', error);
     }

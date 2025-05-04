@@ -8,7 +8,7 @@ import { NavLink } from 'react-router-dom';
 const DEFAULT_USER = {
   name: 'Guest',
   email: 'guest@example.com',
-  Image: 'https://via.placeholder.com/40'
+  Image: 'https://media-hosting.imagekit.io/86a88d09aae2472d/download.png?Expires=1839859669&Key-Pair-Id=K2ZIVPTIP2VGHC&Signature=0WnB0Iv-RFGZawC~X5GWgn2GwyN7SSljbZHhScYVtt23khRq2V6ra-E-donYyO3RZxkvkqdkDxJqyEkt9cBns4HndW1X5M~jMvG2PmG5rkjdEsatBTTlARuddXC5uTu7Gcp~rojvToPaS5TkGszf7jS1z0AEcZvlhmIXtRNIfx1LQgxnv1yda9rstMn~-eZzHS0vzeyVIGTj~4HuqOgxyozVjshUBM-gyVft3VmZ-b2dN3AZ-VfccVnieynhgnqTRMhT5MYdifXKyiT4wctoFReBsGQTAeVqaGGrNcPzk3hFYxCeNLwLcZToQopHx0ydw7s2IK-zFYFKsPqWRHga4Q__'
 };
 
 const Navbar = ({ onLogout }) => {

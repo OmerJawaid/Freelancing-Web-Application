@@ -58,6 +58,46 @@ const Gig = () => {
     }
   };
 
+  //Contact including Conversation making
+  const Contact = async () => {
+    try {
+      if (!gig || !gig.Freelancer_Id) {
+        console.error("No freelancer ID available");
+        return;
+      }
+
+      // Get current user from session/local storage
+      const currentUser = JSON.parse(localStorage.getItem('user'));
+      if (!currentUser || !currentUser.id) {
+        console.error("No user is logged in");
+        return;
+      }
+
+      const response = await axios.post(
+        "http://localhost:8081/create-conversation",
+        {
+          User_one_id: currentUser.id,
+          User_two_id: gig.Freelancer_Id,
+          Last_message: "",
+          Last_message_time: null,
+          Unread_count_user_one: 0,
+          Unread_count_user_two: 0
+        },
+        { withCredentials: true }
+      );
+
+      console.log("Conversation creation response:", response.data);
+
+      // Optionally redirect to messages page after creating conversation
+      if (response.data.message === "Successfully created new conversation" || 
+          response.data.message === "Conversation already exists") {
+        window.location.href = '/messages';
+      }
+    } catch (err) {
+      console.error("Error creating conversation:", err);
+    }
+  }
+
   // Create mock packages if none found in database
   const createMockPackages = (gigId) => {
     const mockPackages = [
@@ -756,7 +796,8 @@ const Gig = () => {
                     display: "flex",
                     gap: "1rem",
                     flexWrap: "wrap"
-                  }}>
+                  }}
+                  >
                     {/* Contact button */}
                     <button
                       className="contact-seller-button"
@@ -783,6 +824,7 @@ const Gig = () => {
                       }}
                       onClick={() => {
                         console.log("Contact seller clicked");
+                        Contact()
                       }}
                     >
                       <FaEnvelope /> Contact Me

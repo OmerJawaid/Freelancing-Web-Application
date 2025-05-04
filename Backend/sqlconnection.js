@@ -3,6 +3,8 @@ const mysql = require('mysql2');
 const cors = require('cors');
 const session = require('express-session');
 const cookieParser = require('cookie-parser');
+const {Server} = require('socket.io');
+const http =require('http');
 
 const app = express();
 
@@ -15,6 +17,16 @@ app.use(cors({
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization']
 }));
+
+//WebSocket
+const users = {};
+const server = http.createServer(app);
+const io = new Server(server, {
+    cors: {
+      origin: 'http://localhost:5173', // React Vite app URL
+      methods: ['GET', 'POST'],
+    }
+  });
 
 // Session configuration
 app.use(session({
@@ -39,15 +51,7 @@ const database_pool = mysql.createPool({
     queueLimit: 0
 }).promise();
 
-// Test database connection
-database_pool.getConnection()
-    .then(connection => {
-        console.log('Database connected successfully');
-        connection.release();
-    })
-    .catch(err => {
-        console.error('Error connecting to the database:', err);
-    });
+1
 
 //Registering a new user: Inserting data into table user
 app.post('/signup',async(req,res)=>{
@@ -296,6 +300,7 @@ app.get('/retrive-reviews-gigs-freelancess-by-gig-id',async(req,res)=>{
     catch(err){res.status(500).json({ message: "Unable to retrieve packages data" });}
 })
 
+
 // New endpoint to fetch a gig by its ID
 app.get('/retrive-gig-by-id', async(req,res)=>{
     try{ 
@@ -396,6 +401,7 @@ app.get('/health-check', (req, res) => {
     res.status(200).send('Backend server is running');
 });
 
+
 // Error handling middleware
 app.use((err, req, res, next) => {
     console.error('Server error:', err);
@@ -405,7 +411,213 @@ app.use((err, req, res, next) => {
     });
 });
 
+
+//Conversations
+app.post('/create-conversation',async(req,res) =>{
+    console.log("Received conversation creation request:", req.body);
+    const{User_one_id, User_two_id, Last_message, Last_message_time, Unread_count_user_one, Unread_count_user_two}=req.body;
+    
+    // Validate required fields
+    if (!User_one_id || !User_two_id) {
+        console.error("Missing required fields:", { User_one_id, User_two_id });
+        return res.status(400).json({ message: "User IDs are required" });
+    }
+
+    try{
+        console.log("Attempting to create conversation between users:", User_one_id, User_two_id);
+        
+        const[result]=await database_pool.query(
+            'INSERT INTO conversations (User_one_id, User_two_id, Last_message, Last_message_time, Unread_count_user_one, Unread_count_user_two) ' +
+            'SELECT ?, ?, ?, ?, ?, ? ' +
+            'WHERE NOT EXISTS (SELECT 1 FROM conversations WHERE (User_one_id = ? AND User_two_id = ?) OR (User_one_id = ? AND User_two_id = ?))',
+            [User_one_id, User_two_id, Last_message, Last_message_time, Unread_count_user_one, Unread_count_user_two,
+             User_one_id, User_two_id, User_two_id, User_one_id]
+        );
+
+        console.log("Query result:", result);
+
+        if (result.affectedRows === 1) {
+            res.status(200).json({ message: "Successfully created new conversation" });
+        } else {
+            // Check if conversation already exists
+            const [existing] = await database_pool.query(
+                'SELECT * FROM conversations WHERE (User_one_id = ? AND User_two_id = ?) OR (User_one_id = ? AND User_two_id = ?)',
+                [User_one_id, User_two_id, User_two_id, User_one_id]
+            );
+            
+            if (existing && existing.length > 0) {
+                res.status(200).json({ message: "Conversation already exists" });
+            } else {
+                res.status(500).json({ message: "Failed to create conversation" });
+            }
+        }
+    }
+    catch(err){
+        console.error("Error in creating conversation:", err);
+        res.status(500).json({ message: "Error creating conversation", error: err.message });
+    }
+})
+
+app.get('/retrive-conversations-by-id', async(req,res)=>{
+    try{
+        const{User_Id}=req.query;
+        console.log("Received request for User_Id: ",User_Id);
+        if(!User_Id){
+            return res.status(400).json({message:"User_Id is required"});
+        }
+
+        const query = `
+        SELECT 
+            conversations.Id AS ConversationId,
+            conversations.User_one_id,
+            conversations.User_two_id,
+            conversations.Last_message,
+            conversations.Last_message_time,
+            conversations.Unread_count_user_one,
+            conversations.Unread_count_user_two,
+            COALESCE(clients.Name, freelancers.Name) AS Name,
+            COALESCE(clients.Image, freelancers.Image) AS Image
+        FROM conversations
+        LEFT JOIN clients ON clients.Id = CASE 
+            WHEN conversations.User_one_id = ? THEN conversations.User_two_id
+            ELSE conversations.User_one_id 
+        END
+        LEFT JOIN freelancers ON freelancers.Id = CASE 
+            WHEN conversations.User_one_id = ? THEN conversations.User_two_id
+            ELSE conversations.User_one_id 
+        END
+        WHERE conversations.User_one_id = ? OR conversations.User_two_id = ?
+    `;
+    
+
+        const [result] = await database_pool.query(query, [User_Id, User_Id, User_Id, User_Id]);
+        console.log("SQL query executed successfully, found rows:", result ? result.length : 0);
+        
+        if(!result || result.length === 0){
+            return res.status(404).json({ message: "No Conversations found with this ID" });
+        }
+        
+        console.log("Conversations found, returning data");
+        return res.json(result);
+    }
+    catch(err){
+        console.error("General error in /retrive-conversations-by-id:", err);
+        res.status(500).json({ message: "Unable to retrieve conversation data", error: err.message });
+    }
+})
+
+//Messages
+app.post('/upload-messages', async(req,res)=>{
+    try{
+        const{Conversation_Id,Sender_Id, Content, Type = 'text', Status}=req.body;
+        console.log("Received message data:", req.body);
+
+        if (!Conversation_Id || !Sender_Id || !Content) {
+            return res.status(400).json({message: "Missing required fields"});
+        }
+
+        const query = `
+           INSERT INTO messages 
+            (Conversation_Id, Sender_Id, Content, Type, Status)
+            VALUES (?, ?, ?, ?, ?);
+        `;
+        const result = await database_pool.query(query, [Conversation_Id, Sender_Id, Content, Type, Status]);
+
+        if (!result || result.affectedRows === 0) {
+            return res.status(500).json({message:"Failed to send message"});
+        }
+
+        // Update the conversation's last message and time
+        const updateConversationQuery = `
+            UPDATE conversations 
+            SET Last_message = ?, 
+                Last_message_time = NOW() 
+            WHERE Id = ?
+        `;
+        
+        await database_pool.query(updateConversationQuery, [Content, Conversation_Id]);
+
+        res.status(200).json({message:"Message sent successfully", messageId: result.insertId});
+    } catch(err){
+        console.error("Error saving message:", err);
+        res.status(500).json({message:"Internal server error", error: err.message});
+    }
+});
+
+app.get('/retrive-messages',async (req,res)=>{
+    try{
+        const{conversation_id}=req.query;
+        if(!conversation_id){
+            console.log("Invalid conversation_id");
+            return res.status(400).json({message:"Invalid conversation_id"});
+        }
+
+        const [result]=await database_pool.query(
+            `SELECT * FROM skillify.messages 
+                WHERE Conversation_Id = ? 
+                ORDER BY Created_at ASC;
+        `,[conversation_id]
+        )
+        if (!result) {
+            return res.status(500).json({ message: "didn't get any messages" });
+        }
+        return res.json(result);
+    }
+    catch(err){}
+
+})
+
+// Handle client connections
+io.on('connection', (socket) => {
+    console.log('New client connected:', socket.id);
+
+    // Join user to their own room for receiving messages
+    socket.on('join', (data) => {
+        const { userId } = data;
+        users[userId] = socket.id;
+        socket.join(`user_${userId}`);
+        console.log(`User ${userId} joined with socket ${socket.id}`);
+    });
+  
+    //Sending messages from user
+    socket.on('send_message', (data) => {
+        const { senderId, receiverId, message, conversationId, timestamp, status } = data;
+        console.log('Message received from socket:', data);
+        
+        const receiverSocketId = users[receiverId];
+
+        // Send to receiver if online
+        if (receiverSocketId) {
+            console.log(`Sending message to receiver ${receiverId} with socket ${receiverSocketId}`);
+            io.to(receiverSocketId).emit('receive_message', {
+                senderId,
+                conversationId,
+                message,
+                timestamp,
+                status
+            });
+        } else {
+            console.log(`Receiver ${receiverId} is not connected`);
+        }
+        
+        // No need to send back to sender as they already have the message in their state
+    });
+  
+    //Disconnection of User
+    socket.on('disconnect', () => {
+        // Remove from `users` object
+        for (const [userId, sockId] of Object.entries(users)) {
+            if (sockId === socket.id) {
+                delete users[userId];
+                console.log(`User ${userId} disconnected`);
+                break;
+            }
+        }
+        console.log('Socket disconnected:', socket.id);
+    });
+});
+
 const PORT = 8081;
-app.listen(PORT, () => {});
+server.listen(PORT, () => {});
 
 module.exports = app;
