@@ -16,6 +16,36 @@ const socket = io('http://localhost:8081', {
   reconnectionDelay: 1000
 });
 
+// Utility function to format timestamps
+const formatMessageTime = (timestamp) => {
+  if (!timestamp) return "Just now";
+  
+  const messageDate = new Date(timestamp);
+  const now = new Date();
+  
+  // Check if invalid date
+  if (isNaN(messageDate.getTime())) return "Invalid date";
+  
+  // Same day: show time only
+  if (messageDate.toDateString() === now.toDateString()) {
+    return messageDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  }
+  
+  // Within last 7 days: show day name
+  const dayDiff = Math.floor((now - messageDate) / (1000 * 60 * 60 * 24));
+  if (dayDiff < 7) {
+    return messageDate.toLocaleDateString([], { weekday: 'short' }) + ' ' + 
+           messageDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  }
+  
+  // Otherwise show date
+  return messageDate.toLocaleDateString([], { 
+    month: 'short', 
+    day: 'numeric',
+    year: messageDate.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
+  });
+};
+
 const Messages = () => {
   const navigate = useNavigate();
   const [selectedConversation, setSelectedConversation] = useState({});
@@ -25,6 +55,63 @@ const Messages = () => {
   const [loading, setLoading] = useState(true);
   const chatEndRef = useRef(null);
   const currentUser = useRef(JSON.parse(localStorage.getItem('user')));
+  const [onlineUsers, setOnlineUsers] = useState(new Set());
+  const [userStatus, setUserStatus] = useState('online');
+  const [lastActivity, setLastActivity] = useState(Date.now());
+  const [isActive, setIsActive] = useState(true);
+  const activityTimerRef = useRef(null);
+  
+  // Track user activity
+  useEffect(() => {
+    const handleActivity = () => {
+      setLastActivity(Date.now());
+      
+      if (userStatus === 'away') {
+        setUserStatus('online');
+        socket.emit('set_user_status', { 
+          userId: currentUser.current?.id, 
+          status: 'online' 
+        });
+      }
+      
+      setIsActive(true);
+      
+      // Clear any existing timer
+      if (activityTimerRef.current) {
+        clearTimeout(activityTimerRef.current);
+      }
+      
+      // Set new timer for inactivity
+      activityTimerRef.current = setTimeout(() => {
+        if (Date.now() - lastActivity > 300000) { // 5 minutes of inactivity
+          setUserStatus('away');
+          setIsActive(false);
+          socket.emit('set_user_status', { 
+            userId: currentUser.current?.id, 
+            status: 'away' 
+          });
+        }
+      }, 300000); // Check after 5 minutes
+    };
+    
+    // Listen for user activity
+    window.addEventListener('mousemove', handleActivity);
+    window.addEventListener('keydown', handleActivity);
+    window.addEventListener('click', handleActivity);
+    
+    // Initial activity timer
+    handleActivity();
+    
+    return () => {
+      window.removeEventListener('mousemove', handleActivity);
+      window.removeEventListener('keydown', handleActivity);
+      window.removeEventListener('click', handleActivity);
+      
+      if (activityTimerRef.current) {
+        clearTimeout(activityTimerRef.current);
+      }
+    };
+  }, [lastActivity, userStatus]);
 
   // Authentication check
   useEffect(() => {
@@ -39,12 +126,67 @@ const Messages = () => {
     socket.connect();
     socket.emit('join', { userId: currentUser.current.id });
     
+    // Request list of online users
+    socket.emit('get_online_users');
+    
     socket.on('connect', () => {
       console.log("Socket connected, ID:", socket.id);
     });
     
     socket.on('connect_error', (error) => {
       console.error("Socket connection error:", error);
+    });
+    
+    // Listen for online users list
+    socket.on('online_users', (users) => {
+      console.log("Received online users:", users);
+      setOnlineUsers(new Set(users));
+    });
+    
+    // Listen for user status changes
+    socket.on('user_status_change', ({ userId, status }) => {
+      console.log(`User ${userId} status changed to ${status}`);
+      
+      if (status === 'online') {
+        setOnlineUsers(prev => {
+          const updated = new Set(prev);
+          updated.add(userId);
+          return updated;
+        });
+      } else if (status === 'offline') {
+        setOnlineUsers(prev => {
+          const updated = new Set(prev);
+          updated.delete(userId);
+          return updated;
+        });
+      }
+      
+      // Update selected conversation status if applicable
+      if (selectedConversation.user && selectedConversation.user.id === parseInt(userId)) {
+        setSelectedConversation(prev => ({
+          ...prev,
+          user: {
+            ...prev.user,
+            status: status
+          }
+        }));
+      }
+      
+      // Update specific conversation in the list
+      setConversations(prev => 
+        prev.map(conv => {
+          if (conv.user.id === parseInt(userId)) {
+            return {
+              ...conv,
+              user: {
+                ...conv.user,
+                status: status
+              }
+            };
+          }
+          return conv;
+        })
+      );
     });
 
     // Clean up socket connection on component unmount
@@ -66,18 +208,25 @@ const Messages = () => {
             withCredentials: true
           }
         );
-        const processedConversations = response.data.map(conv => ({
-          id: conv.ConversationId,
-          user: {
-            id: conv.User_one_id === currentUser.current.id ? conv.User_two_id : conv.User_one_id,
-            name: conv.Name || "Unknown User",
-            avatar: conv.Image || DEFAULT_AVATAR,
-            status: "offline"
-          },
-          lastMessage: conv.Last_message || "",
-          timestamp: conv.Last_message_time || "No messages yet",
-          unread: conv.User_one_id === currentUser.current.id ? conv.Unread_count_user_one : conv.Unread_count_user_two
-        }));
+        const processedConversations = response.data.map(conv => {
+          const otherUserId = conv.User_one_id === currentUser.current.id ? 
+            conv.User_two_id : conv.User_one_id;
+          
+          return {
+            id: conv.ConversationId,
+            user: {
+              id: otherUserId,
+              name: conv.Name || "Unknown User",
+              avatar: conv.Image || DEFAULT_AVATAR,
+              status: onlineUsers.has(otherUserId.toString()) ? 'online' : 'offline'
+            },
+            lastMessage: conv.Last_message || "",
+            timestamp: conv.Last_message_time || null,
+            formattedTime: formatMessageTime(conv.Last_message_time),
+            unread: conv.User_one_id === currentUser.current.id ? 
+              conv.Unread_count_user_one : conv.Unread_count_user_two
+          };
+        });
         setConversations(processedConversations);
         setLoading(false);
       } catch (error) {
@@ -89,7 +238,7 @@ const Messages = () => {
     if (currentUser.current?.id) {
       retriving_conversations();
     }
-  }, []);
+  }, [onlineUsers]);
 
   // Fetch messages for selected conversation
   useEffect(() => {
@@ -110,6 +259,7 @@ const Messages = () => {
             senderId: msg.Sender_Id,
             message: msg.Content,
             timestamp: msg.Created_at,
+            formattedTime: formatMessageTime(msg.Created_at),
             status: msg.Status
           }))
         );
@@ -145,10 +295,13 @@ const Messages = () => {
             return prevChat;
           }
           
+          const msgTimestamp = data.timestamp || new Date().toISOString();
+          
           return [...prevChat, {
             senderId: data.senderId,
             message: data.message,
-            timestamp: data.timestamp || new Date().toISOString(),
+            timestamp: msgTimestamp,
+            formattedTime: formatMessageTime(msgTimestamp),
             status: data.status || 'delivered'
           }];
         });
@@ -158,10 +311,12 @@ const Messages = () => {
       setConversations(prevConversations => {
         return prevConversations.map(conv => {
           if (conv.id === data.conversationId) {
+            const msgTimestamp = data.timestamp || new Date().toISOString();
             return {
               ...conv,
               lastMessage: data.message,
-              timestamp: data.timestamp || new Date().toISOString(),
+              timestamp: msgTimestamp,
+              formattedTime: formatMessageTime(msgTimestamp),
               unread: conv.user.id === data.senderId ? conv.unread + 1 : conv.unread
             };
           }
@@ -193,12 +348,14 @@ const Messages = () => {
       return;
     }
     
+    const msgTimestamp = new Date().toISOString();
+    
     const newMessage = {
       conversationId: selectedConversation.id,
       senderId: currentUser.current.id,
       receiverId: selectedConversation.user.id,
       message: messageInput,
-      timestamp: new Date().toISOString(),
+      timestamp: msgTimestamp,
       status: 'sent'
     };
     
@@ -206,7 +363,8 @@ const Messages = () => {
     setChat(prev => [...prev, {
       senderId: currentUser.current.id,
       message: messageInput,
-      timestamp: new Date().toISOString(),
+      timestamp: msgTimestamp,
+      formattedTime: formatMessageTime(msgTimestamp),
       status: 'sent'
     }]);
     
@@ -239,7 +397,8 @@ const Messages = () => {
             return {
               ...conv,
               lastMessage: newMessage.message,
-              timestamp: newMessage.timestamp
+              timestamp: msgTimestamp,
+              formattedTime: formatMessageTime(msgTimestamp)
             };
           }
           return conv;
@@ -310,7 +469,7 @@ const Messages = () => {
                   <div className="conversation-details">
                     <div className="conversation-header">
                       <h3>{conversation.user?.name || "Unknown User"}</h3>
-                      <span className="timestamp">{conversation.timestamp || "No messages"}</span>
+                      <span className="timestamp">{conversation.formattedTime}</span>
                     </div>
                     <div className="conversation-preview">
                       <p>{conversation.lastMessage || "No messages yet"}</p>
@@ -348,8 +507,9 @@ const Messages = () => {
                   />
                   <div>
                     <h3>{selectedConversation.user.name}</h3>
-                    <span className={`status-text ${selectedConversation.user.status}`}>
-                      {selectedConversation.user.status}
+                    <span className={`status-text ${selectedConversation.user?.status || 'offline'}`}>
+                      {selectedConversation.user?.status === 'online' ? 'Online' : 
+                       selectedConversation.user?.status === 'away' ? 'Away' : 'Offline'}
                     </span>
                   </div>
                 </div>
@@ -371,7 +531,7 @@ const Messages = () => {
                       <div className="message-content">
                         <p>{message.message}</p>
                         <div className="message-meta">
-                          <span className="timestamp">{message.timestamp || "Just now"}</span>
+                          <span className="timestamp">{message.formattedTime}</span>
                           {isSent && (
                             <span className="status">
                               {message.status === 'read' ? <FaCheckDouble /> : <FaCheck />}

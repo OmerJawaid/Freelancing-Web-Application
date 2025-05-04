@@ -92,20 +92,24 @@
 
 .status-indicator {
   position: absolute;
-  bottom: 2px;
-  right: 2px;
+  bottom: 0;
+  right: 0;
   width: 12px;
   height: 12px;
   border-radius: 50%;
-  border: 2px solid white;
+  border: 2px solid #fff;
 }
 
 .status-indicator.online {
-  background-color: #10b981;
+  background-color: #4CAF50;
 }
 
 .status-indicator.offline {
-  background-color: #9ca3af;
+  background-color: #bdbdbd;
+}
+
+.status-indicator.away {
+  background-color: #FFA000;
 }
 
 .conversation-details {
@@ -192,12 +196,21 @@
 }
 
 .status-text {
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   color: #6b7280;
+  margin-top: 2px;
 }
 
 .status-text.online {
-  color: #10b981;
+  color: #4CAF50;
+}
+
+.status-text.offline {
+  color: #9e9e9e;
+}
+
+.status-text.away {
+  color: #FFA000;
 }
 
 .more-options {

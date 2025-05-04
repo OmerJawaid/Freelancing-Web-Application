@@ -20,6 +20,8 @@ app.use(cors({
 
 //WebSocket
 const users = {};
+const onlineUsers = new Set(); // Track online users by ID
+
 const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
@@ -576,7 +578,18 @@ io.on('connection', (socket) => {
         const { userId } = data;
         users[userId] = socket.id;
         socket.join(`user_${userId}`);
+        
+        // Mark user as online
+        onlineUsers.add(userId);
         console.log(`User ${userId} joined with socket ${socket.id}`);
+        
+        // Broadcast user's online status to all clients
+        io.emit('user_status_change', { userId, status: 'online' });
+    });
+    
+    // User requests current online users
+    socket.on('get_online_users', () => {
+        socket.emit('online_users', Array.from(onlineUsers));
     });
   
     //Sending messages from user
@@ -608,12 +621,25 @@ io.on('connection', (socket) => {
         // Remove from `users` object
         for (const [userId, sockId] of Object.entries(users)) {
             if (sockId === socket.id) {
+                // Mark user as offline
+                onlineUsers.delete(userId);
                 delete users[userId];
+                
+                // Notify all clients about the user going offline
+                io.emit('user_status_change', { userId, status: 'offline' });
+                
                 console.log(`User ${userId} disconnected`);
                 break;
             }
         }
         console.log('Socket disconnected:', socket.id);
+    });
+    
+    // Handle explicit user status changes (away)
+    socket.on('set_user_status', ({ userId, status }) => {
+        // Broadcast user's status change to all clients
+        io.emit('user_status_change', { userId, status });
+        console.log(`User ${userId} changed status to ${status}`);
     });
 });
 

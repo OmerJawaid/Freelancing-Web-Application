@@ -37,12 +37,31 @@ const Navbar = ({ onLogout }) => {
     }
   };
 
+  // Handle logo click based on authentication status
+  const handleLogoClick = (e) => {
+    e.preventDefault();
+    
+    if (isAuthenticated) {
+      // If user is authenticated, navigate based on user type
+      if (safeUser.User_Type === 'freelancer') {
+        navigate('/freelancer');
+      } else if (safeUser.User_Type === 'client') {
+        navigate('/client');
+      } else {
+        navigate('/');
+      }
+    } else {
+      // If not authenticated, go to home page
+      navigate('/');
+    }
+  };
+
   // Ensure we have something to render even if context is missing
   return (
     <div>  
       <nav className="navbar">
         <div className="nav-left">
-          <NavLink to='/'><h1 className="nav-logo">Skillify</h1></NavLink>
+          <h1 className="nav-logo" onClick={handleLogoClick} style={{ cursor: 'pointer' }}>Skillify</h1>
         </div>
         <div className="nav-right">
           <div className="user-profile">
@@ -57,7 +76,7 @@ const Navbar = ({ onLogout }) => {
             />
             <span className="username">{safeUser.name || safeUser.email || "Guest"}</span>
           </div>
-          <button className="nav-button">Messages</button>
+          <button className="nav-button" onClick={()=>navigate('/messages')}>Messages</button>
           <button className="nav-button" onClick={handleLogout}>Logout</button>
         </div>
       </nav>
