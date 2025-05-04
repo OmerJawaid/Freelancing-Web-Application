@@ -37,21 +37,16 @@ const Navbar = ({ onLogout }) => {
     }
   };
 
-  // Handle logo click based on authentication status
+  // Function to handle Skillify logo click based on auth status
   const handleLogoClick = (e) => {
     e.preventDefault();
     
     if (isAuthenticated) {
-      // If user is authenticated, navigate based on user type
-      if (safeUser.User_Type === 'freelancer') {
-        navigate('/freelancer');
-      } else if (safeUser.User_Type === 'client') {
-        navigate('/client');
-      } else {
-        navigate('/');
-      }
+      // If authenticated, navigate to the appropriate dashboard based on user type
+      const path = safeUser.User_Type === 'freelancer' ? '/freelancer' : '/client';
+      navigate(path);
     } else {
-      // If not authenticated, go to home page
+      // If not authenticated, navigate to home page
       navigate('/');
     }
   };
@@ -61,7 +56,7 @@ const Navbar = ({ onLogout }) => {
     <div>  
       <nav className="navbar">
         <div className="nav-left">
-          <h1 className="nav-logo" onClick={handleLogoClick} style={{ cursor: 'pointer' }}>Skillify</h1>
+          <a href="#" onClick={handleLogoClick} className="nav-logo">Skillify</a>
         </div>
         <div className="nav-right">
           <div className="user-profile">
