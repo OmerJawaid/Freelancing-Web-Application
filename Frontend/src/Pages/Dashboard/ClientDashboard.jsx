@@ -2,16 +2,18 @@ import React, { useEffect, useState } from 'react';
 import './Dashboard.css';
 import Navbar from '../../Components/Navbar Client/Navbar';
 import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
 
 const ClientDashboard = () => {
 
   const [gigs, setgigs]=useState([])
-
+  const navigate= useNavigate();
   useEffect(()=>{
     const fetchGigs = async () => {
       try {
         const result = await axios.get("http://localhost:8081/freelancer-gigs");
         setgigs(result.data);
+       
       } catch (err) {
         console.error(err);
       }
@@ -24,6 +26,10 @@ const ClientDashboard = () => {
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
   const [priceRange, setPriceRange] = useState({ min: "", max: "" });
+
+  const OpenGig=(id)=>{
+    navigate(`/client/${id}`);
+  }
 
   return (
     <div className="dashboard">
@@ -85,15 +91,23 @@ const ClientDashboard = () => {
           <div className="gigs-grid">
             {
               gigs
-              .filter((gig) => selectedCategory==='All'||gig.Category === selectedCategory)
+              .filter((gig) => (selectedCategory==='All'||gig.Category === selectedCategory)&&((!priceRange.min || /*gig.Price*/1 >= parseFloat(priceRange.min)) &&(!priceRange.max || gig.Price <= parseFloat(priceRange.max))
+            &&(gig.Title.toLowerCase().startsWith(searchQuery.toLowerCase()))
+            ))
               .map((gig) => (
               <div key={gig.Id} className="gig-card">
                 <div className="gig-image">
                   <img src={gig.Image} alt={gig.Title} />
                 </div>
                 <div className="gig-details">
-                  <h3 className="gig-title">{gig.Title}</h3>
-                  <p className="gig-description">{gig.Description}</p>
+                  <h4 className="gig-title" title={gig.Title} style={{fontSize:"1.2rem",paddingTop:"0px"}}>{gig.Title}</h4>
+                  <p className="gig-description" title={gig.Description}>
+                    {gig.Description ? 
+                      (gig.Description.length > 100 
+                        ? gig.Description.substring(0, 100).trim() + '...' 
+                        : gig.Description)
+                      : "No description available"}
+                  </p>
                   <div className="freelancer-info">
                     <img
                       src={gig.freelancerimage}
@@ -109,8 +123,8 @@ const ClientDashboard = () => {
                     </div>
                   </div>
                   <div className="gig-footer">
-                    <span className="price">${gig.Price}</span>
-                    <button className="view-details-button">View Details</button>
+                    <span className="price">${/*gig.Price*/1}</span>
+                    <button className="view-details-button" onClick={ () => {OpenGig(gig.Id)}}>View Details</button>
                   </div>
                 </div>
               </div>

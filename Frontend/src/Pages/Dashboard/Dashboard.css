@@ -140,9 +140,15 @@
 }
 
 .gig-title {
-  font-size: 1.25rem;
+  font-size: 1rem;
   color: #1f2937;
   margin-bottom: 0.5rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  font-weight: 600;
+  line-height: 1.4;
 }
 
 .gig-description {
@@ -150,6 +156,20 @@
   margin-bottom: 1rem;
   font-size: 0.875rem;
   line-height: 1.5;
+  display: block;
+  height: 3.9em;
+  overflow: hidden;
+  position: relative;
+}
+
+.gig-description::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 70%;
+  height: 1.5em;
+  background: linear-gradient(to right, rgba(255, 255, 255, 0), rgba(255, 255, 255, 1) 80%);
 }
 
 .freelancer-info {
