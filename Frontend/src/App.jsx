@@ -1,6 +1,9 @@
 // Frontend/src/App.jsx
 import { useState, useContext } from 'react';
-import { createBrowserRouter, RouterProvider, Navigate } from "react-router-dom";
+import { createBrowserRouter, RouterProvider, Navigate, useLocation } from "react-router-dom";
+import { ToastContainer } from 'react-toastify';
+import { TransitionGroup, CSSTransition } from 'react-transition-group';
+import 'react-toastify/dist/ReactToastify.css';
 import './App.css';
 import Home from './Pages/Home/Home.jsx';
 import Login from './Pages/Login/Login.jsx';
@@ -11,6 +14,26 @@ import ProtectedRoute from './components/protectedRoute.jsx';
 import { AuthContext } from './context/Authcontext.jsx';
 import Gig from './Pages/Gig Display/GigDsplay.jsx';
 import Messages from './Pages/Messages/Messages.jsx';
+
+// Wrapper component for transitions
+const TransitionWrapper = ({ children }) => {
+  const location = useLocation();
+  
+  return (
+    <TransitionGroup>
+      <CSSTransition
+        key={location.key}
+        timeout={400}
+        classNames="page-transition"
+        unmountOnExit
+      >
+        <div className="page-wrapper">
+          {children}
+        </div>
+      </CSSTransition>
+    </TransitionGroup>
+  );
+};
 
 function App() {
   const { loading } = useContext(AuthContext);
@@ -59,7 +82,24 @@ function App() {
     return <div className="loading">Loading...</div>;
   }
 
-  return <RouterProvider router={router} />;
+  return (
+    <>
+      <RouterProvider router={router} />
+      <ToastContainer
+        position="top-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="light"
+        transition={CSSTransition}
+      />
+    </>
+  );
 }
 
 export default App;

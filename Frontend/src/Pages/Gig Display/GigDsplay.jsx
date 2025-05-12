@@ -4,6 +4,7 @@ import { useParams } from 'react-router-dom';
 import Navbar from '../../Components/Navbar Client/Navbar';
 import { FaStar, FaClock, FaCheck, FaUser, FaEnvelope, FaShoppingCart, FaHeart, FaShare, FaQuoteLeft, FaChevronDown, FaChevronUp, FaChevronRight } from 'react-icons/fa';
 import axios from 'axios';
+import Footer from '../../Components/Footer/Footer';
 
 // Default images for fallbacks
 const DEFAULT_GIG_IMAGE = "https://placehold.co/800x450/e9ecef/495057?text=Gig+Image";
@@ -399,7 +400,6 @@ const Gig = () => {
             color: "white", 
             border: "none", 
             borderRadius: "4px",
-            cursor: "pointer",
             boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
             transition: 'all 0.2s ease',
           }}
@@ -640,10 +640,14 @@ const Gig = () => {
             backgroundColor: "white",
             borderRadius: "12px",
             boxShadow: "0 4px 12px rgba(0, 0, 0, 0.05)",
-            overflow: "hidden"
+            display: "flex",
+            flexDirection: "column",
+            width: "100%"
           }}>
             <div className="gig-gallery" style={{
-              marginBottom: "0"
+              marginBottom: "0",
+              position: "relative",
+              zIndex: "1"
             }}>
               <div className="main-image" style={{
                 width: "100%",
@@ -671,7 +675,10 @@ const Gig = () => {
 
             <div className="gig-description" style={{
               padding: "2.5rem",
-              borderBottom: "1px solid #eaeaea"
+              borderBottom: "1px solid #eaeaea",
+              backgroundColor: "#fff",
+              width: "100%",
+              minHeight: "120px"
             }}>
               <h2 style={{
                 fontSize: "1.5rem",
@@ -679,64 +686,46 @@ const Gig = () => {
                 color: "#1f2937",
                 marginBottom: "1.25rem"
               }}>About This Gig</h2>
-              
-              {/* Render description with fallback options */}
-              {(() => {
-                console.log("Current gig state:", gig);
-                
-                if (!gig) {
-                  console.log("Gig is null or undefined");
-                  return (
-                    <p style={{
-                      color: "#4b5563",
-                      lineHeight: "1.7",
-                      fontSize: "1rem"
-                    }}>
-                      Loading description...
-                    </p>
-                  );
-                }
-                
-                // Get description text with fallback
-                const descriptionText = gig.Description;
-                console.log("Description text being rendered:", descriptionText);
-                
-                if (!descriptionText) {
-                  console.log("No description text found in gig object");
-                  return (
-                    <p style={{
-                      color: "#4b5563",
-                      lineHeight: "1.7",
-                      fontSize: "1rem"
-                    }}>
-                      No description available for this gig.
-                    </p>
-                  );
-                }
-                
-                // Handle both text with newlines and HTML content
-                return (
-                  <div 
-                    style={{
-                      color: "#4b5563",
-                      lineHeight: "1.7",
-                      fontSize: "1rem",
-                      whiteSpace: "pre-wrap"
-                    }}
+              <div 
+                className="gig-description-content"
+                style={{
+                  color: "#000",
+                  backgroundColor: "#fff",
+                  lineHeight: "1.7",
+                  fontSize: "1.1rem",
+                  whiteSpace: "pre-wrap",
+                  marginBottom: "1rem",
+                  width: "100%",
+                  display: "block",
+                  padding: "20px",
+                  borderRadius: "8px",
+                  minHeight: "60px"
+                }}
+              >
+                <div>
+                  
+                  <div
+                    style={{ color: "#000" }}
                     dangerouslySetInnerHTML={{
-                      __html: descriptionText.includes('<') && descriptionText.includes('>') 
-                        ? descriptionText 
-                        : descriptionText.replace(/\n/g, "<br/>")
-                    }} 
+                      __html: (() => {
+                        const content = gig.Description || gig.description || "";
+                        if (!content) return "<span style='color:#888'>No description available for this gig.</span>";
+                        if (content.includes('<') && content.includes('>')) return content;
+                        return content.replace(/\n/g, "<br/>");
+                      })()
+                    }}
                   />
-                );
-              })()}
+                </div>
+              </div>
             </div>
 
             <div className="freelancer-profile" style={{
               padding: "2.5rem",
               borderBottom: "1px solid #eaeaea",
-              background: "linear-gradient(to right, #fcfcfc, #ffffff)"
+              background: "linear-gradient(to right, #fcfcfc, #ffffff)",
+              position: "relative",
+              zIndex: "5",
+              width: "100%"
             }}>
               <h2 style={{
                 fontSize: "1.5rem",
@@ -873,7 +862,9 @@ const Gig = () => {
               padding: '30px 20px',
               borderTop: '1px solid #eaeaea',
               width: '100%',
-              backgroundColor: '#f9f9f9'
+              backgroundColor: '#f9f9f9',
+              position: 'relative',
+              zIndex: '1'
             }}>
               <div style={{
                 display: 'flex',
@@ -1291,6 +1282,7 @@ const Gig = () => {
           </div>
         </div>
       </div>
+      <Footer/>
     </div>
   );
 };

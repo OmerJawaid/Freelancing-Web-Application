@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import './Dashboard.css';
 import Navbar from '../../Components/Navbar Client/Navbar';
 import axios from 'axios';
+import Footer from '../../Components/Footer/Footer';
 
 const FreelancerDashboard = () => {
   const[gigs, changegig]=useState([]);
@@ -140,6 +141,7 @@ const FreelancerDashboard = () => {
           </div>
         </main>
       </div>
+      <Footer/>
     </div>
   );
 };

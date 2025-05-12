@@ -132,10 +132,11 @@
     padding: 8px 16px;
     border-radius: 4px;
     transition: background-color 0.3s ease;
+    white-space: nowrap;
   }
   
   .login-button:hover {
-    color:black;
+    color: black;
   }
   
   .signup-button {
@@ -168,10 +169,17 @@
     
     .navbar-auth {
       order: 3;
+      gap: 10px;
     }
     
     .login-button {
-      display: none;
+      padding: 6px 12px;
+      font-size: 0.9rem;
+    }
+    
+    .signup-button {
+      padding: 6px 12px;
+      font-size: 0.9rem;
     }
     
     .navbar-menu {
@@ -200,6 +208,22 @@
       flex-direction: column;
       align-items: center;
       gap: 15px;
+    }
+  }
+  
+  @media (max-width: 576px) {
+    .navbar-auth {
+      gap: 8px;
+    }
+    
+    .login-button {
+      padding: 5px 10px;
+      font-size: 0.85rem;
+    }
+    
+    .signup-button {
+      padding: 5px 10px;
+      font-size: 0.85rem;
     }
   }
   

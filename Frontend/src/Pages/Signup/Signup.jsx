@@ -3,35 +3,78 @@ import { FaUser, FaLock, FaArrowLeft, FaEnvelope, FaGoogle } from "react-icons/f
 import { Link, useNavigate } from "react-router-dom";
 import "./Signup.css";
 import axios from 'axios';
+import { toast } from 'react-toastify';
 
 const Signup = () => {
-
-  const navigate=useNavigate()
+  const navigate = useNavigate();
   const [userType, setUserType] = useState(''); // 'freelancer' or 'client'
-  const [Name,setName]=useState('')
-  const [Email,setEmail]=useState('')
-  const [Password,setPassword]=useState('')
-  const NameInputOnChange=(e)=>{
-    setName(e.target.value)
-    console.log(e.target.value);
-  }
-  const EmailInputOnChange=(e)=>{
-    setEmail(e.target.value)
-  }
-  const PasswordInputOnChange=(e)=>{
-    setPassword(e.target.value);
-    console.log(e.target.value);
-  }
-  const SignupButtonOnClick=async()=>{
-    const result = await axios.post("http://localhost:8081/signup", {Name:Name,Email:Email,Password:Password,User_Type:userType});
-    if(result.data.Signup_Sucess){
-      navigate('/login')
-    }
-    else
-    {alert("Can't Create your Account check your information")}
-  }
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
-  
+  const validateEmail = (email) => {
+    const emailcheck = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailcheck.test(email);
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    // Validate user type
+    if (!userType) {
+      toast.error('Please select whether you want to hire talent or find work');
+      return;
+    }
+
+    // Validate name
+    if (!name.trim()) {
+      toast.error('Please enter your name');
+      return;
+    }
+
+    // Validate email
+    if (!validateEmail(email)) {
+      toast.error('Please enter a valid email address');
+      return;
+    }
+
+    // Validate password
+    if (password.length < 6) {
+      toast.error('Password must be at least 6 characters long');
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      const result = await axios.post("http://localhost:8081/signup", {
+        Name: name,
+        Email: email,
+        Password: password,
+        User_Type: userType
+      });
+
+      if (result.data.Signup_Sucess) {
+        toast.success('Account created successfully! Redirecting to login...');
+        // Add a delay before navigation to allow the success toast to be visible
+        setTimeout(() => {
+          navigate('/login', { 
+            replace: true,
+            state: { 
+              fromSignup: true,
+              email: email // Pass the email to pre-fill the login form
+            }
+          });
+        }, 1500); // 1.5 second delay
+      } else {
+        toast.error('Failed to create account. Please try again.');
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'An error occurred. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div className="signup-page">
@@ -41,7 +84,7 @@ const Signup = () => {
           <p>New to Skillify</p>
         </div>
         
-        <form className="signup-form">
+        <form className="signup-form" onSubmit={handleSubmit}>
           {/* User type selection */}
           <div className="user-type-container">
             <p className="user-type-label">I want to:</p>
@@ -70,7 +113,8 @@ const Signup = () => {
               name="name" 
               placeholder="Name" 
               required 
-              onChange={NameInputOnChange}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
             />
           </div>
           
@@ -81,7 +125,8 @@ const Signup = () => {
               name="email" 
               placeholder="Email" 
               required 
-              onChange={EmailInputOnChange}
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
             />
           </div>
           
@@ -92,11 +137,18 @@ const Signup = () => {
               name="password" 
               placeholder="Password" 
               required 
-              onChange={PasswordInputOnChange}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
             />
           </div>
           
-          <button type="submit" className="signup-button" onClick={SignupButtonOnClick}>Sign up</button>
+          <button 
+            type="submit" 
+            className="signup-button" 
+            disabled={isLoading}
+          >
+            {isLoading ? 'Signing up...' : 'Sign up'}
+          </button>
           
           <div className="remember-me">
             <label className="checkbox-container">

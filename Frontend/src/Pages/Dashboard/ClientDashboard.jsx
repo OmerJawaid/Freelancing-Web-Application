@@ -3,6 +3,7 @@ import './Dashboard.css';
 import Navbar from '../../Components/Navbar Client/Navbar';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+import Footer from '../../Components/Footer/Footer';
 
 const ClientDashboard = () => {
 
@@ -132,6 +133,7 @@ const ClientDashboard = () => {
           </div>
         </main>
       </div>
+      <Footer/>
     </div>
   );
 };

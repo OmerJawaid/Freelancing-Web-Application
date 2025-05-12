@@ -66,7 +66,6 @@
 .gig-display-container {
   min-height: 100vh;
   background-color: #f9fafb;
-  padding-bottom: 2rem;
 }
 
 .gig-content {
@@ -225,6 +224,10 @@
 }
 
 /* Description Section */
+.gig-description{
+  position: relative;
+  z-index: 1;
+}
 .gig-description, .gig-features, .freelancer-profile {
   padding: 2rem;
   border-bottom: 1px solid var(--border-color);
