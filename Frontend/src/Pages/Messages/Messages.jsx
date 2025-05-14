@@ -248,7 +248,7 @@ const Messages = () => {
       try {
         console.log("Fetching messages for conversation:", selectedConversation.id);
         const response = await axios.get(
-          "http://localhost:8081/retrive-messages",
+          "http://localhost:8081/message/retrieve",
           {
             params: { conversation_id: selectedConversation.id },
             withCredentials: true
@@ -377,7 +377,7 @@ const Messages = () => {
       
       // Also save to database
       const response = await axios.post(
-        "http://localhost:8081/upload-messages",
+        "http://localhost:8081/messages/upload",
         {
           Conversation_Id: selectedConversation.id,
           Sender_Id: currentUser.current.id,

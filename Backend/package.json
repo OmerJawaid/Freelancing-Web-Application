@@ -2,9 +2,10 @@
   "name": "backend",
   "version": "1.0.0",
   "main": "index.js",
+   "type": "module", 
   "scripts": {
-    "start": "node sqlconnection.js",
-    "server": "nodemon ./sqlconnection.js",
+    "start": "node index.js",
+    "server": "nodemon ./index.js",
     "client": "npm run dev --prefix ../Frontend",
     "dev": "concurrently \"npm run server\" \"npm run client\""
   },
