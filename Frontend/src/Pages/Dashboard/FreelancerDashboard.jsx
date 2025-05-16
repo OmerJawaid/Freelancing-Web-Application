@@ -9,18 +9,23 @@ const FreelancerDashboard = () => {
   const status = gigs.State === 1 ? 'Active' : 'Pause';
 
   useEffect(()=>{
-    async function  Gig_Retrival(){
-      const result=await axios.get('http://localhost:8081/retrive-gigs',{
-        params: { freelancer_Id: 19 }
-      })
-      if(!result.data){
-        console.log("Error in getting gigs data")
+    async function Gig_Retrival(){
+      try {
+        const result = await axios.get('http://localhost:8081/gigs/retrieveGigForFreelancer', {
+          params: { freelancer_Id: 19 }
+        });
+        if(!result.data){
+          console.log("Error in getting gigs data")
+        }
+        console.log(result.data);
+        changegig(result.data);
+      } catch (error) {
+        console.error("Error fetching gigs:", error);
       }
-      console.log(result.data)
-      changegig(result.data)
     }
-    Gig_Retrival()
-  })
+    Gig_Retrival();
+  }, []);
+
   const [myGigs, setMyGigs] = useState([
     {
       id: 1,
@@ -30,7 +35,7 @@ const FreelancerDashboard = () => {
       status: "active",
       orders: 5,
       views: 120,
-      image: "https://via.placeholder.com/300x200"
+      image: "https://dummyimage.com/300x200/e9ecef/495057&text=Gig+Preview"
     },
     {
       id: 2,
@@ -40,7 +45,7 @@ const FreelancerDashboard = () => {
       status: "paused",
       orders: 3,
       views: 85,
-      image: "https://via.placeholder.com/300x200"
+      image: "https://dummyimage.com/300x200/e9ecef/495057&text=Gig+Preview"
     }
   ]);
 

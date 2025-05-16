@@ -1,5 +1,8 @@
 //Messages
+import dotenv from 'dotenv';
+dotenv.config();
 import { database_pool } from '../config/dbconnection.js';
+
 
 const uploadMessages=async(req,res)=>{
     try{
@@ -53,8 +56,10 @@ const retrieveMessages=async (req,res)=>{
         `,[conversation_id]
         )
         if (!result) {
-            return res.status(500).json({ message: "didn't get any messages" });
+            return res.status(500).json({ message: `Failed to retrieve messages` });
         }
+        
+        console.log(`Retrieved ${result.length} messages for conversation ${conversation_id}`);
         return res.json(result);
     }
     catch(err){

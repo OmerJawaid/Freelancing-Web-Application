@@ -1,57 +1,57 @@
-// const express = require('express')
-// const mysql = require('mysql2');
-// const cors = require('cors');
-// const session = require('express-session');
-// const cookieParser = require('cookie-parser');
-// const {Server} = require('socket.io');
-// const http =require('http');
+const express = require('express')
+const mysql = require('mysql2');
+const cors = require('cors');
+const session = require('express-session');
+const cookieParser = require('cookie-parser');
+const {Server} = require('socket.io');
+const http =require('http');
 
-// const app = express();
+const app = express();
 
-// // Middleware
-// app.use(cookieParser());
-// app.use(express.json());
-// app.use(cors({
-//     origin: 'http://localhost:5173',
-//     credentials: true,
-//     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-//     allowedHeaders: ['Content-Type', 'Authorization']
-// }));
+// Middleware
+app.use(cookieParser());
+app.use(express.json());
+app.use(cors({
+    origin: 'http://localhost:5173',
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+}));
 
-// //WebSocket
-// const users = {};
-// const onlineUsers = new Set();
+//WebSocket
+const users = {};
+const onlineUsers = new Set();
 
-// const server = http.createServer(app);
-// const io = new Server(server, {
-//     cors: {
-//       origin: 'http://localhost:5173', // React Vite app URL
-//       methods: ['GET', 'POST'],
-//     }
-//   });
+const server = http.createServer(app);
+const io = new Server(server, {
+    cors: {
+      origin: 'http://localhost:5173', // React Vite app URL
+      methods: ['GET', 'POST'],
+    }
+  });
 
-// // Session configuration
-// app.use(session({
-//     secret: 'your-secret-key',
-//     resave: false,
-//     saveUninitialized: false,
-//     cookie: {
-//         secure: process.env.NODE_ENV === 'production',
-//         httpOnly: true,
-//         maxAge: 24 * 60 * 60 * 1000 //24 Hours
-//     }
-// }));
+// Session configuration
+app.use(session({
+    secret: 'your-secret-key',
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+        secure: process.env.NODE_ENV === 'production',
+        httpOnly: true,
+        maxAge: 24 * 60 * 60 * 1000 //24 Hours
+    }
+}));
 
-// // Database connection
-// const database_pool = mysql.createPool({
-//     host: 'localhost',
-//     user: 'root',
-//     password: 'Hina@1976',
-//     database: 'skillify',
-//     waitForConnections: true,
-//     connectionLimit: 10,
-//     queueLimit: 0
-// }).promise();
+// Database connection
+const database_pool = mysql.createPool({
+    host: 'localhost',
+    user: 'root',
+    password: 'Hina@1976',
+    database: 'skillify',
+    waitForConnections: true,
+    connectionLimit: 10,
+    queueLimit: 0
+}).promise();
 
 
 
@@ -77,7 +77,7 @@
 //          );
 //          }
 //          catch(err){
-//             return res.status(404).json({ message: err});   
+//             return res.status(404).json({ message: err});
 //          }
 //       }
 //       else if(User_Type == "client"){
@@ -92,9 +92,9 @@
 
 //    }
 //    catch(err){
-//       console.log(err) 
+//       console.log(err)
 //    }
-// }) 
+// })
 
 // // Login route
 // app.post('/login', async (req, res) => {
@@ -109,11 +109,11 @@
 //         }
 
 //         const [users] = await database_pool.query(`
-//             SELECT 
+//             SELECT
 //                 u.*,
 //                 COALESCE(f.Name, c.Name) as Name,
 //                 COALESCE(f.Image, c.Image) AS Image,
-//                 CASE 
+//                 CASE
 //                     WHEN f.Id IS NOT NULL THEN 'freelancer'
 //                     WHEN c.Id IS NOT NULL THEN 'client'
 //                 END as User_Type
@@ -151,7 +151,7 @@
 //            Image:user.Image
 //          }
 //        })
-       
+
 
 //     } catch (error) {
 //         return res.status(500).json({
@@ -202,7 +202,7 @@
 
 
 // app.get('/retrive-gigs', async(req,res)=>{
-//    try{ 
+//    try{
 //       const{freelancer_Id}=req.query;
 //       if (!freelancer_Id) {
 //          return res.status(400).json({ message: "freelancer_Id is required" });
@@ -220,14 +220,14 @@
 // })
 
 // app.get('/retrive-gigs-by-freelancer-id', async(req,res)=>{
-//     try{ 
+//     try{
 //        const{Freelancer_Id}=req.query;
 //        console.log("Received request for Freelancer_Id:", Freelancer_Id);
-       
+
 //        if (!Freelancer_Id) {
 //           return res.status(400).json({ message: "Freelancer_Id is required" });
 //         }
-        
+
 //        try {
 //            // Using a simpler query to avoid complex joins that might be causing errors
 //            const [result]= await database_pool.query(
@@ -238,13 +238,13 @@
 //               'JOIN freelancers ON freelancers.Id = gigs.Freelancer_Id ' +
 //               'WHERE gigs.Freelancer_Id = ?', [Freelancer_Id]
 //            );
-           
+
 //            console.log("SQL query executed successfully, results:", result ? result.length : 0);
-           
+
 //            if(!result|| result.length === 0){
 //               return res.status(404).json({ message: "No gigs found for this freelancer" });
 //            }
-           
+
 //            return res.json(result);
 //        } catch (sqlError) {
 //            console.error("SQL Error:", sqlError);
@@ -261,22 +261,22 @@
 //     try{
 //         const{Gig_Id}=req.query;
 //         console.log("Received package request for Gig_Id:", Gig_Id);
-        
+
 //         if(!Gig_Id){
 //             console.log("No Gig_Id provided in request");
 //             return res.status(400).json({ message: "Gig_Id is required" });
 //         }
-        
+
 //         console.log("Executing SQL query: Select * From packages where Gig_Id=?", [Gig_Id]);
 //         const[result]= await database_pool.query('Select * From packages where Gig_Id=?',[Gig_Id]);
-        
+
 //         console.log("SQL query result:", result);
-        
+
 //         if(!result|| result.length === 0){
 //             console.log("No packages found for Gig_Id:", Gig_Id);
 //             return res.status(404).json({ message: "No packages found for this Gig" });
 //          }
-         
+
 //          console.log("Returning packages:", result);
 //          return res.json(result);
 //     }
@@ -303,32 +303,32 @@
 // })
 
 
-// // New endpoint to fetch a gig by its ID
+// New endpoint to fetch a gig by its ID
 // app.get('/retrive-gig-by-id', async(req,res)=>{
-//     try{ 
+//     try{
 //         const{Gig_Id}=req.query;
 //         console.log("Received request for Gig_Id:", Gig_Id);
-        
+
 //         if (!Gig_Id) {
 //             return res.status(400).json({ message: "Gig_Id is required" });
 //         }
-        
+
 //         try {
 //             console.log("Executing SQL query for gig ID:", Gig_Id);
-            
+
 //             const [result]= await database_pool.query(
 //                 'SELECT gigs.*, freelancers.Name AS freelancer_Name, freelancers.bio AS freelancer_Bio, ' +
 //                 'freelancers.Rating AS freelancer_Rating, freelancers.Image AS freelancer_Image ' +
 //                 'FROM gigs JOIN freelancers ON freelancers.Id = gigs.Freelancer_Id ' +
 //                 'WHERE gigs.Id = ?', [Gig_Id]
 //             );
-            
+
 //             console.log("SQL query executed successfully, found rows:", result ? result.length : 0);
-            
+
 //             if(!result || result.length === 0){
 //                 return res.status(404).json({ message: "No gig found with this ID" });
 //             }
-            
+
 //             console.log("Gig found, returning data");
 //             return res.json(result[0]);
 //         } catch (sqlError) {
@@ -347,32 +347,32 @@
 //     try {
 //         // Check if required tables exist
 //         const [tables] = await database_pool.query(`
-//             SELECT table_name 
-//             FROM information_schema.tables 
-//             WHERE table_schema = 'skillify' 
+//             SELECT table_name
+//             FROM information_schema.tables
+//             WHERE table_schema = 'skillify'
 //             AND table_name IN ('gigs', 'freelancers', 'packages', 'reviews', 'user', 'clients')
 //         `);
-        
+
 //         const existingTables = tables.map(t => t.table_name || t.TABLE_NAME);
 //         const requiredTables = ['gigs', 'freelancers', 'packages', 'reviews', 'user', 'clients'];
 //         const missingTables = requiredTables.filter(t => !existingTables.includes(t));
-        
+
 //         // Check if gigs table has expected structure
 //         const [gigsColumns] = await database_pool.query(`
 //             SHOW COLUMNS FROM gigs
 //         `);
-        
+
 //         const columnNames = gigsColumns.map(c => c.Field);
 //         const requiredColumns = ['Id', 'Title', 'Description', 'Freelancer_Id', 'Category', 'Price', 'Image'];
 //         const missingColumns = requiredColumns.filter(c => !columnNames.includes(c));
-        
+
 //         // Check sample data
 //         const [sampleGig] = await database_pool.query(`
 //             SELECT COUNT(*) as count FROM gigs WHERE Id = 1
 //         `);
-        
+
 //         const hasGigWithId1 = sampleGig[0].count > 0;
-        
+
 //         res.json({
 //             databaseConnected: true,
 //             tables: {
@@ -391,7 +391,7 @@
 //         });
 //     } catch (error) {
 //         console.error("Database schema check error:", error);
-//         res.status(500).json({ 
+//         res.status(500).json({
 //             databaseConnected: false,
 //             error: error.message
 //         });
@@ -418,7 +418,7 @@
 // app.post('/create-conversation',async(req,res) =>{
 //     console.log("Received conversation creation request:", req.body);
 //     const{User_one_id, User_two_id, Last_message, Last_message_time, Unread_count_user_one, Unread_count_user_two}=req.body;
-    
+
 //     // Validate required fields
 //     if (!User_one_id || !User_two_id) {
 //         console.error("Missing required fields:", { User_one_id, User_two_id });
@@ -427,7 +427,7 @@
 
 //     try{
 //         console.log("Attempting to create conversation between users:", User_one_id, User_two_id);
-        
+
 //         const[result]=await database_pool.query(
 //             'INSERT INTO conversations (User_one_id, User_two_id, Last_message, Last_message_time, Unread_count_user_one, Unread_count_user_two) ' +
 //             'SELECT ?, ?, ?, ?, ?, ? ' +
@@ -446,7 +446,7 @@
 //                 'SELECT * FROM conversations WHERE (User_one_id = ? AND User_two_id = ?) OR (User_one_id = ? AND User_two_id = ?)',
 //                 [User_one_id, User_two_id, User_two_id, User_one_id]
 //             );
-            
+
 //             if (existing && existing.length > 0) {
 //                 res.status(200).json({ message: "Conversation already exists" });
 //             } else {
@@ -469,7 +469,7 @@
 //         }
 
 //         const query = `
-//         SELECT 
+//         SELECT
 //             conversations.Id AS ConversationId,
 //             conversations.User_one_id,
 //             conversations.User_two_id,
@@ -480,25 +480,25 @@
 //             COALESCE(clients.Name, freelancers.Name) AS Name,
 //             COALESCE(clients.Image, freelancers.Image) AS Image
 //         FROM conversations
-//         LEFT JOIN clients ON clients.Id = CASE 
+//         LEFT JOIN clients ON clients.Id = CASE
 //             WHEN conversations.User_one_id = ? THEN conversations.User_two_id
-//             ELSE conversations.User_one_id 
+//             ELSE conversations.User_one_id
 //         END
-//         LEFT JOIN freelancers ON freelancers.Id = CASE 
+//         LEFT JOIN freelancers ON freelancers.Id = CASE
 //             WHEN conversations.User_one_id = ? THEN conversations.User_two_id
-//             ELSE conversations.User_one_id 
+//             ELSE conversations.User_one_id
 //         END
 //         WHERE conversations.User_one_id = ? OR conversations.User_two_id = ?
 //     `;
-    
+
 
 //         const [result] = await database_pool.query(query, [User_Id, User_Id, User_Id, User_Id]);
 //         console.log("SQL query executed successfully, found rows:", result ? result.length : 0);
-        
+
 //         if(!result || result.length === 0){
 //             return res.status(404).json({ message: "No Conversations found with this ID" });
 //         }
-        
+
 //         console.log("Conversations found, returning data");
 //         return res.json(result);
 //     }
@@ -519,7 +519,7 @@
 //         }
 
 //         const query = `
-//            INSERT INTO messages 
+//            INSERT INTO messages
 //             (Conversation_Id, Sender_Id, Content, Type, Status)
 //             VALUES (?, ?, ?, ?, ?);
 //         `;
@@ -531,12 +531,12 @@
 
 //         // Update the conversation's last message and time
 //         const updateConversationQuery = `
-//             UPDATE conversations 
-//             SET Last_message = ?, 
-//                 Last_message_time = NOW() 
+//             UPDATE conversations
+//             SET Last_message = ?,
+//                 Last_message_time = NOW()
 //             WHERE Id = ?
 //         `;
-        
+
 //         await database_pool.query(updateConversationQuery, [Content, Conversation_Id]);
 
 //         res.status(200).json({message:"Message sent successfully", messageId: result.insertId});
@@ -555,8 +555,8 @@
 //         }
 
 //         const [result]=await database_pool.query(
-//             `SELECT * FROM skillify.messages 
-//                 WHERE Conversation_Id = ? 
+//             `SELECT * FROM skillify.messages
+//                 WHERE Conversation_Id = ?
 //                 ORDER BY Created_at ASC;
 //         `,[conversation_id]
 //         )
@@ -578,25 +578,25 @@
 //         const { userId } = data;
 //         users[userId] = socket.id;
 //         socket.join(`user_${userId}`);
-        
+
 //         // Mark user as online
 //         onlineUsers.add(userId);
 //         console.log(`User ${userId} joined with socket ${socket.id}`);
-        
-        
+
+
 //         io.emit('user_status_change', { userId, status: 'online' });
 //     });
-    
+
 //     // User requests current online users
 //     socket.on('get_online_users', () => {
 //         socket.emit('online_users', Array.from(onlineUsers));
 //     });
-  
+
 //     //Sending messages from user
 //     socket.on('send_message', (data) => {
 //         const { senderId, receiverId, message, conversationId, timestamp, status } = data;
 //         console.log('Message received from socket:', data);
-        
+
 //         const receiverSocketId = users[receiverId];
 
 //         // Send to receiver if online
@@ -612,10 +612,10 @@
 //         } else {
 //             console.log(`Receiver ${receiverId} is not connected`);
 //         }
-        
+
 //         // No need to send back to sender as they already have the message in their state
 //     });
-  
+
 //     //Disconnection of User
 //     socket.on('disconnect', () => {
 //         // Remove from `users` object
@@ -624,17 +624,17 @@
 //                 // Mark user as offline
 //                 onlineUsers.delete(userId);
 //                 delete users[userId];
-                
+
 //                 // Notify all clients about the user going offline
 //                 io.emit('user_status_change', { userId, status: 'offline' });
-                
+
 //                 console.log(`User ${userId} disconnected`);
 //                 break;
 //             }
 //         }
 //         console.log('Socket disconnected:', socket.id);
 //     });
-    
+
 //     // Handle explicit user status changes (away)
 //     socket.on('set_user_status', ({ userId, status }) => {
 //         // Broadcast user's status change to all clients
@@ -643,7 +643,7 @@
 //     });
 // });
 
-// const PORT = 8081;
-// server.listen(PORT, () => {});
+const PORT = 8081;
+server.listen(PORT, () => {});
 
-// module.exports = app;
+module.exports = app;
