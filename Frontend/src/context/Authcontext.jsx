@@ -11,7 +11,7 @@ const DEFAULT_USER = {
   name: 'Guest',
   email: 'guest@example.com',
   User_Type: 'guest',
-  Image: 'https://via.placeholder.com/40'
+  Image: 'https://dummyimage.com/40/e9ecef/495057&text=User'
 };
 
 export const AuthProvider = ({ children }) => {
@@ -58,7 +58,7 @@ export const AuthProvider = ({ children }) => {
     let userData = null; // Ensure userData is always initialized
 
     try {
-      const response = await axios.get('http://localhost:8081/check-auth');
+      const response = await axios.get('http://localhost:8081/authentication/checkAuthentication');
       if (response.data.authenticated && response.data.user) {
         userData = response.data.user;
 
@@ -87,7 +87,7 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     try {
-      const response = await axios.post('http://localhost:8081/login', {
+      const response = await axios.post('http://localhost:8081/authentication/login', {
         Email: email,
         Password: password
       }, {
@@ -131,7 +131,7 @@ export const AuthProvider = ({ children }) => {
 
   const logout = async () => {
     try {
-      await axios.post('http://localhost:8081/logout');
+      await axios.post('http://localhost:8081/authentication/logout');
       setUser(DEFAULT_USER);
       setIsAuthenticated(false);
       localStorage.removeItem('userEmail');

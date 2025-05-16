@@ -202,32 +202,40 @@ const Messages = () => {
       try {
         console.log("Fetching conversations for user:", currentUser.current.id);
         const response = await axios.get(
-          "http://localhost:8081/retrive-conversations-by-id",
+          "http://localhost:8081/conversations/retrieve",
           {
             params: { User_Id: currentUser.current.id },
             withCredentials: true
           }
         );
-        const processedConversations = response.data.map(conv => {
-          const otherUserId = conv.User_one_id === currentUser.current.id ? 
-            conv.User_two_id : conv.User_one_id;
-          
-          return {
-            id: conv.ConversationId,
-            user: {
-              id: otherUserId,
-              name: conv.Name || "Unknown User",
-              avatar: conv.Image || DEFAULT_AVATAR,
-              status: onlineUsers.has(otherUserId.toString()) ? 'online' : 'offline'
-            },
-            lastMessage: conv.Last_message || "",
-            timestamp: conv.Last_message_time || null,
-            formattedTime: formatMessageTime(conv.Last_message_time),
-            unread: conv.User_one_id === currentUser.current.id ? 
-              conv.Unread_count_user_one : conv.Unread_count_user_two
-          };
-        });
-        setConversations(processedConversations);
+        
+        console.log("Conversations API response:", response.data);
+        
+        if (Array.isArray(response.data)) {
+          const processedConversations = response.data.map(conv => {
+            const otherUserId = conv.User_one_id === currentUser.current.id ? 
+              conv.User_two_id : conv.User_one_id;
+            
+            return {
+              id: conv.ConversationId,
+              user: {
+                id: otherUserId,
+                name: conv.Name || "Unknown User",
+                avatar: conv.Image || DEFAULT_AVATAR,
+                status: onlineUsers.has(otherUserId.toString()) ? 'online' : 'offline'
+              },
+              lastMessage: conv.Last_message || "",
+              timestamp: conv.Last_message_time || null,
+              formattedTime: formatMessageTime(conv.Last_message_time),
+              unread: conv.User_one_id === currentUser.current.id ? 
+                conv.Unread_count_user_one : conv.Unread_count_user_two
+            };
+          });
+          setConversations(processedConversations);
+        } else {
+          console.error("Unexpected conversations response format:", response.data);
+          setConversations([]);
+        }
         setLoading(false);
       } catch (error) {
         console.error("Error fetching conversations:", error);
@@ -248,21 +256,29 @@ const Messages = () => {
       try {
         console.log("Fetching messages for conversation:", selectedConversation.id);
         const response = await axios.get(
-          "http://localhost:8081/retrive-messages",
+          "http://localhost:8081/messages/retrieve",
           {
             params: { conversation_id: selectedConversation.id },
             withCredentials: true
           }
         );
-        setChat(
-          response.data.map(msg => ({
-            senderId: msg.Sender_Id,
-            message: msg.Content,
-            timestamp: msg.Created_at,
-            formattedTime: formatMessageTime(msg.Created_at),
-            status: msg.Status
-          }))
-        );
+        
+        console.log("Messages API response:", response.data);
+        
+        if (Array.isArray(response.data)) {
+          setChat(
+            response.data.map(msg => ({
+              senderId: msg.Sender_Id,
+              message: msg.Content,
+              timestamp: msg.Created_at,
+              formattedTime: formatMessageTime(msg.Created_at),
+              status: msg.Status
+            }))
+          );
+        } else {
+          console.error("Unexpected response format:", response.data);
+          setChat([]);
+        }
       } catch (error) {
         console.error("Error fetching messages:", error);
         setChat([]);
@@ -377,7 +393,7 @@ const Messages = () => {
       
       // Also save to database
       const response = await axios.post(
-        "http://localhost:8081/upload-messages",
+        "http://localhost:8081/messages/upload",
         {
           Conversation_Id: selectedConversation.id,
           Sender_Id: currentUser.current.id,
@@ -426,7 +442,12 @@ const Messages = () => {
   }
 
   return (
-    <div>
+    <div style={{ 
+      width: '100%', 
+      maxWidth: '100vw', 
+      overflowX: 'hidden',
+      position: 'relative'
+    }}>
       <Navbar/>
       <div className="messages-container">
         {/* Sidebar with conversations */}

@@ -171,10 +171,18 @@
 
 /* Main Content */
 .gig-main {
-  background-color: white;
-  border-radius: 8px;
-  box-shadow: var(--box-shadow);
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
+}
+
+.gig-main > div {
+  display: block;
+  width: 100%;
+  clear: both;
+  position: static !important;
+  z-index: auto !important;
+  overflow: visible;
 }
 
 /* Gallery */
@@ -224,13 +232,47 @@
 }
 
 /* Description Section */
-.gig-description{
-  position: relative;
-  z-index: 1;
-}
 .gig-description, .gig-features, .freelancer-profile {
   padding: 2rem;
   border-bottom: 1px solid var(--border-color);
+  background-color: #fff;
+  display: block !important;
+  position: static !important;
+  z-index: auto !important;
+  clear: both;
+}
+
+.gig-description-content {
+  color: #4b5563;
+  line-height: 1.6;
+  font-size: 0.95rem;
+  white-space: pre-wrap;
+  background-color: #fff;
+  display: block;
+  width: 100%;
+  overflow: visible;
+  text-align: left;
+}
+
+.gig-description-content p {
+  margin-bottom: 12px;
+  padding: 0;
+}
+
+.gig-description-content ul, 
+.gig-description-content ol {
+  margin-left: 20px;
+  margin-bottom: 15px;
+}
+
+.gig-description-content li {
+  margin-bottom: 6px;
+}
+
+.gig-description-content strong,
+.gig-description-content b {
+  font-weight: 600;
+  color: #374151;
 }
 
 .gig-description h2, .gig-features h2, .freelancer-profile h2 {
@@ -563,6 +605,15 @@
   font-style: italic;
 }
 
+/* Add a separator between sections */
+.section-separator {
+  height: 15px;
+  background-color: #f5f7fa;
+  width: 100%;
+  display: block;
+  clear: both;
+}
+
 /* Responsive Design */
 @media (max-width: 992px) {
   .gig-body {
@@ -582,12 +633,13 @@
   
   .freelancer-profile-content {
     flex-direction: column;
+    gap: 1.5rem;
     align-items: center;
     text-align: center;
   }
   
   .freelancer-profile-image {
-    margin-bottom: 1rem;
+    margin: 0 auto;
   }
   
   .features-list {
@@ -600,11 +652,26 @@
   
   .review-header {
     flex-direction: column;
-    align-items: flex-start;
+    gap: 1rem;
   }
   
   .reviewer-info {
-    margin-bottom: 0.5rem;
+    width: 100%;
+  }
+
+  /* Fix for the overlapping issue on mobile */
+  .gig-description, .freelancer-profile {
+    width: 100%;
+    clear: both;
+    position: relative;
+    z-index: 1;
+    margin-top: 0;
+    padding: 1.5rem;
+  }
+
+  /* Ensure proper spacing between sections */
+  .gig-main > div {
+    margin-bottom: 15px;
   }
 }
 
@@ -633,4 +700,23 @@
   .package-tab.active {
     border-bottom: 2px solid var(--accent-color);
   }
+}
+
+.freelancer-profile {
+  background: linear-gradient(to right, #fcfcfc, #ffffff);
+  padding-top: 2.5rem;
+  display: block;
+  clear: both;
+  position: static !important;
+  z-index: auto !important;
+}
+
+/* Enhance heading and section styling */
+.gig-section-title {
+  font-size: 1.35rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 1.25rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #f3f4f6;
 }

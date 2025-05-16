@@ -6,10 +6,10 @@ import { FaStar, FaClock, FaCheck, FaUser, FaEnvelope, FaShoppingCart, FaHeart, 
 import axios from 'axios';
 import Footer from '../../Components/Footer/Footer';
 
-// Default images for fallbacks
-const DEFAULT_GIG_IMAGE = "https://placehold.co/800x450/e9ecef/495057?text=Gig+Image";
-const DEFAULT_USER_IMAGE = "https://placehold.co/100/e9ecef/495057?text=User";
-const DEFAULT_REVIEW_IMAGE = "https://placehold.co/50/e9ecef/495057?text=User";
+// Default images for fallbacks - using more reliable sources
+const DEFAULT_GIG_IMAGE = "https://dummyimage.com/800x450/e9ecef/495057&text=Gig+Image";
+const DEFAULT_USER_IMAGE = "https://dummyimage.com/100/e9ecef/495057&text=User";
+const DEFAULT_REVIEW_IMAGE = "https://dummyimage.com/50/e9ecef/495057&text=User";
 
 const Gig = () => {
   const { id } = useParams();
@@ -23,6 +23,7 @@ const Gig = () => {
   const [reviews, setReviews] = useState([]);
   const [backendStatus, setBackendStatus] = useState("unknown");
   const [showAllReviews, setShowAllReviews] = useState(false);
+  const [showFullDescription, setShowFullDescription] = useState(false);
   const reviewsRef = useRef(null);
   
   // Helper to get package name based on Type
@@ -39,23 +40,18 @@ const Gig = () => {
   const fetchPackagesForGig = async (gigId) => {
     try {
       const response = await axios.get(
-        "http://localhost:8081/retrive-packages-gigs-freelancer-by-gig-id", 
+        `http://localhost:8081/packages/retrieve`,
         { 
           params: { Gig_Id: gigId },
-          withCredentials: true
+          withCredentials: true 
         }
       );
       
-      if (Array.isArray(response.data) && response.data.length > 0) {
+      if (response.data && Array.isArray(response.data)) {
         setPackages(response.data);
-        return true;
-      } else {
-        createMockPackages(gigId);
-        return false;
       }
-    } catch (err) {
-      createMockPackages(gigId);
-      return false;
+    } catch (error) {
+      console.error("Error fetching packages:", error);
     }
   };
 
@@ -121,23 +117,97 @@ const Gig = () => {
     setPackages(mockPackages);
   };
 
-  // Fetch reviews for a gig
+  // Generate mock reviews since backend endpoint is not implemented yet
   const fetchReviewsForGig = async (gigId) => {
     try {
+      // First attempt to fetch actual reviews
       const response = await axios.get(
-        "http://localhost:8081/retrive-reviews-gigs-freelancess-by-gig-id", 
+        `http://localhost:8081/reviews/retrieve`,
         { 
           params: { Gig_Id: gigId },
-          withCredentials: true
+          withCredentials: true 
         }
       );
       
-      if (Array.isArray(response.data) && response.data.length > 0) {
+      if (response.data && Array.isArray(response.data) && response.data.length > 0) {
+        console.log("Retrieved real reviews from database:", response.data);
         setReviews(response.data);
+        return;
       }
-    } catch (err) {
-      console.error("Failed to fetch reviews:", err);
+    } catch (error) {
+      console.log("Reviews API not available, generating mock reviews instead");
     }
+    
+    // If we're here, either the API failed or returned empty data, so generate mock reviews
+    // Always generate 2-3 reviews for better user experience
+    const reviewCount = Math.floor(Math.random() * 2) + 2; // 2-3 reviews
+    const mockReviews = [];
+    
+    // Review titles and descriptions
+    const reviewTitles = [
+      "Great work!",
+      "Exceeded expectations",
+      "Professional service",
+      "Highly recommended",
+      "Amazing quality",
+      "Very satisfied",
+      "Will hire again"
+    ];
+    
+    const reviewDescriptions = [
+      "The freelancer delivered exactly what I needed, on time and with great quality.",
+      "Communication was excellent throughout the project. Very professional service.",
+      "I'm extremely pleased with the results. The work quality exceeded my expectations.",
+      "Quick delivery and excellent attention to detail. Would definitely work with again.",
+      "Very responsive and accommodating to my requests. The final result was perfect.",
+      "A pleasure to work with. Understood my requirements perfectly and delivered great work.",
+      "Incredible value for the price. The quality was much better than I expected.",
+      "Patient, professional and highly skilled. I'll definitely be a repeat customer."
+    ];
+    
+    // Generate the reviews
+    for (let i = 0; i < reviewCount; i++) {
+      const randomRating = Math.floor(Math.random() * 2) + 4; // 4-5 stars
+      const randomTitle = reviewTitles[Math.floor(Math.random() * reviewTitles.length)];
+      const randomDesc = reviewDescriptions[Math.floor(Math.random() * reviewDescriptions.length)];
+      
+      mockReviews.push({
+        Id: i + 1,
+        Title: randomTitle,
+        Description: randomDesc,
+        Rating: randomRating,
+        Date: getRandomRecentDate(),
+        client_Name: getRandomName(),
+        client_Image: `https://dummyimage.com/50/${getRandomColor()}/ffffff&text=${getInitials(getRandomName())}`
+      });
+    }
+    
+    console.log("Using mock reviews data:", mockReviews);
+    setReviews(mockReviews);
+  };
+  
+  // Helper functions for mock data
+  const getRandomRecentDate = () => {
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const now = new Date();
+    const randomDaysAgo = Math.floor(Math.random() * 60); // 0-60 days ago
+    const date = new Date(now.setDate(now.getDate() - randomDaysAgo));
+    return `${months[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`;
+  };
+  
+  const getRandomName = () => {
+    const firstNames = ["Alex", "Jordan", "Taylor", "Morgan", "Casey", "Riley", "Avery", "Quinn", "Skyler", "Jamie"];
+    const lastNames = ["Smith", "Johnson", "Williams", "Brown", "Jones", "Garcia", "Miller", "Davis", "Rodriguez", "Martinez"];
+    return `${firstNames[Math.floor(Math.random() * firstNames.length)]} ${lastNames[Math.floor(Math.random() * lastNames.length)]}`;
+  };
+  
+  const getInitials = (name) => {
+    return name.split(' ').map(n => n[0]).join('');
+  };
+  
+  const getRandomColor = () => {
+    const colors = ["4285f4", "ea4335", "fbbc05", "34a853", "7b2cbf", "ff7f00", "07b9bd", "2dd4bf", "ff8fa3", "fb6340"];
+    return colors[Math.floor(Math.random() * colors.length)];
   };
 
   // Function to check if URL is valid
@@ -180,8 +250,11 @@ const Gig = () => {
         // Try to fetch gig by its ID
         try {
           const gigResponse = await axios.get(
-            `http://localhost:8081/retrive-gig-by-id?Gig_Id=${id}`,
-            { withCredentials: true }
+            `http://localhost:8081/gigs/retrieveGigByGigId`,
+            { 
+              params: { Gig_Id: id },
+              withCredentials: true 
+            }
           );
           
           if (gigResponse.data) {
@@ -196,8 +269,23 @@ const Gig = () => {
               Image: gigResponse.data.freelancer_Image,
             });
             
-            await fetchPackagesForGig(gigResponse.data.Id);
-            await fetchReviewsForGig(gigResponse.data.Id);
+            // Fetch packages and reviews but handle errors individually
+            try {
+              await fetchPackagesForGig(gigResponse.data.Id);
+            } catch (packageError) {
+              console.error("Error fetching packages:", packageError);
+              // Use mock packages as fallback
+              createMockPackages(gigResponse.data.Id);
+            }
+            
+            try {
+              await fetchReviewsForGig(gigResponse.data.Id || 1);
+            } catch (reviewError) {
+              console.error("Error fetching reviews:", reviewError);
+              // Set empty reviews array to ensure UI still works
+              setReviews([]);
+            }
+            
             setLoading(false);
             return;
           }
@@ -209,8 +297,11 @@ const Gig = () => {
             console.log(`Gig with ID ${id} not found, trying to fetch sample gig`);
             try {
               const sampleGigResponse = await axios.get(
-                `http://localhost:8081/retrive-gig-by-id?Gig_Id=1`,
-                { withCredentials: true }
+                `http://localhost:8081/gigs/retrieveGigByGigId`,
+                { 
+                  params: { Gig_Id: 1 },
+                  withCredentials: true 
+                }
               );
               
               if (sampleGigResponse.data) {
@@ -224,8 +315,20 @@ const Gig = () => {
                   Image: sampleGigResponse.data.freelancer_Image,
                 });
                 
-                await fetchPackagesForGig(sampleGigResponse.data.Id);
-                await fetchReviewsForGig(sampleGigResponse.data.Id);
+                try {
+                  await fetchPackagesForGig(sampleGigResponse.data.Id);
+                } catch (packageError) {
+                  console.error("Error fetching sample packages:", packageError);
+                  createMockPackages(sampleGigResponse.data.Id);
+                }
+                
+                try {
+                  await fetchReviewsForGig(sampleGigResponse.data.Id || 1);
+                } catch (reviewError) {
+                  console.error("Error fetching sample reviews:", reviewError);
+                  setReviews([]);
+                }
+                
                 setLoading(false);
                 return;
               }
@@ -240,7 +343,7 @@ const Gig = () => {
           // If direct fetch fails, try fetch by freelancer ID
           try {
             const gigsFromFreelancer = await axios.get(
-              `http://localhost:8081/retrive-gigs-by-freelancer-id`,
+              `http://localhost:8081/gigs/retrieveGigForGigDisplay`,
               { 
                 params: { Freelancer_Id: id },
                 withCredentials: true 
@@ -257,8 +360,20 @@ const Gig = () => {
                 Image: gigsFromFreelancer.data[0].freelancer_Image,
               });
               
-              await fetchPackagesForGig(gigsFromFreelancer.data[0].Id);
-              await fetchReviewsForGig(gigsFromFreelancer.data[0].Id);
+              try {
+                await fetchPackagesForGig(gigsFromFreelancer.data[0].Id);
+              } catch (packageError) {
+                console.error("Error fetching packages from freelancer gig:", packageError);
+                createMockPackages(gigsFromFreelancer.data[0].Id);
+              }
+              
+              try {
+                await fetchReviewsForGig(gigsFromFreelancer.data[0].Id || id);
+              } catch (reviewError) {
+                console.error("Error fetching reviews from freelancer gig:", reviewError);
+                setReviews([]);
+              }
+              
               setLoading(false);
               return;
             } else {
@@ -269,43 +384,8 @@ const Gig = () => {
           }
         }
       } catch (error) {
-        if (error.response && error.response.status === 404) {
-          console.log(`Gig with ID ${id} not found in the database`);
-          // Just set loading to false, don't set an error message
-          // This will allow the component to reach the "if (!gig)" condition
-          // which will display our nice "Gig Not Found" UI
-          setLoading(false);
-          return;
-        } else {
-          setError("Failed to load gig details. Please try again later.");
-          
-          // Try sample data as last resort
-          try {
-            const gigResponse = await axios.get(
-              `http://localhost:8081/retrive-gig-by-id?Gig_Id=1`,
-              { withCredentials: true }
-            );
-            
-            if (gigResponse.data) {
-              setGig(gigResponse.data);
-              setFreelancer({
-                Id: gigResponse.data.Freelancer_Id,
-                Name: gigResponse.data.freelancer_Name,
-                Bio: gigResponse.data.freelancer_Bio,
-                Rating: gigResponse.data.freelancer_Rating,
-                Image: gigResponse.data.freelancer_Image,
-              });
-              
-              await fetchPackagesForGig(gigResponse.data.Id);
-              await fetchReviewsForGig(gigResponse.data.Id);
-              setLoading(false);
-              return;
-            }
-          } catch (sampleError) {
-            // Continue to error state if sample data fails
-          }
-        }
-        
+        console.error("Error fetching gig data:", error);
+        setError("An error occurred while fetching gig data. Please try again later.");
         setLoading(false);
       }
     };
@@ -369,8 +449,11 @@ const Gig = () => {
             try {
               setLoading(true);
               const gigResponse = await axios.get(
-                `http://localhost:8081/retrive-gig-by-id?Gig_Id=1`,
-                { withCredentials: true }
+                `http://localhost:8081/gigs/retrieveGigByGigId`,
+                { 
+                  params: { Gig_Id: 1 },
+                  withCredentials: true 
+                }
               );
               
               if (gigResponse.data) {
@@ -383,8 +466,20 @@ const Gig = () => {
                   Image: gigResponse.data.freelancer_Image,
                 });
                 
-                await fetchPackagesForGig(gigResponse.data.Id);
-                await fetchReviewsForGig(gigResponse.data.Id);
+                try {
+                  await fetchPackagesForGig(gigResponse.data.Id);
+                } catch (packageError) {
+                  console.error("Error fetching packages for sample gig:", packageError);
+                  createMockPackages(gigResponse.data.Id);
+                }
+                
+                try {
+                  await fetchReviewsForGig(gigResponse.data.Id || 1);
+                } catch (reviewError) {
+                  console.error("Error fetching reviews for sample gig:", reviewError);
+                  setReviews([]);
+                }
+                
                 setError(null);
                 setLoading(false);
               }
@@ -450,8 +545,11 @@ const Gig = () => {
               try {
                 setLoading(true);
                 const gigResponse = await axios.get(
-                  `http://localhost:8081/retrive-gig-by-id?Gig_Id=1`,
-                  { withCredentials: true }
+                  `http://localhost:8081/gigs/retrieveGigByGigId`,
+                  { 
+                    params: { Gig_Id: 1 },
+                    withCredentials: true 
+                  }
                 );
                 
                 if (gigResponse.data) {
@@ -465,7 +563,7 @@ const Gig = () => {
                   });
                   
                   await fetchPackagesForGig(gigResponse.data.Id);
-                  await fetchReviewsForGig(gigResponse.data.Id);
+                  await fetchReviewsForGig(gigResponse.data.Id || 1);
                   setError(null);
                   setLoading(false);
                 }
@@ -642,7 +740,8 @@ const Gig = () => {
             boxShadow: "0 4px 12px rgba(0, 0, 0, 0.05)",
             display: "flex",
             flexDirection: "column",
-            width: "100%"
+            width: "100%",
+            overflow: "hidden"
           }}>
             <div className="gig-gallery" style={{
               marginBottom: "0",
@@ -673,59 +772,124 @@ const Gig = () => {
               </div>
             </div>
 
-            <div className="gig-description" style={{
+            <div style={{
               padding: "2.5rem",
               borderBottom: "1px solid #eaeaea",
               backgroundColor: "#fff",
               width: "100%",
-              minHeight: "120px"
+              minHeight: "120px",
+              display: "block",
+              clear: "both"
             }}>
               <h2 style={{
                 fontSize: "1.5rem",
                 fontWeight: "600",
                 color: "#1f2937",
-                marginBottom: "1.25rem"
-              }}>About This Gig</h2>
-              <div 
-                className="gig-description-content"
-                style={{
-                  color: "#000",
-                  backgroundColor: "#fff",
-                  lineHeight: "1.7",
-                  fontSize: "1.1rem",
-                  whiteSpace: "pre-wrap",
-                  marginBottom: "1rem",
-                  width: "100%",
-                  display: "block",
-                  padding: "20px",
-                  borderRadius: "8px",
-                  minHeight: "60px"
-                }}
-              >
-                <div>
-                  
-                  <div
-                    style={{ color: "#000" }}
-                    dangerouslySetInnerHTML={{
-                      __html: (() => {
-                        const content = gig.Description || gig.description || "";
-                        if (!content) return "<span style='color:#888'>No description available for this gig.</span>";
-                        if (content.includes('<') && content.includes('>')) return content;
-                        return content.replace(/\n/g, "<br/>");
-                      })()
-                    }}
-                  />
-                </div>
+                marginBottom: "1.25rem",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between"
+              }}>
+                <span>About This Gig</span>
+              </h2>
+              <div style={{
+                color: "#000",
+                backgroundColor: "#fff",
+                lineHeight: "1.6",
+                fontSize: "0.95rem",
+                whiteSpace: "pre-wrap",
+                marginBottom: "0.5rem",
+                width: "100%",
+                display: "block",
+                padding: "20px",
+                borderRadius: "8px",
+                minHeight: "60px",
+                maxHeight: showFullDescription ? "none" : "200px",
+                overflow: showFullDescription ? "visible" : "hidden",
+                position: "relative",
+                transition: "max-height 0.3s ease",
+                textAlign: "left"
+              }}>
+                <div
+                  style={{ color: "#4b5563" }}
+                  dangerouslySetInnerHTML={{
+                    __html: (() => {
+                      const content = gig.Description || gig.description || "";
+                      if (!content) return "<span style='color:#888'>No description available for this gig.</span>";
+                      if (content.includes('<') && content.includes('>')) return content;
+                      
+                      // Process the text for better formatting
+                      return content
+                        .replace(/\n\n/g, "</p><p style='margin-bottom: 12px; margin-top: 12px;'>")
+                        .replace(/\n/g, "<br/>")
+                        .replace(/^(.+)$/m, "<p style='margin-bottom: 12px; line-height: 1.6;'>$1</p>");
+                    })()
+                  }}
+                />
+                {!showFullDescription && (
+                  <div style={{
+                    position: "absolute",
+                    bottom: 0,
+                    left: 0,
+                    width: "100%",
+                    height: "80px",
+                    background: "linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,1))",
+                    pointerEvents: "none"
+                  }} />
+                )}
+              </div>
+              <div style={{
+                textAlign: "center",
+                padding: "0.5rem"
+              }}>
+                <button
+                  onClick={() => setShowFullDescription(!showFullDescription)}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "0.5rem",
+                    margin: "0 auto",
+                    padding: "0.5rem 1.5rem",
+                    backgroundColor: "white",
+                    color: "#10b981",
+                    border: "1px solid #10b981",
+                    borderRadius: "4px",
+                    cursor: "pointer",
+                    fontSize: "0.9rem",
+                    fontWeight: "500",
+                    transition: "all 0.2s ease"
+                  }}
+                  onMouseOver={(e) => e.currentTarget.style.backgroundColor = "#f0fffa"}
+                  onMouseOut={(e) => e.currentTarget.style.backgroundColor = "white"}
+                >
+                  {showFullDescription ? (
+                    <>
+                      Show Less <FaChevronUp />
+                    </>
+                  ) : (
+                    <>
+                      Show More <FaChevronDown />
+                    </>
+                  )}
+                </button>
               </div>
             </div>
 
-            <div className="freelancer-profile" style={{
+            <div style={{
+              height: "20px",
+              backgroundColor: "#f9fafb",
+              width: "100%",
+              display: "block",
+              clear: "both"
+            }}></div>
+
+            <div style={{
               padding: "2.5rem",
               borderBottom: "1px solid #eaeaea",
-              background: "linear-gradient(to right, #fcfcfc, #ffffff)",
-              position: "relative",
-              zIndex: "5",
-              width: "100%"
+              backgroundColor: "#fff",
+              width: "100%",
+              display: "block",
+              clear: "both"
             }}>
               <h2 style={{
                 fontSize: "1.5rem",
@@ -866,6 +1030,7 @@ const Gig = () => {
               position: 'relative',
               zIndex: '1'
             }}>
+              {console.log("Current reviews state:", reviews)}
               <div style={{
                 display: 'flex',
                 justifyContent: 'space-between',
@@ -943,7 +1108,8 @@ const Gig = () => {
                       description: review.Description || review.description || "No description provided",
                       rating: review.Rating || review.rating || 5,
                       clientName: review.client_Name || review.clientName || "Client",
-                      clientImage: review.client_Image || review.clientImage || DEFAULT_REVIEW_IMAGE
+                      clientImage: review.client_Image || review.clientImage || DEFAULT_REVIEW_IMAGE,
+                      date: review.Date || review.date || "Recently"
                     };
                     
                     return (
@@ -1011,7 +1177,7 @@ const Gig = () => {
                                 fontSize: '14px',
                                 color: '#777'
                               }}>
-                                {review.Date || review.date || "Recently"}
+                                {reviewData.date}
                               </div>
                             </div>
                           </div>
