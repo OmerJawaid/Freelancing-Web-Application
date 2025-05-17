@@ -3,10 +3,11 @@ import './Dashboard.css';
 import Navbar from '../../Components/Navbar Client/Navbar';
 import axios from 'axios';
 import Footer from '../../Components/Footer/Footer';
+import { useNavigate } from 'react-router-dom';
 
 const FreelancerDashboard = () => {
   const[gigs, changegig]=useState([]);
-  const status = gigs.State === 1 ? 'Active' : 'Pause';
+  const navigate = useNavigate();
 
   useEffect(()=>{
     async function Gig_Retrival(){
@@ -56,6 +57,27 @@ const FreelancerDashboard = () => {
     avgRating: 4.9
   };
 
+  // Function to toggle gig state
+  const toggleGigState = async (gigId, currentState) => {
+    const newState = currentState === 1 ? 0 : 1;
+    try {
+      const response = await axios.put(`http://localhost:8081/gigs/toggleState/${gigId}`, {
+        state: newState
+      });
+      if (response.data.message === "Gig state updated successfully") {
+        // Update the state in the local gigs array
+        changegig(gigs.map(gig => 
+          gig.Id === gigId ? { ...gig, State: newState } : gig
+        ));
+        console.log(`Gig ${gigId} state updated to ${newState}`);
+      } else {
+        console.error("Failed to update gig state:", response.data.message);
+      }
+    } catch (error) {
+      console.error(`Error toggling state for gig ${gigId}:`, error);
+    }
+  };
+
   return (
     <div className="dashboard">
       {/* Navigation Bar */}
@@ -87,7 +109,7 @@ const FreelancerDashboard = () => {
           </div>
 
           <div className="action-section">
-            <button className="create-gig-button">Create New Gig</button>
+            <button className="create-gig-button" onClick={() => navigate('/create-gig')}>Create New Gig</button>
           </div>
         </aside>
 
@@ -107,9 +129,9 @@ const FreelancerDashboard = () => {
               <div key={gig.Id} className="gig-card freelancer-gig">
                 <div className="gig-image">
                   <img src={gig.Image} alt={gig.Title} />
-                  <div className={`status-badge ${status}`}>
-                    {status.charAt(0).toUpperCase() + status.slice(1)}
-                </div>
+                  <div className={`status-badge ${gig.State === 1 ? 'active' : 'paused'}`}>
+                    {gig.State === 1 ? 'Active' : 'Paused'}
+                  </div>
                 </div>
                 <div className="gig-details">
                   <h3 className="gig-title" title={gig.Title}>{gig.Title}</h3>
@@ -136,7 +158,10 @@ const FreelancerDashboard = () => {
                   </div>
                   <div className="gig-actions">
                     <button className="edit-button">Edit</button>
-                    <button className="pause-button">
+                    <button 
+                      className={gig.State === 1 ? 'pause-button' : 'activate-button'}
+                      onClick={() => toggleGigState(gig.Id, gig.State)}
+                    >
                       {gig.State === 1 ? 'Pause' : 'Activate'}
                     </button>
                   </div>

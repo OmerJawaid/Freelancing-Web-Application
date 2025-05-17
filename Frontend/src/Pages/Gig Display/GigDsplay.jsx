@@ -223,10 +223,18 @@ const Gig = () => {
 
   // Function to get safe image URL with fallback
   const getSafeImageUrl = (imageUrl, defaultImage) => {
-    if (!imageUrl || !isValidUrl(imageUrl)) {
-      return defaultImage;
-    }
+    if (!imageUrl) return defaultImage;
     return imageUrl;
+  };
+
+  // Function to update gig views
+  const updateGigViews = async (gigId) => {
+    try {
+      await axios.put(`http://localhost:8081/gigs/updateViews/${gigId}`);
+      console.log(`Views updated for gig ${gigId}`);
+    } catch (error) {
+      console.error(`Error updating views for gig ${gigId}:`, error);
+    }
   };
 
   // Main data fetching function
@@ -286,61 +294,24 @@ const Gig = () => {
               setReviews([]);
             }
             
+            // After successfully fetching gig data, update views
+            updateGigViews(gigResponse.data.Id);
+
             setLoading(false);
             return;
           }
         } catch (directFetchError) {
           console.log("Error fetching gig:", directFetchError);
-          
-          // If the gig is not found, try to fetch a sample gig
+
+          // If the gig is not found, explicitly set error and stop loading
           if (directFetchError.response && directFetchError.response.status === 404) {
-            console.log(`Gig with ID ${id} not found, trying to fetch sample gig`);
-            try {
-              const sampleGigResponse = await axios.get(
-                `http://localhost:8081/gigs/retrieveGigByGigId`,
-                { 
-                  params: { Gig_Id: 1 },
-                  withCredentials: true 
-                }
-              );
-              
-              if (sampleGigResponse.data) {
-                console.log("Sample gig data received:", sampleGigResponse.data);
-                setGig(sampleGigResponse.data);
-                setFreelancer({
-                  Id: sampleGigResponse.data.Freelancer_Id,
-                  Name: sampleGigResponse.data.freelancer_Name,
-                  Bio: sampleGigResponse.data.freelancer_Bio,
-                  Rating: sampleGigResponse.data.freelancer_Rating,
-                  Image: sampleGigResponse.data.freelancer_Image,
-                });
-                
-                try {
-                  await fetchPackagesForGig(sampleGigResponse.data.Id);
-                } catch (packageError) {
-                  console.error("Error fetching sample packages:", packageError);
-                  createMockPackages(sampleGigResponse.data.Id);
-                }
-                
-                try {
-                  await fetchReviewsForGig(sampleGigResponse.data.Id || 1);
-                } catch (reviewError) {
-                  console.error("Error fetching sample reviews:", reviewError);
-                  setReviews([]);
-                }
-                
-                setLoading(false);
-                return;
-              }
-            } catch (sampleError) {
-              console.log("Error fetching sample gig:", sampleError);
-              setError("Could not find the requested gig or load a sample gig. Please try again later.");
-              setLoading(false);
-              return;
-            }
+            console.log(`Gig with ID ${id} not found.`);
+            setError("The requested gig does not exist.");
+            setLoading(false);
+            return;
           }
-          
-          // If direct fetch fails, try fetch by freelancer ID
+
+          // If direct fetch fails for other reasons, try fetch by freelancer ID
           try {
             const gigsFromFreelancer = await axios.get(
               `http://localhost:8081/gigs/retrieveGigForGigDisplay`,
@@ -755,7 +726,7 @@ const Gig = () => {
                 position: "relative"
               }}>
                 <img 
-                  src={getSafeImageUrl(gig.Image || gig.image, DEFAULT_GIG_IMAGE)} 
+                  src={gig.Image || DEFAULT_GIG_IMAGE} 
                   alt={gig.Title || gig.title || "Gig Image"} 
                   style={{
                     width: "100%",
@@ -1422,7 +1393,9 @@ const Gig = () => {
                 borderBottom: "1px solid #eaeaea"
               }}>
                 <span style={{ color: "#6b7280", fontSize: "0.95rem" }}>Views</span>
-                <strong style={{ fontWeight: "600", color: "#1f2937" }}>{gig.Views || gig.views || 0}</strong>
+                <strong style={{ fontWeight: "600", color: "#1f2937" }}>
+                  {gig.Views > 1000 ? '1000+' : (gig.Views > 500 ? '500+' : (gig.Views || gig.views || 0))}
+                </strong>
               </div>
               <div className="stat-item" style={{
                 display: "flex",

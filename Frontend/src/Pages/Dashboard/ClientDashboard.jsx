@@ -4,6 +4,7 @@ import Navbar from '../../Components/Navbar Client/Navbar';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import Footer from '../../Components/Footer/Footer';
+import defaultFreelancerImage from '../../assets/react.svg';
 
 const ClientDashboard = () => {
 
@@ -151,7 +152,14 @@ const ClientDashboard = () => {
                 return filteredGigs.map((gig) => (
                   <div key={gig.Id} className="gig-card">
                     <div className="gig-image">
-                      <img src={gig.Image} alt={gig.Title} />
+                      <img 
+                        src={gig.Image || defaultGigImage} 
+                        alt={gig.Title} 
+                        onError={(e) => {
+                          e.target.onerror = null;
+                          e.target.src = defaultGigImage;
+                        }}
+                      />
                     </div>
                     <div className="gig-details">
                       <h4 className="gig-title" title={gig.Title} style={{fontSize:"1.2rem",paddingTop:"0px"}}>{gig.Title}</h4>
@@ -164,9 +172,13 @@ const ClientDashboard = () => {
                       </p>
                       <div className="freelancer-info">
                         <img
-                          src={gig.freelancerimage}
+                          src={gig.freelancerimage || defaultFreelancerImage}
                           alt={gig.Name}
                           className="freelancer-image"
+                          onError={(e) => {
+                            e.target.onerror = null;
+                            e.target.src = defaultFreelancerImage;
+                          }}
                         />
                         <div className="freelancer-details">
                           <span className="freelancer-name">{gig.Name}</span>

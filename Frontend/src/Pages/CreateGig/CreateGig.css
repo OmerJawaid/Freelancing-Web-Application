@@ -1,0 +1,346 @@
+.create-gig-container {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    background-color: #f4f7f6; /* Light background for the page */
+    width: 100%;
+    max-width: 2500px; /* Match or exceed content max-width */
+    margin: 0 auto; /* Center the container */
+}
+
+.create-gig-content {
+    flex-grow: 1;
+    padding: 40px;
+    max-width: 1300px; /* Control the content width */
+    margin: 30px auto; /* Center the content block with margin */
+    background-color: #fff;
+    border-radius: 12px; /* More rounded corners */
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08); /* Softer, larger shadow */
+    display: flex; /* Use flexbox for main content stacking */
+    flex-direction: column; /* Stack children vertically */
+    gap: 30px; /* Gap between heading and form/review */
+}
+
+/* Responsive adjustments for smaller screens */
+@media (max-width: 992px) {
+    .create-gig-content {
+        grid-template-columns: 1fr; /* Stack columns on smaller screens */
+        padding: 20px;
+        gap: 30px;
+        margin: 20px;
+    }
+}
+
+.create-gig-content h2 {
+    text-align: center;
+    margin-bottom: 0; /* Removed bottom margin as gap handles spacing */
+    color: #1f2937; /* Darker text color */
+    font-size: 2em; /* Larger heading */
+}
+
+.form-section {
+    /* Styles for the form part */
+    display: grid; /* Apply grid layout here for form and packages */
+    grid-template-columns: 2fr 1fr; /* Two columns for form fields and packages */
+    gap: 50px; /* Gap between the two columns */
+}
+
+.form-group {
+    margin-bottom: 20px; /* Increased margin */
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px; /* Increased margin */
+    font-weight: 600; /* Bolder label */
+    color: #333; /* Darker label color */
+    font-size: 1.05em;
+}
+
+.form-group input[type="text"],
+.form-group input[type="number"],
+.form-group textarea,
+.form-group select {
+    width: 100%;
+    padding: 12px 15px; /* Increased padding */
+    border: 1px solid #d1d5db; /* Lighter border */
+    border-radius: 6px; /* Slightly more rounded */
+    font-size: 1rem;
+    box-sizing: border-box; /* Include padding and border in element's total width */
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.form-group input[type="text"]:focus,
+.form-group input[type="number"]:focus,
+.form-group textarea:focus,
+.form-group select:focus {
+    border-color: #10b981; /* Theme color on focus */
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2); /* Subtle focus glow */
+    outline: none;
+}
+
+.form-group textarea {
+    min-height: 250px; /* Increased min height for description */
+    resize: vertical;
+}
+
+.form-group input[type="file"] {
+    padding-top: 10px; /* Increased padding */
+    border: 1px solid #d1d5db; /* Add border to file input as well */
+    border-radius: 6px;
+    background-color: #fff;
+}
+
+/* Style for file input when a file is selected */
+.form-group input[type="file"]::file-selector-button {
+    margin-right: 20px;
+    border: none;
+    background: #10b981;
+    padding: 10px 15px;
+    border-radius: 4px;
+    color: #fff;
+    cursor: pointer;
+    transition: background-color .2s ease-in-out;
+}
+
+.form-group input[type="file"]::file-selector-button:hover {
+    background-color: #059669;
+}
+
+.create-gig-button {
+    display: block;
+    width: 100%;
+    padding: 12px; /* Increased padding */
+    background-color: #10b981; /* Theme color */
+    color: white;
+    border: none;
+    border-radius: 6px; /* Match input border-radius */
+    font-size: 1.15rem; /* Slightly larger font */
+    font-weight: 600; /* Bolder text */
+    cursor: pointer;
+    transition: background-color 0.3s ease, box-shadow 0.3s ease;
+    margin-top: 30px; /* Increased top margin */
+    box-shadow: 0 4px 10px rgba(16, 185, 129, 0.3); /* Add shadow */
+}
+
+.create-gig-button:hover {
+    background-color: #059669; /* Darker theme color on hover */
+    box-shadow: 0 6px 15px rgba(16, 185, 129, 0.4);
+}
+
+/* Packages Section Styling */
+.packages-section {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: none;
+    /* Add potential max-height and overflow if needed */
+    /* max-height: 500px; */ /* Example */
+    /* overflow-y: auto; */ /* Example */
+}
+
+.packages-section h3 {
+    font-size: 1.5em;
+    color: #1f2937;
+    margin-bottom: 20px;
+    border-bottom: 2px solid #10b981; /* Theme color underline */
+    display: inline-block;
+    padding-bottom: 5px;
+    width: 100%; /* Make heading take full width */
+    box-sizing: border-box;
+}
+
+.package-group {
+    border: 1px solid #d1d5db; /* Lighter border */
+    padding: 20px; /* Increased padding */
+    margin-bottom: 20px; /* Adjusted margin */
+    border-radius: 8px; /* More rounded corners */
+    background-color: #f9fafb; /* Slightly darker background */
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05); /* Subtle shadow */
+}
+
+.package-group h4 {
+    margin-top: 0;
+    color: #10b981; /* Theme color for package titles */
+    margin-bottom: 15px;
+    font-size: 1.2em;
+    border-bottom: 1px dashed #ccebd9; /* Dotted underline */
+    padding-bottom: 8px;
+}
+
+.package-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    border-bottom: 1px dashed #ccebd9; /* Dotted underline */
+    padding-bottom: 8px;
+}
+
+.package-header h4 {
+    margin: 0;
+    font-size: 1.1em; /* Slightly smaller package title */
+}
+
+.remove-package-button {
+    background-color: #dc3545; /* Red color for remove */
+    color: white;
+    border: none;
+    padding: 4px 8px; /* Smaller padding */
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.85em; /* Slightly smaller font */
+    transition: background-color 0.2s ease;
+}
+
+.remove-package-button:hover {
+    background-color: #c82333;
+}
+
+.add-package-button {
+    background-color: #10b981; /* Theme color */
+    color: white;
+    border: none;
+    padding: 10px 15px;
+    border-radius: 6px; /* Match input border-radius */
+    cursor: pointer;
+    font-size: 1em;
+    transition: background-color 0.2s ease;
+    display: block;
+    margin: 20px auto 0; /* Center the button and add top margin */
+}
+
+.add-package-button:hover {
+    background-color: #059669;
+}
+
+/* Adjust form-group spacing within .form-main-fields */
+.form-main-fields .form-group {
+    margin-bottom: 20px; /* Ensure consistent spacing */
+}
+
+/* Gig Preview Styling */
+.gig-preview {
+    margin-top: 0; /* Adjust margin since it's in a grid */
+    padding: 30px; /* Increased padding */
+    background-color: #ffffff; /* White background */
+    border-radius: 12px; /* Match container border-radius */
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08); /* Match container shadow */
+    border: 1px solid #e5e7eb; /* Subtle border */
+    position: sticky; /* Make preview sticky */
+    top: 30px; /* Stick to the top with some offset */
+    max-height: calc(100vh - 60px); /* Limit height and enable scrolling */
+    overflow-y: auto;
+}
+
+@media (max-width: 992px) {
+    .gig-preview {
+        position: static; /* Remove sticky on smaller screens */
+        margin-top: 30px; /* Add margin when stacked */
+        max-height: none;
+        overflow-y: visible;
+    }
+}
+
+.gig-preview h3 {
+    margin-top: 0;
+    text-align: center;
+    color: #1f2937; /* Darker title */
+    margin-bottom: 20px;
+    font-size: 1.8em;
+}
+
+.preview-image {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 0 auto 20px auto; /* Increased margin */
+    border-radius: 8px; /* More rounded image corners */
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); /* Add image shadow */
+}
+
+.gig-preview h4 {
+    margin-bottom: 10px;
+    color: #1f2937; /* Darker color for gig title */
+    font-size: 1.3em;
+}
+
+.gig-preview p {
+    color: #4b5563; /* Slightly darker description color */
+    line-height: 1.7; /* Increased line height */
+    margin-bottom: 20px; /* Increased margin */
+    font-size: 1rem;
+}
+
+.gig-preview h5 {
+    margin-bottom: 12px; /* Increased margin */
+    color: #1f2937;
+    font-size: 1.1em;
+}
+
+.gig-preview ul {
+    list-style: none;
+    padding: 0;
+}
+
+.gig-preview li {
+    background-color: #e9f5f3; /* Lighter theme background */
+    padding: 12px; /* Increased padding */
+    margin-bottom: 10px; /* Increased margin */
+    border-radius: 6px; /* More rounded */
+    font-size: 1rem;
+    border-left: 4px solid #10b981; /* Theme color highlight */
+}
+
+.gig-preview li strong {
+    color: #059669; /* Darker theme color */
+}
+
+/* Review Section Styling */
+.review-section {
+    /* Styles for the review part */
+}
+
+.review-actions {
+    margin-top: 30px;
+    display: flex;
+    gap: 20px; /* Space between buttons */
+    justify-content: center; /* Center the buttons */
+}
+
+.review-actions .create-gig-button {
+    width: auto; /* Allow buttons to size based on content */
+    padding: 12px 25px; /* Adjust padding */
+}
+
+.review-actions .confirm-button {
+    /* Primary button styles inherited from .create-gig-button */
+}
+
+.review-actions .back-button {
+    background-color: #6c757d; /* Gray color for back button */
+}
+
+.review-actions .back-button:hover {
+    background-color: #5a6268;
+}
+
+/* Two-column form layout */
+.form-section form {
+    display: grid;
+    grid-template-columns: 2fr 1fr; /* Adjusted column ratio */
+    gap: 50px; /* Increased gap between columns */
+}
+
+@media (max-width: 768px) {
+    .form-section {
+        grid-template-columns: 1fr; /* Stack columns on smaller screens */
+        gap: 20px;
+    }
+}
+
+.form-main-fields {
+    /* Styles for the left column (gig title, description, etc.) */
+    display: flex;
+    flex-direction: column;
+    gap: 20px; /* Increased space between form groups on the left */
+} 

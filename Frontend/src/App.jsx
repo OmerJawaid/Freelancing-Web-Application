@@ -14,6 +14,7 @@ import ProtectedRoute from './components/protectedRoute.jsx';
 import { AuthContext } from './context/Authcontext.jsx';
 import Gig from './Pages/Gig Display/GigDsplay.jsx';
 import Messages from './Pages/Messages/Messages.jsx';
+import CreateGig from './Pages/CreateGig/CreateGig.jsx';
 
 // Wrapper component for transitions
 const TransitionWrapper = ({ children }) => {
@@ -75,6 +76,15 @@ function App() {
     {
       path:'/messages',
       element:(<Messages/>)
+    },
+    // Create Gig Page (Protected for Freelancers)
+    {
+      path: '/create-gig',
+      element: (
+        <ProtectedRoute userType="freelancer">
+          <CreateGig />
+        </ProtectedRoute>
+      )
     }
   ]);
 
