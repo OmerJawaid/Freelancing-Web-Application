@@ -17,13 +17,93 @@
 
 /* Sidebar Styles */
 .sidebar {
-  width: 250px;
+  width: 280px;
   flex-shrink: 0;
   background-color: white;
   border-radius: 8px;
   padding: 1.5rem;
   height: fit-content;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  position: sticky;
+  top: 2rem;
+}
+
+/* User Profile */
+.user-profile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-bottom: 1.5rem;
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.profile-image {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  overflow: hidden;
+  margin-bottom: 1rem;
+  border: 3px solid var(--primary-color);
+}
+
+.profile-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.user-profile h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0;
+}
+
+/* Sidebar Menu */
+.sidebar-menu {
+  margin-bottom: 1.5rem;
+}
+
+.sidebar-menu ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.sidebar-menu li {
+  margin-bottom: 0.5rem;
+}
+
+.sidebar-menu li button {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: none;
+  border-radius: 6px;
+  background-color: transparent;
+  color: #4b5563;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 1rem;
+}
+
+.sidebar-menu li button i {
+  margin-right: 0.75rem;
+  width: 20px;
+  text-align: center;
+}
+
+.sidebar-menu li button:hover {
+  background-color: #f3f4f6;
+  color: var(--primary-color);
+}
+
+.sidebar-menu li.active button {
+  background-color: var(--primary-color);
+  color: white;
 }
 
 .filter-section {
@@ -88,6 +168,7 @@
   border: 1px solid #e5e7eb;
   border-radius: 6px;
   font-size: 1rem;
+  color: #333;
 }
 
 .search-button {
@@ -127,6 +208,7 @@
   width: 100%;
   height: 200px;
   overflow: hidden;
+  position: relative;
 }
 
 .gig-image img {
@@ -238,6 +320,15 @@
 /* Freelancer Dashboard Specific Styles */
 .stats-section {
   margin-bottom: 2rem;
+  background-color: #f8fafc;
+  padding: 1rem;
+  border-radius: 6px;
+}
+
+.stats-section h3 {
+  margin-bottom: 1rem;
+  color: #1f2937;
+  font-size: 1rem;
 }
 
 .stats-grid {
@@ -247,32 +338,33 @@
 }
 
 .stat-card {
-  background-color: #f8fafc;
-  padding: 1rem;
-  border-radius: 8px;
+  background-color: white;
+  border-radius: 6px;
+  padding: 0.75rem;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  align-items: center;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
 .stat-label {
-  color: #64748b;
-  font-size: 0.875rem;
+  font-size: 0.75rem;
+  color: #6b7280;
+  margin-bottom: 0.25rem;
 }
 
 .stat-value {
-  color: #1f2937;
-  font-size: 1.25rem;
   font-weight: 600;
+  color: #1f2937;
 }
 
 .action-section {
-  margin-top: 2rem;
+  margin-top: 1.5rem;
 }
 
 .create-gig-button {
   width: 100%;
-  padding: 0.75rem;
+  padding: 0.75rem 1rem;
   background-color: var(--primary-color);
   color: white;
   border: none;
@@ -280,10 +372,13 @@
   font-weight: 500;
   cursor: pointer;
   transition: background-color 0.2s;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
 .create-gig-button:hover {
-  background-color:var(--primary-color-light);
+  background-color: var(--primary-color-dark);
 }
 
 .section-header {
@@ -294,8 +389,9 @@
 }
 
 .section-header h2 {
-  color: #1f2937;
   font-size: 1.5rem;
+  color: #1f2937;
+  margin: 0;
 }
 
 .gig-filters {
@@ -305,22 +401,21 @@
 
 .filter-button {
   padding: 0.5rem 1rem;
-  border: 1px solid #e5e7eb;
+  background-color: #f3f4f6;
+  color: #4b5563;
+  border: none;
   border-radius: 6px;
-  background-color: white;
-  color: #6b7280;
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .filter-button:hover {
-  background-color: #f3f4f6;
+  background-color: #e5e7eb;
 }
 
 .filter-button.active {
-  background-color: var(--primary-color-dark);
+  background-color: var(--primary-color);
   color: white;
-  border-color: var(--primary-color-light);
 }
 
 .freelancer-gig {
@@ -329,8 +424,8 @@
 
 .status-badge {
   position: absolute;
-  top: 1rem;
-  right: 1rem;
+  top: 10px;
+  right: 10px;
   padding: 0.25rem 0.75rem;
   border-radius: 9999px;
   font-size: 0.75rem;
@@ -348,26 +443,23 @@
 }
 
 .gig-stats {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1rem;
-  margin: 1rem 0;
-  padding: 1rem 0;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+  padding-top: 1rem;
   border-top: 1px solid #e5e7eb;
-  border-bottom: 1px solid #e5e7eb;
 }
 
 .stat {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.25rem;
 }
 
 .gig-actions {
   display: flex;
-  gap: 1rem;
-  margin-top: 1rem;
+  justify-content: space-between;
+  gap: 0.5rem;
 }
 
 .edit-button,
@@ -375,57 +467,203 @@
   flex: 1;
   padding: 0.5rem;
   border-radius: 6px;
+  font-size: 0.875rem;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s;
+  border: none;
 }
 
 .edit-button {
-  background-color: white;
-  border: 1px solid var(--primary-color);
-  color: black;
+  background-color: #f3f4f6;
+  color: #4b5563;
 }
 
 .edit-button:hover {
-  background-color: #eff6ff;
+  background-color: #e5e7eb;
 }
 
 .pause-button {
-  background-color: #f59e0b;
-  border: none;
+  background-color: #ef4444;
   color: white;
 }
 
 .pause-button:hover {
-  background-color: #d97706;
+  background-color: #dc2626;
+}
+
+/* Add Gig Form Styles */
+.add-gig-form-container {
+  background-color: white;
+  border-radius: 8px;
+  padding: 2rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.add-gig-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.form-group label {
+  font-weight: 500;
+  color: #1f2937;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+  padding: 0.75rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  font-size: 1rem;
+  color: #333;
+}
+
+.form-group textarea {
+  resize: vertical;
+  min-height: 120px;
+}
+
+.image-preview {
+  margin-top: 1rem;
+  max-width: 300px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #e5e7eb;
+}
+
+.image-preview img {
+  width: 100%;
+  height: auto;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 1rem;
+}
+
+.submit-button {
+  padding: 0.75rem 2rem;
+  background-color: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.submit-button:hover {
+  background-color: var(--primary-color-dark);
+}
+
+.submit-button:disabled {
+  background-color: #9ca3af;
+  cursor: not-allowed;
+}
+
+.success-message {
+  background-color: #d1fae5;
+  color: #065f46;
+  padding: 1rem;
+  border-radius: 6px;
+  margin-bottom: 1.5rem;
+}
+
+.error-message {
+  background-color: #fee2e2;
+  color: #b91c1c;
+  padding: 1rem;
+  border-radius: 6px;
+  margin-bottom: 1.5rem;
+}
+
+.empty-state {
+  background-color: #f3f4f6;
+  border-radius: 8px;
+  padding: 2rem;
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.empty-state p {
+  margin-bottom: 1.5rem;
+  color: #4b5563;
+}
+
+.loading-indicator {
+  text-align: center;
+  padding: 2rem;
+  color: #6b7280;
+}
+
+.dashboard-overview {
+  background-color: white;
+  border-radius: 8px;
+  padding: 2rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.dashboard-summary {
+  margin-top: 1.5rem;
 }
 
 /* Responsive Design */
 @media (max-width: 768px) {
   .dashboard-content {
     flex-direction: column;
-    padding: 1rem;
   }
-
+  
   .sidebar {
     width: 100%;
+    position: relative;
+    top: 0;
   }
-
+  
   .gigs-grid {
     grid-template-columns: 1fr;
   }
-
+  
   .stats-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr 1fr;
   }
-
+  
   .gig-stats {
-    grid-template-columns: repeat(2, 1fr);
+    flex-wrap: wrap;
   }
-
+  
   .section-header {
     flex-direction: column;
-    gap: 1rem;
     align-items: flex-start;
+    gap: 1rem;
   }
+  
+  .gig-filters {
+    width: 100%;
+    overflow-x: auto;
+    padding-bottom: 0.5rem;
+  }
+}
+
+/* Form elements in dashboard */
+input, select, textarea {
+  color: #333;
+}
+
+/* Fix textarea and input field focus */
+input:focus, 
+select:focus, 
+textarea:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2);
 } 
