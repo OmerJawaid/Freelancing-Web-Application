@@ -117,10 +117,10 @@ const Gig = () => {
     setPackages(mockPackages);
   };
 
-  // Generate mock reviews since backend endpoint is not implemented yet
+  // Fetch reviews from database only - no mock data
   const fetchReviewsForGig = async (gigId) => {
     try {
-      // First attempt to fetch actual reviews
+      // Fetch actual reviews from the database
       const response = await axios.get(
         `http://localhost:8081/reviews/retrieve`,
         { 
@@ -129,87 +129,17 @@ const Gig = () => {
         }
       );
       
-      if (response.data && Array.isArray(response.data) && response.data.length > 0) {
-        console.log("Retrieved real reviews from database:", response.data);
+      if (response.data && Array.isArray(response.data)) {
+        console.log("Retrieved reviews from database:", response.data);
         setReviews(response.data);
-        return;
       }
     } catch (error) {
-      console.log("Reviews API not available, generating mock reviews instead");
+      console.log("Error fetching reviews or no reviews found:", error.response?.data?.message || error.message);
+      // Set empty reviews array to ensure UI shows "no reviews" message
+      setReviews([]);
     }
-    
-    // If we're here, either the API failed or returned empty data, so generate mock reviews
-    // Always generate 2-3 reviews for better user experience
-    const reviewCount = Math.floor(Math.random() * 2) + 2; // 2-3 reviews
-    const mockReviews = [];
-    
-    // Review titles and descriptions
-    const reviewTitles = [
-      "Great work!",
-      "Exceeded expectations",
-      "Professional service",
-      "Highly recommended",
-      "Amazing quality",
-      "Very satisfied",
-      "Will hire again"
-    ];
-    
-    const reviewDescriptions = [
-      "The freelancer delivered exactly what I needed, on time and with great quality.",
-      "Communication was excellent throughout the project. Very professional service.",
-      "I'm extremely pleased with the results. The work quality exceeded my expectations.",
-      "Quick delivery and excellent attention to detail. Would definitely work with again.",
-      "Very responsive and accommodating to my requests. The final result was perfect.",
-      "A pleasure to work with. Understood my requirements perfectly and delivered great work.",
-      "Incredible value for the price. The quality was much better than I expected.",
-      "Patient, professional and highly skilled. I'll definitely be a repeat customer."
-    ];
-    
-    // Generate the reviews
-    for (let i = 0; i < reviewCount; i++) {
-      const randomRating = Math.floor(Math.random() * 2) + 4; // 4-5 stars
-      const randomTitle = reviewTitles[Math.floor(Math.random() * reviewTitles.length)];
-      const randomDesc = reviewDescriptions[Math.floor(Math.random() * reviewDescriptions.length)];
-      
-      mockReviews.push({
-        Id: i + 1,
-        Title: randomTitle,
-        Description: randomDesc,
-        Rating: randomRating,
-        Date: getRandomRecentDate(),
-        client_Name: getRandomName(),
-        client_Image: `https://dummyimage.com/50/${getRandomColor()}/ffffff&text=${getInitials(getRandomName())}`
-      });
-    }
-    
-    console.log("Using mock reviews data:", mockReviews);
-    setReviews(mockReviews);
   };
   
-  // Helper functions for mock data
-  const getRandomRecentDate = () => {
-    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    const now = new Date();
-    const randomDaysAgo = Math.floor(Math.random() * 60); // 0-60 days ago
-    const date = new Date(now.setDate(now.getDate() - randomDaysAgo));
-    return `${months[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`;
-  };
-  
-  const getRandomName = () => {
-    const firstNames = ["Alex", "Jordan", "Taylor", "Morgan", "Casey", "Riley", "Avery", "Quinn", "Skyler", "Jamie"];
-    const lastNames = ["Smith", "Johnson", "Williams", "Brown", "Jones", "Garcia", "Miller", "Davis", "Rodriguez", "Martinez"];
-    return `${firstNames[Math.floor(Math.random() * firstNames.length)]} ${lastNames[Math.floor(Math.random() * lastNames.length)]}`;
-  };
-  
-  const getInitials = (name) => {
-    return name.split(' ').map(n => n[0]).join('');
-  };
-  
-  const getRandomColor = () => {
-    const colors = ["4285f4", "ea4335", "fbbc05", "34a853", "7b2cbf", "ff7f00", "07b9bd", "2dd4bf", "ff8fa3", "fb6340"];
-    return colors[Math.floor(Math.random() * colors.length)];
-  };
-
   // Function to check if URL is valid
   const isValidUrl = (url) => {
     if (!url) return false;

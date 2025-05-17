@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useContext } from 'react';
-import './CreateGig.css';
+import '../CreateGig/CreateGig.css';
 import Navbar from '../../Components/Navbar Client/Navbar';
 import Footer from '../../Components/Footer/Footer';
 import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { AuthContext } from '../../context/Authcontext';
 
@@ -14,7 +14,9 @@ const GigPreview = ({ gigData }) => {
   }
 
   // Safe access to image
-  const imageUrl = gigData.image ? URL.createObjectURL(gigData.image) : null;
+  const imageUrl = gigData.image instanceof File 
+    ? URL.createObjectURL(gigData.image) 
+    : gigData.image;
 
   return (
     <div className="gig-preview">
@@ -47,6 +49,15 @@ const GigPreview = ({ gigData }) => {
           <li>No packages added yet.</li>
         )}
       </ul>
+      
+      {gigData.packages && gigData.packages.length > 0 && (
+        <div className="starting-price">
+          <h5>Starting at: ${(() => {
+            const basicPackage = gigData.packages.find(pkg => Number(pkg.Type) === 1);
+            return basicPackage ? basicPackage.Price : 'N/A';
+          })()}</h5>
+        </div>
+      )}
     </div>
   );
 };
@@ -142,7 +153,8 @@ const PackageItem = ({ pkg, index, handlePackageInputChange, handleRemovePackage
   );
 };
 
-const CreateGig = () => {
+const EditGig = () => {
+  const { gigId } = useParams();
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -151,9 +163,11 @@ const CreateGig = () => {
     packages: []
   });
   
+  const [originalGigData, setOriginalGigData] = useState(null);
   const [expandedPackage, setExpandedPackage] = useState(0);
   const [showReview, setShowReview] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
   
   // Get authentication data from context
@@ -162,7 +176,7 @@ const CreateGig = () => {
   // Check if user is authenticated and is a freelancer
   useEffect(() => {
     if (!isAuthenticated) {
-      toast.error("Please log in to create a gig", {
+      toast.error("Please log in to edit a gig", {
         autoClose: 3000
       });
       navigate('/login');
@@ -170,7 +184,7 @@ const CreateGig = () => {
     }
 
     if (!user || user.User_Type !== 'freelancer') {
-      toast.error("Only freelancers can create gigs", {
+      toast.error("Only freelancers can edit gigs", {
         autoClose: 3000
       });
       navigate('/');
@@ -180,21 +194,82 @@ const CreateGig = () => {
     console.log("User authenticated from context:", user);
   }, [isAuthenticated, user, navigate]);
 
-  // Add Basic package by default when component mounts
+  // Fetch existing gig data
   useEffect(() => {
-    if (formData.packages.length === 0) {
-      setFormData({
-        ...formData,
-        packages: [{ 
-          Type: 1, 
-          Package_Name: 'Basic',
-          Price: '', 
-          Delivery_Time: '', 
-          Package_Details: '' 
-        }]
-      });
+    const fetchGigData = async () => {
+      if (!gigId) {
+        toast.error("No gig ID provided", {
+          autoClose: 3000
+        });
+        navigate('/freelancer');
+        return;
+      }
+
+      try {
+        setIsLoading(true);
+        
+        // Fetch gig details
+        const gigResponse = await axios.get(
+          `http://localhost:8081/gigs/retrieveGigByGigId`,
+          { 
+            params: { Gig_Id: gigId },
+            withCredentials: true 
+          }
+        );
+        
+        if (!gigResponse.data) {
+          toast.error("Gig not found", {
+            autoClose: 3000
+          });
+          navigate('/freelancer');
+          return;
+        }
+
+        // Verify the gig belongs to the logged-in freelancer
+        if (gigResponse.data.Freelancer_Id !== user.id) {
+          toast.error("You don't have permission to edit this gig", {
+            autoClose: 3000
+          });
+          navigate('/freelancer');
+          return;
+        }
+
+        // Fetch packages for the gig
+        const packagesResponse = await axios.get(
+          `http://localhost:8081/packages/retrieve`,
+          { 
+            params: { Gig_Id: gigId },
+            withCredentials: true 
+          }
+        );
+
+        // Store original data for comparison
+        setOriginalGigData(gigResponse.data);
+
+        // Update form data
+        setFormData({
+          title: gigResponse.data.Title,
+          description: gigResponse.data.Description,
+          category: gigResponse.data.Category,
+          image: gigResponse.data.Image, // Store image URL here
+          // Initialize packages with data from the response
+          packages: packagesResponse.data || []
+        });
+
+        setIsLoading(false);
+      } catch (error) {
+        console.error("Error fetching gig data:", error);
+        toast.error("Failed to load gig data", {
+          autoClose: 3000
+        });
+        navigate('/freelancer');
+      }
+    };
+
+    if (isAuthenticated && user && user.id) {
+      fetchGigData();
     }
-  }, []);
+  }, [gigId, isAuthenticated, user, navigate]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -224,7 +299,7 @@ const CreateGig = () => {
         ...formData,
         packages: [...formData.packages, { 
           Type: packageType, 
-          Package_Name: packageName, 
+          Package_Name: packageName,
           Price: '', 
           Delivery_Time: '', 
           Package_Details: '' 
@@ -234,23 +309,23 @@ const CreateGig = () => {
       // Auto-expand the newly added package
       setExpandedPackage(formData.packages.length);
       
-          toast.success(`${packageName} package added`, {
-      autoClose: 3000
-    });
-  } else {
-    toast.warning('You can add a maximum of 3 packages.', {
-      autoClose: 3000
-    });
+      toast.success(`${packageName} package added`, {
+        autoClose: 3000
+      });
+    } else {
+      toast.warning('You can add a maximum of 3 packages.', {
+        autoClose: 3000
+      });
     }
   };
 
   const handleRemovePackage = (index) => {
-      if (formData.packages.length <= 1) {
-    toast.error("You need at least one package for your gig", {
-      autoClose: 3000
-    });
-    return;
-  }
+    if (formData.packages.length <= 1) {
+      toast.error("You need at least one package for your gig", {
+        autoClose: 3000
+      });
+      return;
+    }
     
     const packageName = formData.packages[index].Package_Name;
     const newPackages = [...formData.packages];
@@ -267,8 +342,8 @@ const CreateGig = () => {
     });
     
     toast.info(`${packageName} package removed`, {
-    autoClose: 3000
-  });
+      autoClose: 3000
+    });
   };
 
   const handleFileChange = (e) => {
@@ -321,13 +396,6 @@ const CreateGig = () => {
       return false;
     }
     
-    if (!formData.image) {
-      toast.error('Please upload an image for your gig', {
-        autoClose: 3000
-      });
-      return false;
-    }
-    
     if (formData.packages.length === 0) {
       toast.error('Please add at least one package', {
         autoClose: 3000
@@ -369,7 +437,7 @@ const CreateGig = () => {
     
     if (validateForm()) {
       setShowReview(true);
-      toast.success("Looking good! Review your gig before submitting", {
+      toast.success("Looking good! Review your changes before submitting", {
         autoClose: 3000
       });
     } else {
@@ -381,15 +449,15 @@ const CreateGig = () => {
     }
   };
 
-  const handleConfirmCreate = async () => {
+  const handleUpdateGig = async () => {
     if (isSubmitting) return;
     
     setIsSubmitting(true);
-    console.log("Starting gig submission process...");
+    console.log("Starting gig update process...");
     
     try {
       // Basic validation before sending
-      if (!formData.title || !formData.description || !formData.category || !formData.image || formData.packages.length === 0) {
+      if (!formData.title || !formData.description || !formData.category || !formData.packages.length === 0) {
         toast.error('Please fill all required fields', {
           autoClose: 3000
         });
@@ -402,7 +470,7 @@ const CreateGig = () => {
       // Verify we have user data from context
       if (!isAuthenticated || !user || !user.id) {
         console.log("User data missing or incomplete:", user);
-        toast.error("Please log in to create a gig", {
+        toast.error("Please log in to update a gig", {
           autoClose: 3000
         });
         navigate('/login');
@@ -413,19 +481,20 @@ const CreateGig = () => {
       // Format packages to match database schema exactly
       const formattedPackages = formData.packages.map(pkg => ({
         // These must match the database column names exactly
+        ID: pkg.ID || null, // Keep existing ID if it exists
+        Gig_Id: gigId,
         Type: Number(pkg.Type),
         Package_Name: pkg.Package_Name,
         Price: Number(pkg.Price),
         Delivery_Time: Number(pkg.Delivery_Time),
-        Package_Details: pkg.Package_Details,
-        // Include any other required fields
-        Gig_Id: null // This will be filled by the backend
+        Package_Details: pkg.Package_Details
       }));
       
       // Create FormData that matches the exact DB column names
       const data = new FormData();
       
       // Use exact column names from the gigs table 
+      data.append('Id', gigId);  // Add gig ID for update
       data.append('Title', formData.title.trim());
       data.append('Description', formData.description.trim());
       data.append('Category', formData.category);
@@ -434,85 +503,56 @@ const CreateGig = () => {
       data.append('Freelancer_Id', user.id);
       console.log("Including Freelancer_Id:", user.id);
       
-      // Add State with default value 1 (or whatever the default active state is)
-      data.append('State', 1);
+      // Add State with existing value or default to 1
+      data.append('State', originalGigData.State || 1);
       
       // Add packages as a string - make sure column name matches
       data.append('packages', JSON.stringify(formattedPackages));
       
-      // Add image file
-      if (formData.image) {
+      // Add image file only if it's changed
+      if (formData.image instanceof File) {
         data.append('image', formData.image);
       }
       
-      console.log("FormData being sent:");
+      console.log("FormData being sent for update:");
       for (let [key, value] of data.entries()) {
         console.log(key, typeof value === 'object' ? 'File or Object data' : value);
       }
       
-      // Make the API call with proper headers
+      // Since there's no specific update endpoint, attempt to create a PUT route manually
       try {
-        const response = await axios.post('http://localhost:8081/gigs/createGig', data, {
+        // First, check if we have a update endpoint
+        const response = await axios.put(`http://localhost:8081/gigs/updateGig/${gigId}`, data, {
           headers: {
             'Content-Type': 'multipart/form-data',
           },
-          withCredentials: true  // Important to send cookies for auth
+          withCredentials: true
         });
         
-        if (response.status === 201) {
-          toast.success('Gig created successfully!', {
+        if (response.status === 200) {
+          toast.success('Gig updated successfully!', {
             autoClose: 3000
           });
           navigate('/freelancer');
         } else {
-          toast.error(`Creation failed: ${response.data?.message || 'Unknown error'}`, {
+          toast.error(`Update failed: ${response.data?.message || 'Unknown error'}`, {
             autoClose: 3000
           });
         }
       } catch (error) {
         console.error('API Error:', error);
         
-        if (error.response) {
+        // If we get a 404 (endpoint doesn't exist), try a different approach
+        if (error.response && error.response.status === 404) {
+          toast.error("The update endpoint is not available. Please contact the administrator.", {
+            autoClose: 3000
+          });
+        } else if (error.response) {
           // Get specific error message from server if available
           const errorMsg = error.response.data?.message || 'Server error';
           toast.error(errorMsg, {
             autoClose: 3000
           });
-          
-          // If it's a 400 error, try alternative approach with exactly matched DB columns
-          if (error.response.status === 400) {
-            console.log("Trying alternative approach with exact DB column names...");
-            
-            try {
-              // Create a JSON object exactly matching DB schema
-              const jsonData = {
-                Title: formData.title.trim(),
-                Description: formData.description.trim(),
-                Category: formData.category,
-                State: 1,
-                Freelancer_Id: user.id, // Explicitly include Freelancer_Id from context
-                packages: formattedPackages
-              };
-              
-              // Try without the image first to see if that's the issue
-              const jsonResponse = await axios.post(
-                'http://localhost:8081/gigs/createGig', 
-                jsonData,
-                { 
-                  withCredentials: true 
-                }
-              );
-              
-              if (jsonResponse.status === 201) {
-                toast.success('Gig created successfully!', {
-                  autoClose: 3000
-                });
-                navigate('/freelancer');
-              }
-            } catch (altError) {
-              console.error("Alternative approach also failed:", altError);
-            }
-          }
         } else {
           toast.error('Network error - Please try again', {
             autoClose: 3000
@@ -533,144 +573,160 @@ const CreateGig = () => {
     <div className="create-gig-container">
       <Navbar />
       <div className="create-gig-content">
-        <h2>{showReview ? 'Review Your Gig' : 'Create New Gig'}</h2>
+        <h2>{showReview ? 'Review Your Changes' : 'Edit Gig'}</h2>
 
-        {!showReview ? (
-          <div className="form-section">
-            <form onSubmit={handleShowReview}>
-              <div className="form-main-fields">
-                <div className="form-group">
-                  <label htmlFor="title">Gig Title</label>
-                  <input 
-                    type="text" 
-                    id="title" 
-                    name="title" 
-                    value={formData.title} 
-                    onChange={handleInputChange} 
-                    placeholder="I will do something amazing..."
-                    required 
-                    minLength="5"
-                    maxLength="100"
-                    onInvalid={(e) => {
-                      e.preventDefault();
-                      toast.error("Please enter a valid gig title (5-100 characters)", {
-                        autoClose: 3000
-                      });
-                    }}
-                  />
-                </div>
-                
-                <div className="form-group">
-                  <label htmlFor="category">Category</label>
-                  <select 
-                    id="category" 
-                    name="category" 
-                    value={formData.category} 
-                    onChange={handleInputChange} 
-                    required
-                    onInvalid={(e) => {
-                      e.preventDefault();
-                      toast.error("Please select a category", {
-                        autoClose: 3000
-                      });
-                    }}
-                  >
-                    <option value="">Select a Category</option>
-                    <option value="Web Development">Web Development</option>
-                    <option value="Design">Design</option>
-                    <option value="Mobile Development">Mobile Development</option>
-                    <option value="Writing">Writing</option>
-                    <option value="Marketing">Marketing</option>
-                  </select>
-                </div>
-                
-                <div className="form-group">
-                  <label htmlFor="image">Gig Image</label>
-                  <input 
-                    type="file" 
-                    id="image" 
-                    name="image" 
-                    accept="image/*" 
-                    onChange={handleFileChange} 
-                    required 
-                    onInvalid={(e) => {
-                      e.preventDefault();
-                      toast.error("Please upload an image for your gig", {
-                        autoClose: 3000
-                      });
-                    }}
-                  />
-                </div>
-                
-                <div className="form-group description-group">
-                  <label htmlFor="description">Description</label>
-                  <textarea 
-                    id="description" 
-                    name="description" 
-                    value={formData.description} 
-                    onChange={handleInputChange} 
-                    placeholder="Describe your service in detail..."
-                    required 
-                    minLength="30"
-                    onInvalid={(e) => {
-                      e.preventDefault();
-                      toast.error("Please provide a detailed description (min 30 characters)", {
-                        autoClose: 3000
-                      });
-                    }}
-                  />
-                </div>
-              </div>
-
-              <div className="packages-section">
-                <h3>Packages ({formData.packages.length}/3)</h3>
-                
-                <div className="packages-container">
-                  {formData.packages.map((pkg, index) => (
-                    <PackageItem 
-                      key={index}
-                      pkg={pkg}
-                      index={index}
-                      handlePackageInputChange={handlePackageInputChange}
-                      handleRemovePackage={handleRemovePackage}
-                      expandedPackage={expandedPackage}
-                      setExpandedPackage={setExpandedPackage}
-                    />
-                  ))}
-                </div>
-                
-                {formData.packages.length < 3 && (
-                  <button 
-                    type="button" 
-                    className="add-package-button" 
-                    onClick={handleAddPackage}
-                  >
-                    + Add {formData.packages.length === 1 ? 'Standard' : 'Premium'} Package
-                  </button>
-                )}
-                
-                <div className="form-action">
-                  <button type="submit" className="create-gig-button">Review Gig</button>
-                </div>
-              </div>
-            </form>
+        {isLoading ? (
+          <div className="loading-container">
+            <p>Loading gig data...</p>
           </div>
         ) : (
-          <div className="review-section">
-            <GigPreview gigData={formData} />
-            <div className="review-actions">
-              <button 
-                className="create-gig-button confirm-button" 
-                onClick={handleConfirmCreate}
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? 'Creating...' : 'Confirm and Create'}
-              </button>
-              <button className="create-gig-button back-button" onClick={() => setShowReview(false)}>
-                Back to Edit
-              </button>
+          !showReview ? (
+            <div className="form-section">
+              <form onSubmit={handleShowReview}>
+                <div className="form-main-fields">
+                  <div className="form-group">
+                    <label htmlFor="title">Gig Title</label>
+                    <input 
+                      type="text" 
+                      id="title" 
+                      name="title" 
+                      value={formData.title} 
+                      onChange={handleInputChange} 
+                      placeholder="I will do something amazing..."
+                      required 
+                      minLength="5"
+                      maxLength="100"
+                      onInvalid={(e) => {
+                        e.preventDefault();
+                        toast.error("Please enter a valid gig title (5-100 characters)", {
+                          autoClose: 3000
+                        });
+                      }}
+                    />
+                  </div>
+                  
+                  <div className="form-group">
+                    <label htmlFor="category">Category</label>
+                    <select 
+                      id="category" 
+                      name="category" 
+                      value={formData.category} 
+                      onChange={handleInputChange} 
+                      required
+                      onInvalid={(e) => {
+                        e.preventDefault();
+                        toast.error("Please select a category", {
+                          autoClose: 3000
+                        });
+                      }}
+                    >
+                      <option value="">Select a Category</option>
+                      <option value="Web Development">Web Development</option>
+                      <option value="Design">Design</option>
+                      <option value="Mobile Development">Mobile Development</option>
+                      <option value="Writing">Writing</option>
+                      <option value="Marketing">Marketing</option>
+                    </select>
+                  </div>
+                  
+                  <div className="form-group">
+                    <label htmlFor="image">Gig Image</label>
+                    {formData.image && !(formData.image instanceof File) && (
+                      <div className="current-image">
+                        <img 
+                          src={formData.image.startsWith('http') ? formData.image : `http://localhost:8081${formData.image}`} 
+                          alt="Current Gig" 
+                          style={{ maxWidth: '100%', maxHeight: '200px', marginBottom: '10px' }} 
+                        />
+                        <p>Current Image</p>
+                      </div>
+                    )}
+                    <input 
+                      type="file" 
+                      id="image" 
+                      name="image" 
+                      accept="image/*" 
+                      onChange={handleFileChange}
+                      onInvalid={(e) => {
+                        e.preventDefault();
+                        toast.error("Please upload an image for your gig", {
+                          autoClose: 3000
+                        });
+                      }}
+                    />
+                    <small>Upload a new image only if you want to change the current one</small>
+                  </div>
+                  
+                  <div className="form-group description-group">
+                    <label htmlFor="description">Description</label>
+                    <textarea 
+                      id="description" 
+                      name="description" 
+                      value={formData.description} 
+                      onChange={handleInputChange} 
+                      placeholder="Describe your service in detail..."
+                      required 
+                      minLength="30"
+                      onInvalid={(e) => {
+                        e.preventDefault();
+                        toast.error("Please provide a detailed description (min 30 characters)", {
+                          autoClose: 3000
+                        });
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <div className="packages-section">
+                  <h3>Packages ({formData.packages.length}/3)</h3>
+                  
+                  <div className="packages-container">
+                    {formData.packages.map((pkg, index) => (
+                      <PackageItem 
+                        key={index}
+                        pkg={pkg}
+                        index={index}
+                        handlePackageInputChange={handlePackageInputChange}
+                        handleRemovePackage={handleRemovePackage}
+                        expandedPackage={expandedPackage}
+                        setExpandedPackage={setExpandedPackage}
+                      />
+                    ))}
+                  </div>
+                  
+                  {formData.packages.length < 3 && (
+                    <button 
+                      type="button" 
+                      className="add-package-button" 
+                      onClick={handleAddPackage}
+                    >
+                      + Add {formData.packages.length === 1 ? 'Standard' : 'Premium'} Package
+                    </button>
+                  )}
+                  
+                  <div className="form-action">
+                    <button type="submit" className="create-gig-button">Review Changes</button>
+                  </div>
+                </div>
+              </form>
             </div>
-          </div>
+          ) : (
+            <div className="review-section">
+              <GigPreview gigData={formData} />
+              <div className="review-actions">
+                <button 
+                  className="create-gig-button confirm-button" 
+                  onClick={handleUpdateGig}
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? 'Updating...' : 'Confirm and Update'}
+                </button>
+                <button className="create-gig-button back-button" onClick={() => setShowReview(false)}>
+                  Back to Edit
+                </button>
+              </div>
+            </div>
+          )
         )}
       </div>
       <Footer />
@@ -678,4 +734,4 @@ const CreateGig = () => {
   );
 };
 
-export default CreateGig; 
+export default EditGig; 

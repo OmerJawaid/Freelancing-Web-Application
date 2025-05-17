@@ -153,11 +153,16 @@ const FreelancerDashboard = () => {
                     </div>
                     <div className="stat">
                       <span className="stat-label">Price</span>
-                      <span className="stat-value">${gig.Price}</span>
+                      <span className="stat-value">${gig.BasicPrice ? gig.BasicPrice : 'N/A'}</span>
                     </div>
                   </div>
                   <div className="gig-actions">
-                    <button className="edit-button">Edit</button>
+                    <button 
+                      className="edit-button"
+                      onClick={() => navigate(`/edit-gig/${gig.Id}`)}
+                    >
+                      Edit
+                    </button>
                     <button 
                       className={gig.State === 1 ? 'pause-button' : 'activate-button'}
                       onClick={() => toggleGigState(gig.Id, gig.State)}

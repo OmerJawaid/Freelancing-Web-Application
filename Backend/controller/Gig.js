@@ -32,7 +32,14 @@ const fetchGigForFreelancer=async(req,res)=>{
       if (!freelancer_Id) {
          return res.status(400).json({ message: "freelancer_Id is required" });
        }
-      const [result]= await database_pool.query('SELECT gigs.*, freelancers.Name, freelancers.bio, freelancers.Rating, freelancers.Image as UserImage FROM gigs JOIN freelancers ON freelancers.Id = gigs.Freelancer_Id WHERE Freelancer_id = ?',[freelancer_Id])
+      const [result]= await database_pool.query(
+         'SELECT gigs.*, freelancers.Name, freelancers.bio, freelancers.Rating, ' +
+         'freelancers.Image as UserImage, ' +
+         '(SELECT Price FROM packages WHERE packages.Gig_Id = gigs.Id AND packages.Type = 1) as BasicPrice ' +
+         'FROM gigs JOIN freelancers ON freelancers.Id = gigs.Freelancer_Id ' +
+         'WHERE Freelancer_id = ?',
+         [freelancer_Id]
+      )
       if(!result|| result.length === 0){
          return res.status(404).json({ message: "No gigs found for this freelancer" });
       }
@@ -173,28 +180,52 @@ const toggleGigState = async (req, res) => {
 
 const createGig = async (req, res) => {
     try {
-        // Check if user is authenticated and is a freelancer (assuming user type is available in session)
-        if (!req.session || !req.session.user || req.session.user.userType !== 'freelancer') {
-             // If user type is not stored in session, you might need a different way to verify freelancer
-             // For now, I'll proceed assuming user.id corresponds to freelancer id for logged in users
+        // Check if user is authenticated and is a freelancer
+        if (!req.session || !req.session.user) {
+            return res.status(401).json({ message: "You must be logged in to create a gig" });
         }
 
-        const freelancerId = req.session.user.id; // Get logged-in freelancer ID from session
-        const { title, description, category, packages } = req.body;
-        const imageFile = req.file; // Get uploaded file details from Multer
+        // Verify the user is a freelancer
+        if (req.session.user.User_Type !== 'freelancer') {
+            return res.status(403).json({ message: "Only freelancers can create gigs" });
+        }
 
+        // Get the freelancer ID from the session
+        const freelancerId = req.session.user.id;
+        console.log("Creating gig for freelancer ID:", freelancerId);
+        
+        // Get the form data
+        const title = req.body.Title;
+        const description = req.body.Description;
+        const category = req.body.Category;
+        let packages;
+        
+        try {
+            packages = JSON.parse(req.body.packages);
+        } catch (err) {
+            console.error("Error parsing packages:", err);
+            return res.status(400).json({ message: "Invalid package data format" });
+        }
+        
+        // Get the uploaded image
+        const imageFile = req.file;
+
+        // Validate required fields
         if (!freelancerId || !title || !description || !category || !imageFile || !packages || !Array.isArray(packages) || packages.length === 0) {
-            // If any required data is missing, return an error
-            // Also, if an image was uploaded, you might want to delete it here
-            if (imageFile) {
-                // Add logic to delete the uploaded file if there's a validation error
-                // Example (requires fs module): fs.unlink(imageFile.path, (err) => { if (err) console.error('Error deleting file:', err); });
-            }
-            return res.status(400).json({ message: "Missing required gig information." });
+            console.error("Missing required fields:", { 
+                freelancerId: !!freelancerId, 
+                title: !!title, 
+                description: !!description, 
+                category: !!category, 
+                imageFile: !!imageFile,
+                packages: !!packages,
+                isArray: packages ? Array.isArray(packages) : false,
+                packagesLength: packages ? packages.length : 0
+            });
+            return res.status(400).json({ message: "Missing required gig information" });
         }
 
         // Construct the image path to be stored in the database (relative to the frontend public directory)
-        // This path should be what the browser uses to access the image
         const dbImagePath = `/assets/gigImages/${imageFile.filename}`;
 
         // Start a database transaction for atomicity
@@ -212,7 +243,7 @@ const createGig = async (req, res) => {
 
             // Insert package data
             for (const pkg of packages) {
-                 // Ensure package data is valid before inserting
+                // Ensure package data is valid before inserting
                 if (!pkg.Type || pkg.Price === undefined || pkg.Delivery_Time === undefined || pkg.Package_Details === undefined) {
                     throw new Error('Invalid package data provided.');
                 }
@@ -224,7 +255,7 @@ const createGig = async (req, res) => {
 
             // Commit the transaction
             await connection.commit();
-            connection.release(); // Release the connection back to the pool
+            connection.release();
 
             return res.status(201).json({ message: "Gig created successfully!", gigId: newGigId });
 
@@ -232,26 +263,149 @@ const createGig = async (req, res) => {
             // Rollback the transaction in case of any database error
             await connection.rollback();
             connection.release();
-             // Also, delete the uploaded image if the database transaction fails
-            if (imageFile) {
-                 // Add logic to delete the uploaded file if the transaction fails
-                 // Example (requires fs module): fs.unlink(imageFile.path, (err) => { if (err) console.error('Error deleting file during rollback:', err); });
-            }
             throw dbError; // Re-throw the error to be caught by the outer catch block
         }
 
     } catch (err) {
         console.error("Error creating gig:", err);
-         // If an error occurred before the database transaction (e.g., validation),
-         // the uploaded file needs to be deleted here as well.
-         // If you added deletion logic in the validation check, this part might be redundant,
-         // but it's good practice to ensure cleanup.
-        if (req.file) {
-             // Add logic to delete the uploaded file if an error occurs
-             // Example (requires fs module): fs.unlink(req.file.path, (err) => { if (err) console.error('Error deleting file in final catch:', err); });
-        }
-        res.status(500).json({ message: "Failed to create gig", error: err.message });
+        return res.status(500).json({ message: "Error creating gig", error: err.message });
     }
 };
 
-export {fetchGig,fetchGigByFreelancerIdForGigDisplay,fetchGigByGigId,fetchGigForFreelancer, updateGigViews, toggleGigState, createGig}
+const updateGig = async (req, res) => {
+    try {
+        // Check if user is authenticated and is a freelancer
+        if (!req.session || !req.session.user) {
+            return res.status(401).json({ message: "You must be logged in to update a gig" });
+        }
+
+        // Verify the user is a freelancer
+        if (req.session.user.User_Type !== 'freelancer') {
+            return res.status(403).json({ message: "Only freelancers can update gigs" });
+        }
+
+        // Get the gig ID from params
+        const { gigId } = req.params;
+        if (!gigId) {
+            return res.status(400).json({ message: "Gig ID is required" });
+        }
+
+        // Verify the gig belongs to this freelancer
+        const [gigCheck] = await database_pool.query(
+            'SELECT * FROM gigs WHERE Id = ? AND Freelancer_Id = ?',
+            [gigId, req.session.user.id]
+        );
+
+        if (gigCheck.length === 0) {
+            return res.status(403).json({ message: "You don't have permission to edit this gig" });
+        }
+
+        // Get the form data
+        const title = req.body.Title;
+        const description = req.body.Description;
+        const category = req.body.Category;
+        let packages;
+        
+        try {
+            packages = JSON.parse(req.body.packages);
+        } catch (err) {
+            console.error("Error parsing packages:", err);
+            return res.status(400).json({ message: "Invalid package data format" });
+        }
+        
+        // Get the uploaded image if provided
+        const imageFile = req.file;
+        let dbImagePath = gigCheck[0].Image; // Default to existing image path
+
+        // Validate required fields
+        if (!title || !description || !category || !packages || !Array.isArray(packages) || packages.length === 0) {
+            console.error("Missing required fields for update");
+            return res.status(400).json({ message: "Missing required gig information" });
+        }
+
+        // If a new image was uploaded, update the image path
+        if (imageFile) {
+            dbImagePath = `/assets/gigImages/${imageFile.filename}`;
+        }
+
+        // Start a database transaction for atomicity
+        const connection = await database_pool.getConnection();
+        await connection.beginTransaction();
+
+        try {
+            // Update gig data
+            const [gigResult] = await connection.query(
+                'UPDATE gigs SET Title = ?, Description = ?, Category = ?, Image = ? WHERE Id = ?',
+                [title, description, category, dbImagePath, gigId]
+            );
+
+            // Handle packages: 
+            // 1. Delete removed packages
+            // 2. Update existing packages 
+            // 3. Insert new packages
+
+            // Get current packages for this gig
+            const [currentPackages] = await connection.query(
+                'SELECT * FROM packages WHERE Gig_Id = ?',
+                [gigId]
+            );
+
+            // Create a map of existing package IDs
+            const existingPackageMap = {};
+            currentPackages.forEach(pkg => {
+                existingPackageMap[pkg.ID] = true;
+            });
+
+            // Track which packages we're updating
+            const updatedPackageIds = [];
+
+            // Update or insert packages
+            for (const pkg of packages) {
+                if (pkg.ID && existingPackageMap[pkg.ID]) {
+                    // Update existing package
+                    await connection.query(
+                        'UPDATE packages SET Price = ?, Delivery_Time = ?, Package_Details = ?, Type = ? WHERE ID = ?',
+                        [Number(pkg.Price), Number(pkg.Delivery_Time), pkg.Package_Details, Number(pkg.Type), pkg.ID]
+                    );
+                    updatedPackageIds.push(pkg.ID);
+                } else {
+                    // Insert new package
+                    await connection.query(
+                        'INSERT INTO packages (Gig_Id, Price, Delivery_Time, Package_Details, Type) VALUES (?, ?, ?, ?, ?)',
+                        [gigId, Number(pkg.Price), Number(pkg.Delivery_Time), pkg.Package_Details, Number(pkg.Type)]
+                    );
+                }
+            }
+
+            // Delete packages that were removed
+            const packagesToDelete = currentPackages
+                .filter(pkg => !updatedPackageIds.includes(pkg.ID))
+                .map(pkg => pkg.ID);
+
+            if (packagesToDelete.length > 0) {
+                await connection.query(
+                    'DELETE FROM packages WHERE ID IN (?)',
+                    [packagesToDelete]
+                );
+            }
+
+            // Commit the transaction
+            await connection.commit();
+            connection.release();
+
+            return res.status(200).json({ message: "Gig updated successfully", gigId: gigId });
+
+        } catch (dbError) {
+            // Rollback the transaction in case of any database error
+            await connection.rollback();
+            connection.release();
+            throw dbError; // Re-throw the error to be caught by the outer catch block
+        }
+
+    } catch (err) {
+        console.error("Error updating gig:", err);
+        return res.status(500).json({ message: "Error updating gig", error: err.message });
+    }
+};
+
+export {fetchGig,fetchGigByFreelancerIdForGigDisplay,fetchGigByGigId,fetchGigForFreelancer, updateGigViews, toggleGigState, createGig, updateGig}

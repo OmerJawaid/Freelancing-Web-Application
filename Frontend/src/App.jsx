@@ -15,6 +15,7 @@ import { AuthContext } from './context/Authcontext.jsx';
 import Gig from './Pages/Gig Display/GigDsplay.jsx';
 import Messages from './Pages/Messages/Messages.jsx';
 import CreateGig from './Pages/CreateGig/CreateGig.jsx';
+import EditGig from './Pages/EditGig/EditGig.jsx';
 
 // Wrapper component for transitions
 const TransitionWrapper = ({ children }) => {
@@ -85,6 +86,15 @@ function App() {
           <CreateGig />
         </ProtectedRoute>
       )
+    },
+    // Edit Gig Page (Protected for Freelancers)
+    {
+      path: '/edit-gig/:gigId',
+      element: (
+        <ProtectedRoute userType="freelancer">
+          <EditGig />
+        </ProtectedRoute>
+      )
     }
   ]);
 
@@ -95,19 +105,7 @@ function App() {
   return (
     <>
       <RouterProvider router={router} />
-      <ToastContainer
-        position="top-right"
-        autoClose={3000}
-        hideProgressBar={false}
-        newestOnTop
-        closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
-        theme="light"
-        transition={CSSTransition}
-      />
+      <ToastContainer />
     </>
   );
 }
