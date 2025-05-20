@@ -1,12 +1,12 @@
-
 import express from 'express';
-import { signup, login,logout,checkAuthentication } from '../controller/Authentication.js';
+import { signup, login, logout, checkAuthentication, upload } from '../controller/Authentication.js';
 
 const authenticationRouter = express.Router();
 
-authenticationRouter.post('/signup', signup);
+// Use multer middleware for file uploads on signup route
+authenticationRouter.post('/signup', upload.single('profileImage'), signup);
 authenticationRouter.post('/login', login);
-authenticationRouter.get('/checkAuthentication',checkAuthentication);
-authenticationRouter.post('/logout',logout);
+authenticationRouter.post('/logout', logout);
+authenticationRouter.get('/checkAuthentication', checkAuthentication);
 
-export { authenticationRouter };
+export default authenticationRouter;

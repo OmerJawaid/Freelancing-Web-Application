@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { FaUser, FaLock, FaArrowLeft, FaEnvelope, FaGoogle } from "react-icons/fa";
+import React, { useState, useRef } from 'react';
+import { FaUser, FaLock, FaArrowLeft, FaEnvelope, FaUpload, FaImage } from "react-icons/fa";
 import { Link, useNavigate } from "react-router-dom";
 import "./Signup.css";
 import axios from 'axios';
@@ -11,11 +11,31 @@ const Signup = () => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [bio, setBio] = useState('');
+  const [profileImage, setProfileImage] = useState(null);
+  const [previewImage, setPreviewImage] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const fileInputRef = useRef(null);
 
   const validateEmail = (email) => {
     const emailcheck = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailcheck.test(email);
+  };
+
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setProfileImage(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPreviewImage(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const triggerFileInput = () => {
+    fileInputRef.current.click();
   };
 
   const handleSubmit = async (e) => {
@@ -47,14 +67,33 @@ const Signup = () => {
 
     try {
       setIsLoading(true);
-      const result = await axios.post("http://localhost:8081/signup", {
-        Name: name,
-        Email: email,
-        Password: password,
-        User_Type: userType
+      
+      // Create FormData to handle file upload
+      const formData = new FormData();
+      formData.append('Name', name);
+      formData.append('Email', email);
+      formData.append('Password', password);
+      formData.append('User_Type', userType);
+      
+      // Only append bio if user is a freelancer
+      if (userType === 'freelancer' && bio) {
+        formData.append('Bio', bio);
+      }
+      
+      // Append profile image if available
+      if (profileImage) {
+        formData.append('profileImage', profileImage);
+      }
+
+      const result = await axios.post("http://localhost:8081/authentication/signup", formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
       });
 
-      if (result.data.Signup_Sucess) {
+      console.log('Signup response:', result.data); // Add logging to see the response
+
+      if (result.data.Signup_Success) {
         toast.success('Account created successfully! Redirecting to login...');
         // Add a delay before navigation to allow the success toast to be visible
         setTimeout(() => {
@@ -67,9 +106,11 @@ const Signup = () => {
           });
         }, 1500); // 1.5 second delay
       } else {
-        toast.error('Failed to create account. Please try again.');
+        toast.error(result.data.message || 'Failed to create account. Please try again.');
       }
     } catch (err) {
+      console.error('Signup error:', err);
+      // Show the specific error message from the server if available
       toast.error(err.response?.data?.message || 'An error occurred. Please try again.');
     } finally {
       setIsLoading(false);
@@ -104,6 +145,30 @@ const Signup = () => {
                 Find Work
               </button>
             </div>
+          </div>
+
+          {/* Profile Image Upload */}
+          <div className="profile-upload-container">
+            <div 
+              className="profile-image-preview" 
+              onClick={triggerFileInput}
+              style={{ backgroundImage: previewImage ? `url(${previewImage})` : 'none' }}
+            >
+              {!previewImage && <FaImage className="upload-icon" />}
+            </div>
+            <button 
+              type="button" 
+              className="upload-button" 
+              onClick={triggerFileInput}
+            >
+              <FaUpload /> Upload Photo
+            </button>
+            <input 
+              type="file" 
+              ref={fileInputRef} 
+              onChange={handleImageChange} 
+              accept="image/*" 
+            />
           </div>
 
           <div className="form-group">
@@ -141,6 +206,19 @@ const Signup = () => {
               onChange={(e) => setPassword(e.target.value)}
             />
           </div>
+
+          {/* Bio textarea - only shown if user type is freelancer */}
+          {userType === 'freelancer' && (
+            <div className="form-group bio-group">
+              <textarea 
+                id="bio" 
+                name="bio" 
+                placeholder="Tell us about yourself and your skills (optional)" 
+                value={bio}
+                onChange={(e) => setBio(e.target.value)}
+              />
+            </div>
+          )}
           
           <button 
             type="submit" 
@@ -156,16 +234,6 @@ const Signup = () => {
               <span className="checkmark"></span>
               Remember me
             </label>
-          </div>
-          
-          <div className="signup-divider">
-            <p>access quickly</p>
-          </div>
-          
-          <div className="social-signup">
-            <button type="button" className="social-btn google-btn">Google</button>
-            <button type="button" className="social-btn linkedin-btn">LinkedIn</button>
-            <button type="button" className="social-btn sso-btn">SSO</button>
           </div>
           
           <div className="login-prompt">

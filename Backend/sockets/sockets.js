@@ -1,87 +1,150 @@
-import {Server}from 'socket.io'
-const users = {};
+// sockets.js - WebSocket configuration for real-time messaging
+import { Server } from 'socket.io';
+
+// Store active user connections and online status
+const userConnections = {};
 const onlineUsers = new Set();
 
-function configureSocket(server){
-const io = new Server(server, {
+/**
+ * Configure and initialize Socket.IO server
+ * @param {Object} server - HTTP server instance
+ * @returns {Object} Socket.IO server instance
+ */
+function configureSocket(server) {
+  const io = new Server(server, {
     cors: {
-      origin: 'http://localhost:5173', // React Vite app URL
+      origin: process.env.FRONTEND_URL || 'http://localhost:5173',
       methods: ['GET', 'POST'],
+      credentials: true
     }
-});
+  });
 
+  // Handle socket connections
   io.on('connection', (socket) => {
-    console.log('New client connected:', socket.id);
+    console.log('Socket connected:', socket.id);
 
-    // Join user to their own room for receiving messages
-    socket.on('join', (data) => {
-        const { userId } = data;
-        users[userId] = socket.id;
-        socket.join(`user_${userId}`);
-        
-        // Mark user as online
-        onlineUsers.add(userId);
-        console.log(`User ${userId} joined with socket ${socket.id}`);
-        
-        
-        io.emit('user_status_change', { userId, status: 'online' });
-    });
-    
-    // User requests current online users
-    socket.on('get_online_users', () => {
-        socket.emit('online_users', Array.from(onlineUsers));
-    });
-  
-    //Sending messages from user
-    socket.on('send_message', (data) => {
-        const { senderId, receiverId, message, conversationId, timestamp, status } = data;
-        console.log('Message received from socket:', data);
-        
-        const receiverSocketId = users[receiverId];
+    // Register event handlers
+    registerUserEvents(socket, io);
+    registerMessageEvents(socket, io);
+    registerDisconnectEvents(socket, io);
+  });
 
-        // Send to receiver if online
-        if (receiverSocketId) {
-            console.log(`Sending message to receiver ${receiverId} with socket ${receiverSocketId}`);
-            io.to(receiverSocketId).emit('receive_message', {
-                senderId,
-                conversationId,
-                message,
-                timestamp,
-                status
-            });
-        } else {
-            console.log(`Receiver ${receiverId} is not connected`);
-        }
-        
-    });
-  
-    //Disconnection of User
-    socket.on('disconnect', () => {
-        // Remove from `users` object
-        for (const [userId, sockId] of Object.entries(users)) {
-            if (sockId === socket.id) {
-                // Mark user as offline
-                onlineUsers.delete(userId);
-                delete users[userId];
-                
-                // Notify all clients about the user going offline
-                io.emit('user_status_change', { userId, status: 'offline' });
-                
-                console.log(`User ${userId} disconnected`);
-                break;
-            }
-        }
-        console.log('Socket disconnected:', socket.id);
-    });
+  return io;
+}
+
+/**
+ * Register user-related socket events
+ * @param {Object} socket - Socket instance
+ * @param {Object} io - Socket.IO server instance
+ */
+function registerUserEvents(socket, io) {
+  // User joins the socket
+  socket.on('join', (data) => {
+    const { userId } = data;
     
-    // Handle explicit user status changes (away)
-    socket.on('set_user_status', ({ userId, status }) => {
-        // Broadcast user's status change to all clients
-        io.emit('user_status_change', { userId, status });
-        console.log(`User ${userId} changed status to ${status}`);
-    });
-});
-return io;
+    if (!userId) {
+      console.warn('Join attempt without userId');
+      return;
+    }
+    
+    // Associate userId with socket ID
+    userConnections[userId] = socket.id;
+    socket.join(`user_${userId}`);
+    
+    // Mark user as online
+    onlineUsers.add(userId);
+    console.log(`User ${userId} joined with socket ${socket.id}`);
+    
+    // Notify all clients about the user going online
+    io.emit('user_status_change', { userId, status: 'online' });
+  });
+  
+  // User requests list of online users
+  socket.on('get_online_users', () => {
+    socket.emit('online_users', Array.from(onlineUsers));
+  });
+  
+  // User manually changes status (away, etc.)
+  socket.on('set_user_status', ({ userId, status }) => {
+    if (!userId) return;
+    
+    // Broadcast status change to all clients
+    io.emit('user_status_change', { userId, status });
+    console.log(`User ${userId} changed status to ${status}`);
+  });
+}
+
+/**
+ * Register message-related socket events
+ * @param {Object} socket - Socket instance
+ * @param {Object} io - Socket.IO server instance
+ */
+function registerMessageEvents(socket, io) {
+  // User sends a message
+  socket.on('send_message', (data) => {
+    const { senderId, receiverId, message, conversationId, timestamp, status } = data;
+    
+    if (!senderId || !receiverId || !conversationId) {
+      console.warn('Invalid message data received:', data);
+      return;
+    }
+    
+    console.log(`Message from ${senderId} to ${receiverId} in conversation ${conversationId}`);
+    
+    // Get receiver's socket ID if they're online
+    const receiverSocketId = userConnections[receiverId];
+
+    // Send to receiver if they're online
+    if (receiverSocketId) {
+      io.to(receiverSocketId).emit('receive_message', {
+        senderId,
+        conversationId,
+        message,
+        timestamp,
+        status
+      });
+    } else {
+      console.log(`Receiver ${receiverId} is not currently connected`);
+    }
+  });
+}
+
+/**
+ * Register disconnect events
+ * @param {Object} socket - Socket instance
+ * @param {Object} io - Socket.IO server instance
+ */
+function registerDisconnectEvents(socket, io) {
+  socket.on('disconnect', () => {
+    // Find which user this socket belongs to
+    const userId = findUserBySocketId(socket.id);
+    
+    if (userId) {
+      // Mark user as offline
+      onlineUsers.delete(userId);
+      delete userConnections[userId];
+      
+      // Notify all clients about user going offline
+      io.emit('user_status_change', { userId, status: 'offline' });
+      console.log(`User ${userId} disconnected`);
+    }
+    
+    console.log('Socket disconnected:', socket.id);
+  });
+}
+
+/**
+ * Find user ID by socket ID
+ * @param {string} socketId - Socket ID to search for
+ * @returns {string|null} User ID if found, null otherwise
+ */
+function findUserBySocketId(socketId) {
+  for (const [userId, sockId] of Object.entries(userConnections)) {
+    if (sockId === socketId) {
+      return userId;
+    }
+  }
+  return null;
 }
 
 export default configureSocket;

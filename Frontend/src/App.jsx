@@ -14,6 +14,9 @@ import ProtectedRoute from './components/protectedRoute.jsx';
 import { AuthContext } from './context/Authcontext.jsx';
 import Gig from './Pages/Gig Display/GigDsplay.jsx';
 import Messages from './Pages/Messages/Messages.jsx';
+import CreateGig from './Pages/CreateGig/CreateGig.jsx';
+import EditGig from './Pages/EditGig/EditGig.jsx';
+import Settings from './Pages/Settings/Settings.jsx';
 
 // Wrapper component for transitions
 const TransitionWrapper = ({ children }) => {
@@ -33,6 +36,21 @@ const TransitionWrapper = ({ children }) => {
       </CSSTransition>
     </TransitionGroup>
   );
+};
+
+// Generic wrapper for protected routes that don't require specific user type
+const AuthRequiredRoute = ({ children }) => {
+  const { isAuthenticated, loading } = useContext(AuthContext);
+
+  if (loading) {
+    return <div>Loading...</div>;
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return children;
 };
 
 function App() {
@@ -62,7 +80,11 @@ function App() {
     },
     {
       path:'/client/:id',
-      element:(<Gig/>)
+      element:(
+        <AuthRequiredRoute>
+          <Gig/>
+        </AuthRequiredRoute>
+      )
     },
     {
       path: '/freelancer',
@@ -74,7 +96,37 @@ function App() {
     },
     {
       path:'/messages',
-      element:(<Messages/>)
+      element:(
+        <AuthRequiredRoute>
+          <Messages/>
+        </AuthRequiredRoute>
+      )
+    },
+    // Create Gig Page (Protected for Freelancers)
+    {
+      path: '/create-gig',
+      element: (
+        <ProtectedRoute userType="freelancer">
+          <CreateGig />
+        </ProtectedRoute>
+      )
+    },
+    // Edit Gig Page (Protected for Freelancers)
+    {
+      path: '/edit-gig/:gigId',
+      element: (
+        <ProtectedRoute userType="freelancer">
+          <EditGig />
+        </ProtectedRoute>
+      )
+    },
+    {
+      path: '/settings',
+      element: (
+        <AuthRequiredRoute>
+          <Settings />
+        </AuthRequiredRoute>
+      )
     }
   ]);
 
@@ -85,19 +137,7 @@ function App() {
   return (
     <>
       <RouterProvider router={router} />
-      <ToastContainer
-        position="top-right"
-        autoClose={3000}
-        hideProgressBar={false}
-        newestOnTop
-        closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
-        theme="light"
-        transition={CSSTransition}
-      />
+      <ToastContainer />
     </>
   );
 }

@@ -1,7 +1,6 @@
-
 // Frontend/src/Pages/Login/Login.jsx
 import React, { useState, useContext, useEffect } from "react";
-import { FaUser, FaLock, FaArrowLeft, FaGoogle } from "react-icons/fa";
+import { FaUser, FaLock, FaArrowLeft } from "react-icons/fa";
 import { Link, useNavigate } from "react-router-dom";
 import "./Login.css";
 
@@ -168,17 +167,6 @@ if (result.success) {
             >
               {loading ? "Logging in..." : "Log In"}
             </button>
-            
-            <div className="login-divider">
-              <span>OR</span>
-            </div>
-            
-            <div className="social-login">
-              <button type="button" className="google-button">
-                <FaGoogle style={{ fontSize: "18px" }} />
-                Continue with Google
-              </button>
-            </div>
             
             <p className="signup-prompt">
               Don't have an account? <Link to="/signup" className="signup-link">Sign up</Link>

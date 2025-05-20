@@ -1,29 +1,71 @@
-import React, { useContext } from 'react';
+import React, { useContext, useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../../context/Authcontext';
 import './Navbar.css';
-import { useNavigate } from 'react-router-dom';
-import { NavLink } from 'react-router-dom';
 
-// Default values if needed
-const DEFAULT_USER = {
-  name: 'Guest',
-  email: 'guest@example.com',
-  Image: 'https://media-hosting.imagekit.io/86a88d09aae2472d/download.png?Expires=1839859669&Key-Pair-Id=K2ZIVPTIP2VGHC&Signature=0WnB0Iv-RFGZawC~X5GWgn2GwyN7SSljbZHhScYVtt23khRq2V6ra-E-donYyO3RZxkvkqdkDxJqyEkt9cBns4HndW1X5M~jMvG2PmG5rkjdEsatBTTlARuddXC5uTu7Gcp~rojvToPaS5TkGszf7jS1z0AEcZvlhmIXtRNIfx1LQgxnv1yda9rstMn~-eZzHS0vzeyVIGTj~4HuqOgxyozVjshUBM-gyVft3VmZ-b2dN3AZ-VfccVnieynhgnqTRMhT5MYdifXKyiT4wctoFReBsGQTAeVqaGGrNcPzk3hFYxCeNLwLcZToQopHx0ydw7s2IK-zFYFKsPqWRHga4Q__'
-};
+// Import icons
+import { 
+  FaCog,        // Settings
+  FaEnvelope,   // Messages
+  FaSignOutAlt, // Logout
+  FaHome,       // Home/Dashboard
+  FaSignInAlt,  // Login
+  FaUserPlus    // Sign Up
+} from 'react-icons/fa';
 
-const Navbar = ({ onLogout }) => {
-  // Get auth context with safe default values
-  const { user = DEFAULT_USER, isAuthenticated, logout, checkAuthStatus } = useContext(AuthContext) || {};
+// Default image to use when user profile image is not available
+const DEFAULT_USER_IMAGE = "https://dummyimage.com/100/e9ecef/495057&text=User";
+
+/**
+ * Navbar component that adapts based on authentication state
+ * Shows different navigation options for logged-in vs non-logged-in users
+ */
+const Navbar = () => {
+  // Authentication context
+  const { user, isAuthenticated, logout } = useContext(AuthContext) || {};
   const navigate = useNavigate();
+  
+  // Image and UI state
+  const [imgSrc, setImgSrc] = useState(DEFAULT_USER_IMAGE);
+  const [imgError, setImgError] = useState(false);
+  const [debugInfo, setDebugInfo] = useState('');
 
-  // Create a safe user object that always exists and has all required properties
-  const safeUser = {
-    ...DEFAULT_USER,
-    ...(user || {}), // Merge with actual user data if it exists
-    // Ensure Image is never null
-    Image: (user && user.Image) || DEFAULT_USER.Image
+  // ===== Navigation handlers =====
+  
+  /**
+   * Navigate to the appropriate dashboard based on user type
+   */
+  const handleDashboardClick = () => {
+    if (isAuthenticated && user?.User_Type) {
+      const path = user.User_Type === 'freelancer' ? '/freelancer' : '/client';
+      navigate(path);
+    }
   };
 
+  /**
+   * Navigate to settings page
+   */
+  const handleOpenSettings = () => {
+    navigate('/settings');
+  };
+
+  /**
+   * Handle logo click - go to dashboard if logged in, home page if not
+   */
+  const handleLogoClick = (e) => {
+    e.preventDefault();
+    
+    if (isAuthenticated && user) {
+      const path = user.User_Type === 'freelancer' ? '/freelancer' : '/client';
+      navigate(path);
+    } else {
+      navigate('/');
+    }
+  };
+
+  /**
+   * Handle logout and redirect to login page
+   */
   const handleLogout = async () => {
     try {
       if (logout) {
@@ -32,26 +74,108 @@ const Navbar = ({ onLogout }) => {
       navigate('/login');
     } catch (error) {
       console.error('Error during logout:', error);
-      // Navigate anyway as fallback
       navigate('/login');
     }
   };
 
-  // Function to handle Skillify logo click based on auth status
-  const handleLogoClick = (e) => {
-    e.preventDefault();
+  // ===== Image handling =====
+  
+  /**
+   * Resolve the user profile image URL based on different path formats
+   */
+  useEffect(() => {
+    // Default to fallback image right away to prevent empty string src
+    setImgSrc(DEFAULT_USER_IMAGE);
     
-    if (isAuthenticated) {
-      // If authenticated, navigate to the appropriate dashboard based on user type
-      const path = safeUser.User_Type === 'freelancer' ? '/freelancer' : '/client';
-      navigate(path);
-    } else {
-      // If not authenticated, navigate to home page
-      navigate('/');
+    if (!user || !user.Image) {
+      setDebugInfo('No user image found, using default image');
+      return;
     }
+    
+    let imageUrl;
+    const { Image } = user;
+    
+    // Determine the correct URL based on image path format
+    if (Image.startsWith('http')) {
+      // Already a full URL
+      imageUrl = Image;
+    } else if (Image.startsWith('/src/assets/')) {
+      // Frontend static assets
+      imageUrl = `${window.location.origin}${Image.replace('/src', '')}`;
+    } else if (Image.startsWith('/public/')) {
+      // Backend public directory
+      imageUrl = `http://localhost:8081${Image}`;
+    } else if (Image.startsWith('/profileImages/')) {
+      // Legacy format
+      imageUrl = `http://localhost:8081/public${Image}`;
+    } else if (Image.startsWith('/assets/')) {
+      // Frontend assets
+      imageUrl = `${window.location.origin}${Image}`;
+    } else {
+      // Fallback to backend path
+      imageUrl = `http://localhost:8081${Image.startsWith('/') ? '' : '/'}${Image}`;
+    }
+    
+    setDebugInfo(`User ID: ${user.id}, Image path: ${Image}, Resolved URL: ${imageUrl}`);
+    setImgSrc(imageUrl);
+    setImgError(false);
+  }, [user]);
+
+  /**
+   * Handle image loading errors
+   */
+  const handleImageError = () => {
+    console.log('Image failed to load, using default:', imgSrc);
+    setImgError(true);
+    setImgSrc(DEFAULT_USER_IMAGE);
+    setDebugInfo(`Image failed to load: ${imgSrc}, using default placeholder`);
   };
 
-  // Ensure we have something to render even if context is missing
+  // ===== Render components =====
+  
+  /**
+   * Render authenticated user navigation
+   */
+  const renderAuthenticatedNav = () => (
+    <>
+      <div className="user-profile">
+        <img 
+          src={imgSrc || DEFAULT_USER_IMAGE}
+          alt="Profile" 
+          className="profile-image" 
+          onError={handleImageError}
+        />
+        <span className="username">{user.name || user.email || "User"}</span>
+      </div>
+      <button className="nav-button dashboard-button" onClick={handleDashboardClick}>
+        <FaHome className="nav-icon" /> {user.User_Type === 'client' ? 'Home' : 'Dashboard'}
+      </button>
+      <button className="nav-button" onClick={() => navigate('/messages')}>
+        <FaEnvelope className="nav-icon" /> Messages
+      </button>
+      <button className="nav-button settings-button" onClick={handleOpenSettings}>
+        <FaCog className="nav-icon" /> Settings
+      </button>
+      <button className="nav-button logout-button" onClick={handleLogout}>
+        <FaSignOutAlt className="nav-icon" /> Logout
+      </button>
+    </>
+  );
+
+  /**
+   * Render non-authenticated user navigation
+   */
+  const renderUnauthenticatedNav = () => (
+    <>
+      <button className="nav-button login-button" onClick={() => navigate('/login')}>
+        <FaSignInAlt className="nav-icon" /> Login
+      </button>
+      <button className="nav-button signup-button" onClick={() => navigate('/signup')}>
+        <FaUserPlus className="nav-icon" /> Sign Up
+      </button>
+    </>
+  );
+
   return (
     <div>  
       <nav className="navbar">
@@ -59,22 +183,17 @@ const Navbar = ({ onLogout }) => {
           <a href="#" onClick={handleLogoClick} className="nav-logo">Skillify</a>
         </div>
         <div className="nav-right">
-          <div className="user-profile">
-            <img 
-              src={safeUser.Image} 
-              alt="Profile" 
-              className="profile-image" 
-              onError={(e) => {
-                e.target.onerror = null;
-                e.target.src = DEFAULT_USER.Image;
-              }}
-            />
-            <span className="username">{safeUser.name || safeUser.email || "Guest"}</span>
-          </div>
-          <button className="nav-button" onClick={()=>navigate('/messages')}>Messages</button>
-          <button className="nav-button" onClick={handleLogout}>Logout</button>
+          {isAuthenticated && user 
+            ? renderAuthenticatedNav() 
+            : renderUnauthenticatedNav()
+          }
         </div>
       </nav>
+      
+      {/* Debug info panel */}
+      <div style={{position: 'fixed', bottom: 0, background: 'white', padding: '5px', fontSize: '10px', width: '100%', zIndex: 9999}}>
+        {debugInfo}
+      </div>
     </div>
   );
 };

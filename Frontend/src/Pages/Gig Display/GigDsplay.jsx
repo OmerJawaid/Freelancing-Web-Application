@@ -117,10 +117,10 @@ const Gig = () => {
     setPackages(mockPackages);
   };
 
-  // Generate mock reviews since backend endpoint is not implemented yet
+  // Fetch reviews from database only - no mock data
   const fetchReviewsForGig = async (gigId) => {
     try {
-      // First attempt to fetch actual reviews
+      // Fetch actual reviews from the database
       const response = await axios.get(
         `http://localhost:8081/reviews/retrieve`,
         { 
@@ -129,87 +129,17 @@ const Gig = () => {
         }
       );
       
-      if (response.data && Array.isArray(response.data) && response.data.length > 0) {
-        console.log("Retrieved real reviews from database:", response.data);
+      if (response.data && Array.isArray(response.data)) {
+        console.log("Retrieved reviews from database:", response.data);
         setReviews(response.data);
-        return;
       }
     } catch (error) {
-      console.log("Reviews API not available, generating mock reviews instead");
+      console.log("Error fetching reviews or no reviews found:", error.response?.data?.message || error.message);
+      // Set empty reviews array to ensure UI shows "no reviews" message
+      setReviews([]);
     }
-    
-    // If we're here, either the API failed or returned empty data, so generate mock reviews
-    // Always generate 2-3 reviews for better user experience
-    const reviewCount = Math.floor(Math.random() * 2) + 2; // 2-3 reviews
-    const mockReviews = [];
-    
-    // Review titles and descriptions
-    const reviewTitles = [
-      "Great work!",
-      "Exceeded expectations",
-      "Professional service",
-      "Highly recommended",
-      "Amazing quality",
-      "Very satisfied",
-      "Will hire again"
-    ];
-    
-    const reviewDescriptions = [
-      "The freelancer delivered exactly what I needed, on time and with great quality.",
-      "Communication was excellent throughout the project. Very professional service.",
-      "I'm extremely pleased with the results. The work quality exceeded my expectations.",
-      "Quick delivery and excellent attention to detail. Would definitely work with again.",
-      "Very responsive and accommodating to my requests. The final result was perfect.",
-      "A pleasure to work with. Understood my requirements perfectly and delivered great work.",
-      "Incredible value for the price. The quality was much better than I expected.",
-      "Patient, professional and highly skilled. I'll definitely be a repeat customer."
-    ];
-    
-    // Generate the reviews
-    for (let i = 0; i < reviewCount; i++) {
-      const randomRating = Math.floor(Math.random() * 2) + 4; // 4-5 stars
-      const randomTitle = reviewTitles[Math.floor(Math.random() * reviewTitles.length)];
-      const randomDesc = reviewDescriptions[Math.floor(Math.random() * reviewDescriptions.length)];
-      
-      mockReviews.push({
-        Id: i + 1,
-        Title: randomTitle,
-        Description: randomDesc,
-        Rating: randomRating,
-        Date: getRandomRecentDate(),
-        client_Name: getRandomName(),
-        client_Image: `https://dummyimage.com/50/${getRandomColor()}/ffffff&text=${getInitials(getRandomName())}`
-      });
-    }
-    
-    console.log("Using mock reviews data:", mockReviews);
-    setReviews(mockReviews);
   };
   
-  // Helper functions for mock data
-  const getRandomRecentDate = () => {
-    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    const now = new Date();
-    const randomDaysAgo = Math.floor(Math.random() * 60); // 0-60 days ago
-    const date = new Date(now.setDate(now.getDate() - randomDaysAgo));
-    return `${months[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`;
-  };
-  
-  const getRandomName = () => {
-    const firstNames = ["Alex", "Jordan", "Taylor", "Morgan", "Casey", "Riley", "Avery", "Quinn", "Skyler", "Jamie"];
-    const lastNames = ["Smith", "Johnson", "Williams", "Brown", "Jones", "Garcia", "Miller", "Davis", "Rodriguez", "Martinez"];
-    return `${firstNames[Math.floor(Math.random() * firstNames.length)]} ${lastNames[Math.floor(Math.random() * lastNames.length)]}`;
-  };
-  
-  const getInitials = (name) => {
-    return name.split(' ').map(n => n[0]).join('');
-  };
-  
-  const getRandomColor = () => {
-    const colors = ["4285f4", "ea4335", "fbbc05", "34a853", "7b2cbf", "ff7f00", "07b9bd", "2dd4bf", "ff8fa3", "fb6340"];
-    return colors[Math.floor(Math.random() * colors.length)];
-  };
-
   // Function to check if URL is valid
   const isValidUrl = (url) => {
     if (!url) return false;
@@ -223,10 +153,18 @@ const Gig = () => {
 
   // Function to get safe image URL with fallback
   const getSafeImageUrl = (imageUrl, defaultImage) => {
-    if (!imageUrl || !isValidUrl(imageUrl)) {
-      return defaultImage;
-    }
+    if (!imageUrl) return defaultImage;
     return imageUrl;
+  };
+
+  // Function to update gig views
+  const updateGigViews = async (gigId) => {
+    try {
+      await axios.put(`http://localhost:8081/gigs/updateViews/${gigId}`);
+      console.log(`Views updated for gig ${gigId}`);
+    } catch (error) {
+      console.error(`Error updating views for gig ${gigId}:`, error);
+    }
   };
 
   // Main data fetching function
@@ -286,61 +224,24 @@ const Gig = () => {
               setReviews([]);
             }
             
+            // After successfully fetching gig data, update views
+            updateGigViews(gigResponse.data.Id);
+
             setLoading(false);
             return;
           }
         } catch (directFetchError) {
           console.log("Error fetching gig:", directFetchError);
-          
-          // If the gig is not found, try to fetch a sample gig
+
+          // If the gig is not found, explicitly set error and stop loading
           if (directFetchError.response && directFetchError.response.status === 404) {
-            console.log(`Gig with ID ${id} not found, trying to fetch sample gig`);
-            try {
-              const sampleGigResponse = await axios.get(
-                `http://localhost:8081/gigs/retrieveGigByGigId`,
-                { 
-                  params: { Gig_Id: 1 },
-                  withCredentials: true 
-                }
-              );
-              
-              if (sampleGigResponse.data) {
-                console.log("Sample gig data received:", sampleGigResponse.data);
-                setGig(sampleGigResponse.data);
-                setFreelancer({
-                  Id: sampleGigResponse.data.Freelancer_Id,
-                  Name: sampleGigResponse.data.freelancer_Name,
-                  Bio: sampleGigResponse.data.freelancer_Bio,
-                  Rating: sampleGigResponse.data.freelancer_Rating,
-                  Image: sampleGigResponse.data.freelancer_Image,
-                });
-                
-                try {
-                  await fetchPackagesForGig(sampleGigResponse.data.Id);
-                } catch (packageError) {
-                  console.error("Error fetching sample packages:", packageError);
-                  createMockPackages(sampleGigResponse.data.Id);
-                }
-                
-                try {
-                  await fetchReviewsForGig(sampleGigResponse.data.Id || 1);
-                } catch (reviewError) {
-                  console.error("Error fetching sample reviews:", reviewError);
-                  setReviews([]);
-                }
-                
-                setLoading(false);
-                return;
-              }
-            } catch (sampleError) {
-              console.log("Error fetching sample gig:", sampleError);
-              setError("Could not find the requested gig or load a sample gig. Please try again later.");
-              setLoading(false);
-              return;
-            }
+            console.log(`Gig with ID ${id} not found.`);
+            setError("The requested gig does not exist.");
+            setLoading(false);
+            return;
           }
-          
-          // If direct fetch fails, try fetch by freelancer ID
+
+          // If direct fetch fails for other reasons, try fetch by freelancer ID
           try {
             const gigsFromFreelancer = await axios.get(
               `http://localhost:8081/gigs/retrieveGigForGigDisplay`,
@@ -693,38 +594,6 @@ const Gig = () => {
               display: "flex",
               gap: "0.75rem"
             }}>
-              <button style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "0.5rem",
-                padding: "0.5rem 1rem",
-                borderRadius: "6px",
-                fontWeight: "500",
-                cursor: "pointer",
-                border: "1px solid #e5e7eb",
-                backgroundColor: "white",
-                color: "#ef4444",
-                transition: "all 0.2s ease"
-              }} onMouseOver={(e) => e.currentTarget.style.backgroundColor = "#fee2e2"}
-                onMouseOut={(e) => e.currentTarget.style.backgroundColor = "white"}>
-                <FaHeart /> Save
-              </button>
-              <button style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "0.5rem",
-                padding: "0.5rem 1rem",
-                borderRadius: "6px",
-                fontWeight: "500",
-                cursor: "pointer",
-                border: "1px solid #e5e7eb",
-                backgroundColor: "white",
-                color: "#1f2937",
-                transition: "all 0.2s ease"
-              }} onMouseOver={(e) => e.currentTarget.style.backgroundColor = "#f3f4f6"}
-                onMouseOut={(e) => e.currentTarget.style.backgroundColor = "white"}>
-                <FaShare /> Share
-              </button>
             </div>
           </div>
         </div>
@@ -755,7 +624,7 @@ const Gig = () => {
                 position: "relative"
               }}>
                 <img 
-                  src={getSafeImageUrl(gig.Image || gig.image, DEFAULT_GIG_IMAGE)} 
+                  src={gig.Image || DEFAULT_GIG_IMAGE} 
                   alt={gig.Title || gig.title || "Gig Image"} 
                   style={{
                     width: "100%",
@@ -1422,7 +1291,9 @@ const Gig = () => {
                 borderBottom: "1px solid #eaeaea"
               }}>
                 <span style={{ color: "#6b7280", fontSize: "0.95rem" }}>Views</span>
-                <strong style={{ fontWeight: "600", color: "#1f2937" }}>{gig.Views || gig.views || 0}</strong>
+                <strong style={{ fontWeight: "600", color: "#1f2937" }}>
+                  {gig.Views > 1000 ? '1000+' : (gig.Views > 500 ? '500+' : (gig.Views || gig.views || 0))}
+                </strong>
               </div>
               <div className="stat-item" style={{
                 display: "flex",
