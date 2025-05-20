@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { FaSearch, FaPaperPlane, FaEllipsisV, FaCheck, FaCheckDouble, FaImage, FaPaperclip } from 'react-icons/fa';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { FaSearch, FaPaperPlane, FaEllipsisV, FaCheck, FaCheckDouble, FaImage, FaPaperclip, FaDownload, FaFile } from 'react-icons/fa';
 import './Messages.css';
 import Navbar from '../../Components/Navbar Client/Navbar';
 import {io} from 'socket.io-client'
@@ -57,14 +57,20 @@ const Messages = () => {
   const currentUser = useRef(JSON.parse(localStorage.getItem('user')));
   const [onlineUsers, setOnlineUsers] = useState(new Set());
   const [userStatus, setUserStatus] = useState('online');
-  const [lastActivity, setLastActivity] = useState(Date.now());
   const [isActive, setIsActive] = useState(true);
   const activityTimerRef = useRef(null);
-  
+  const lastActivityRef = useRef(Date.now());
+  const [attachment, setAttachment] = useState(null);
+  const [attachmentPreview, setAttachmentPreview] = useState(null);
+  const fileInputRef = useRef(null);
+  const [debugInfo, setDebugInfo] = useState('');
+  const [receivedMessages, setReceivedMessages] = useState({});
+
   // Track user activity
   useEffect(() => {
     const handleActivity = () => {
-      setLastActivity(Date.now());
+      // Update the ref value instead of state to prevent re-renders
+      lastActivityRef.current = Date.now();
       
       if (userStatus === 'away') {
         setUserStatus('online');
@@ -83,7 +89,7 @@ const Messages = () => {
       
       // Set new timer for inactivity
       activityTimerRef.current = setTimeout(() => {
-        if (Date.now() - lastActivity > 300000) { // 5 minutes of inactivity
+        if (Date.now() - lastActivityRef.current > 300000) { // 5 minutes of inactivity
           setUserStatus('away');
           setIsActive(false);
           socket.emit('set_user_status', { 
@@ -111,11 +117,26 @@ const Messages = () => {
         clearTimeout(activityTimerRef.current);
       }
     };
-  }, [lastActivity, userStatus]);
+  }, [userStatus]); // Only depend on userStatus, not lastActivity
 
   // Authentication check
   useEffect(() => {
-    if (!currentUser.current || !currentUser.current.id) {
+    // Get the logged-in user from localStorage
+    const storedUser = localStorage.getItem('user');
+    if (!storedUser) {
+      navigate('/login');
+      return;
+    }
+    
+    // Parse and set the current user
+    try {
+      currentUser.current = JSON.parse(storedUser);
+      if (!currentUser.current || !currentUser.current.id) {
+        navigate('/login');
+        return;
+      }
+    } catch (error) {
+      console.error("Error parsing user data:", error);
       navigate('/login');
       return;
     }
@@ -246,47 +267,22 @@ const Messages = () => {
     if (currentUser.current?.id) {
       retriving_conversations();
     }
-  }, [onlineUsers]);
+  }, []);
 
-  // Fetch messages for selected conversation
+  // Create a separate effect to update online status when onlineUsers changes
   useEffect(() => {
-    if (!selectedConversation.id) return;
+    if (conversations.length === 0 || !onlineUsers) return;
     
-    const fetchMessages = async () => {
-      try {
-        console.log("Fetching messages for conversation:", selectedConversation.id);
-        const response = await axios.get(
-          "http://localhost:8081/messages/retrieve",
-          {
-            params: { conversation_id: selectedConversation.id },
-            withCredentials: true
-          }
-        );
-        
-        console.log("Messages API response:", response.data);
-        
-        if (Array.isArray(response.data)) {
-          setChat(
-            response.data.map(msg => ({
-              senderId: msg.Sender_Id,
-              message: msg.Content,
-              timestamp: msg.Created_at,
-              formattedTime: formatMessageTime(msg.Created_at),
-              status: msg.Status
-            }))
-          );
-        } else {
-          console.error("Unexpected response format:", response.data);
-          setChat([]);
+    setConversations(prevConversations => 
+      prevConversations.map(conv => ({
+        ...conv,
+        user: {
+          ...conv.user,
+          status: onlineUsers.has(conv.user.id.toString()) ? 'online' : 'offline'
         }
-      } catch (error) {
-        console.error("Error fetching messages:", error);
-        setChat([]);
-      }
-    };
-    
-    fetchMessages();
-  }, [selectedConversation]);
+      }))
+    );
+  }, [onlineUsers]);
 
   // Listen for new messages
   useEffect(() => {
@@ -294,34 +290,44 @@ const Messages = () => {
     const handleReceiveMessage = (data) => {
       console.log("Received message via socket:", data);
       
-      // Only update chat if message is for current conversation
-      if (selectedConversation.id && data.conversationId === selectedConversation.id) {
-        console.log("Adding new message to chat");
-        setChat(prevChat => {
-          // Check if message already exists by comparing content and sender
-          const messageExists = prevChat.some(msg => 
-            msg.message === data.message && 
-            msg.senderId === data.senderId &&
-            // Compare timestamps, accounting for small differences
-            Math.abs(new Date(msg.timestamp) - new Date(data.timestamp || new Date())) < 1000
-          );
-          
-          if (messageExists) {
-            console.log("Message already exists in chat, not adding duplicate");
-            return prevChat;
-          }
-          
-          const msgTimestamp = data.timestamp || new Date().toISOString();
-          
-          return [...prevChat, {
-            senderId: data.senderId,
-            message: data.message,
-            timestamp: msgTimestamp,
-            formattedTime: formatMessageTime(msgTimestamp),
-            status: data.status || 'delivered'
-          }];
-        });
+      if (!data || !data.conversationId) {
+        console.error("Invalid message data received:", data);
+        return;
       }
+      
+      // Store received message by conversation ID
+      setReceivedMessages(prev => {
+        const conversationMessages = prev[data.conversationId] || [];
+        
+        // Check if message already exists
+        const messageExists = conversationMessages.some(msg => 
+          msg.message === data.message && 
+          msg.senderId === data.senderId &&
+          msg.type === data.type &&
+          Math.abs(new Date(msg.timestamp) - new Date(data.timestamp || new Date())) < 1000
+        );
+        
+        if (messageExists) {
+          return prev;
+        }
+        
+        const msgTimestamp = data.timestamp || new Date().toISOString();
+        const newMessage = {
+          senderId: data.senderId,
+          message: data.message || '',
+          timestamp: msgTimestamp,
+          formattedTime: formatMessageTime(msgTimestamp),
+          status: data.status || 'delivered',
+          type: data.type || 'text',
+          attachmentUrl: data.attachmentUrl,
+          fileName: data.fileName || (data.attachmentUrl ? data.attachmentUrl.split('/').pop() : null)
+        };
+        
+        return {
+          ...prev,
+          [data.conversationId]: [...conversationMessages, newMessage]
+        };
+      });
       
       // Update conversations list with latest message
       setConversations(prevConversations => {
@@ -330,7 +336,7 @@ const Messages = () => {
             const msgTimestamp = data.timestamp || new Date().toISOString();
             return {
               ...conv,
-              lastMessage: data.message,
+              lastMessage: data.lastMessagePreview || data.message || 'New message',
               timestamp: msgTimestamp,
               formattedTime: formatMessageTime(msgTimestamp),
               unread: conv.user.id === data.senderId ? conv.unread + 1 : conv.unread
@@ -346,7 +352,33 @@ const Messages = () => {
     return () => {
       socket.off('receive_message', handleReceiveMessage);
     };
-  }, [selectedConversation]);
+  }, []);
+
+  // Update chat when selectedConversation or receivedMessages changes
+  useEffect(() => {
+    if (!selectedConversation.id) return;
+    
+    // Add received messages for this conversation to the chat
+    const conversationMessages = receivedMessages[selectedConversation.id] || [];
+    if (conversationMessages.length > 0) {
+      setChat(prevChat => {
+        // Filter out messages that are already in the chat
+        const newMessages = conversationMessages.filter(newMsg => 
+          !prevChat.some(existingMsg => 
+            existingMsg.senderId === newMsg.senderId &&
+            existingMsg.message === newMsg.message &&
+            existingMsg.timestamp === newMsg.timestamp
+          )
+        );
+        
+        if (newMessages.length === 0) return prevChat;
+        return [...prevChat, ...newMessages];
+      });
+    }
+  }, [selectedConversation.id, receivedMessages]);
+
+  // Create a separate memo for selected conversation ID for message filtering
+  const selectedConversationId = selectedConversation?.id;
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -355,82 +387,276 @@ const Messages = () => {
     }
   }, [chat]);
 
-  // Send message function
-  const sendMessage = async() => {
-    if (!selectedConversation.id || !messageInput.trim()) return;
+  // Function to handle file attachment
+  /**
+   * Handle file selection from the file input
+   * Creates a preview for image files
+   * @param {Event} e - The file input change event
+   */
+  const handleAttachment = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
     
-    if (!currentUser.current || !currentUser.current.id) {
+    setAttachment(file);
+    
+    // Create preview based on file type
+    if (file.type.startsWith('image/')) {
+      createImagePreview(file);
+    } else {
+      // For non-image files, clear image preview
+      setAttachmentPreview(null);
+    }
+  };
+
+  /**
+   * Create a preview image for image attachments using FileReader
+   * @param {File} imageFile - The image file to preview
+   */
+  const createImagePreview = (imageFile) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setAttachmentPreview(reader.result);
+    };
+    reader.readAsDataURL(imageFile);
+  };
+
+  /**
+   * Trigger the hidden file input click
+   * @param {string} [acceptType] - Optional file type filter (e.g., 'image/*')
+   */
+  const triggerFileInput = (acceptType) => {
+    if (acceptType && fileInputRef.current) {
+      fileInputRef.current.accept = acceptType;
+    }
+    fileInputRef.current.click();
+  };
+
+  /**
+   * Clear the current attachment and preview
+   */
+  const clearAttachment = () => {
+    setAttachment(null);
+    setAttachmentPreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  /**
+   * Send a message or attachment to the selected conversation
+   */
+  const sendMessage = async() => {
+    // Validate basic requirements
+    if (!selectedConversation.id || (!messageInput.trim() && !attachment)) return;
+    
+    if (!currentUser.current?.id) {
       console.error("No user is logged in");
       return;
     }
     
     const msgTimestamp = new Date().toISOString();
     
-    const newMessage = {
-      conversationId: selectedConversation.id,
-      senderId: currentUser.current.id,
-      receiverId: selectedConversation.user.id,
-      message: messageInput,
-      timestamp: msgTimestamp,
-      status: 'sent'
-    };
-    
-    // Add message to local state immediately
-    setChat(prev => [...prev, {
-      senderId: currentUser.current.id,
-      message: messageInput,
-      timestamp: msgTimestamp,
-      formattedTime: formatMessageTime(msgTimestamp),
-      status: 'sent'
-    }]);
-    
-    // Clear input field
-    setMessageInput('');
-    
     try {
-      console.log("Emitting send_message event:", newMessage);
-      socket.emit('send_message', newMessage);
+      // ===== Prepare message data =====
       
-      // Also save to database
+      // Create FormData for API request
+      const formData = new FormData();
+      formData.append('Conversation_Id', selectedConversation.id);
+      formData.append('Sender_Id', currentUser.current.id);
+      formData.append('Status', 'sent');
+      
+      // Add text content and determine message type
+      formData.append('Content', messageInput);
+      
+      // Set message type based on attachment
+      const messageType = getMessageType(attachment);
+      formData.append('Type', messageType);
+      
+      // Add attachment if present
+      if (attachment) {
+        formData.append('attachment', attachment);
+      }
+      
+      // Create temporary attachment URL for immediate display
+      const temporaryAttachmentUrl = attachment 
+        ? createTemporaryAttachmentUrl(attachment, attachmentPreview)
+        : null;
+      
+      // ===== Update UI immediately for responsiveness =====
+      
+      // Add message to chat display
+      addMessageToChat({
+        senderId: currentUser.current.id,
+        message: messageInput,
+        timestamp: msgTimestamp,
+        attachmentUrl: temporaryAttachmentUrl,
+        type: messageType,
+        fileName: attachment?.name
+      });
+      
+      // Clear input fields
+      setMessageInput('');
+      clearAttachment();
+      
+      // ===== Send to server =====
+      
+      // Submit to API
       const response = await axios.post(
         "http://localhost:8081/messages/upload",
-        {
-          Conversation_Id: selectedConversation.id,
-          Sender_Id: currentUser.current.id,
-          Content: newMessage.message,
-          Type: "text",
-          Status: "sent"
-        },
-        { withCredentials: true }
+        formData,
+        { 
+          withCredentials: true,
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
+        }
       );
       
       console.log("Message saved to database:", response.data);
       
-      // Update conversations list with latest message
-      setConversations(prevConversations => {
-        return prevConversations.map(conv => {
-          if (conv.id === selectedConversation.id) {
-            return {
-              ...conv,
-              lastMessage: newMessage.message,
-              timestamp: msgTimestamp,
-              formattedTime: formatMessageTime(msgTimestamp)
-            };
-          }
-          return conv;
-        });
-      });
+      // ===== Update with server data =====
+      
+      // Prepare socket message
+      const newMessage = {
+        conversationId: selectedConversation.id,
+        senderId: currentUser.current.id,
+        receiverId: selectedConversation.user.id,
+        message: messageInput,
+        timestamp: msgTimestamp,
+        status: 'sent',
+        attachmentUrl: response.data.attachmentUrl,
+        type: response.data.type
+      };
+      
+      // Emit via socket for real-time updates
+      socket.emit('send_message', newMessage);
+      
+      // Update conversation list with latest message
+      updateConversationList(
+        selectedConversation.id, 
+        response.data.lastMessagePreview || messageInput,
+        msgTimestamp
+      );
     } catch(err) {
       console.error("Error sending message:", err);
     }
   };
 
+  /**
+   * Determine message type based on attachment
+   * @param {File} attachment - The file attachment if any
+   * @returns {string} The message type (text, image, or file)
+   */
+  const getMessageType = (attachment) => {
+    if (!attachment) return 'text';
+    return attachment.type.startsWith('image/') ? 'image' : 'file';
+  };
+
+  /**
+   * Create a temporary URL for an attachment to show before server response
+   * @param {File} attachment - The file being attached
+   * @param {string} preview - Image preview data URL if available
+   * @returns {string} URL for temporary display
+   */
+  const createTemporaryAttachmentUrl = (attachment, preview) => {
+    if (attachment.type.startsWith('image/')) {
+      return preview; // Use preview data URL for images
+    } else {
+      return URL.createObjectURL(attachment); // Create temporary URL for files
+    }
+  };
+
+  /**
+   * Add a new message to the chat display
+   * @param {Object} messageData - The message data
+   */
+  const addMessageToChat = (messageData) => {
+    const { senderId, message, timestamp, attachmentUrl, type, fileName } = messageData;
+    
+    setChat(prev => [...prev, {
+      senderId,
+      message,
+      timestamp,
+      formattedTime: formatMessageTime(timestamp),
+      status: 'sent',
+      attachmentUrl,
+      type,
+      fileName
+    }]);
+  };
+
+  /**
+   * Update the conversation list with the latest message
+   * @param {number} conversationId - The ID of the conversation to update
+   * @param {string} messageText - The message text or preview
+   * @param {string} timestamp - ISO timestamp string
+   */
+  const updateConversationList = (conversationId, messageText, timestamp) => {
+    setConversations(prevConversations => {
+      return prevConversations.map(conv => {
+        if (conv.id === conversationId) {
+          return {
+            ...conv,
+            lastMessage: messageText,
+            timestamp,
+            formattedTime: formatMessageTime(timestamp)
+          };
+        }
+        return conv;
+      });
+    });
+  };
+
   const handleSendMessage = (e) => {
     e.preventDefault();
-    if (messageInput.trim()) {
+    // Allow sending if there's either message text OR an attachment
+    if (messageInput.trim() || attachment) {
       sendMessage();
     }
   };
+
+  // Fetch messages for selected conversation
+  useEffect(() => {
+    if (!selectedConversationId) return;
+    
+    const fetchMessages = async () => {
+      try {
+        console.log("Fetching messages for conversation:", selectedConversationId);
+        const response = await axios.get(
+          "http://localhost:8081/messages/retrieve",
+          {
+            params: { conversation_id: selectedConversationId },
+            withCredentials: true
+          }
+        );
+        
+        console.log("Messages API response:", response.data);
+        
+        if (Array.isArray(response.data)) {
+          setChat(
+            response.data.map(msg => ({
+              senderId: msg.Sender_Id,
+              message: msg.Content,
+              timestamp: msg.Created_at,
+              formattedTime: formatMessageTime(msg.Created_at),
+              status: msg.Status,
+              type: msg.Type || 'text',
+              attachmentUrl: msg.Attachment_url,
+              fileName: msg.Attachment_url ? msg.Attachment_url.split('/').pop() : null
+            }))
+          );
+        } else {
+          console.error("Unexpected response format:", response.data);
+          setChat([]);
+        }
+      } catch (error) {
+        console.error("Error fetching messages:", error);
+        setChat([]);
+      }
+    };
+    
+    fetchMessages();
+  }, [selectedConversationId]);
 
   if (loading) {
     return (
@@ -442,12 +668,7 @@ const Messages = () => {
   }
 
   return (
-    <div style={{ 
-      width: '100%', 
-      maxWidth: '100vw', 
-      overflowX: 'hidden',
-      position: 'relative'
-    }}>
+    <div className="messages-page">
       <Navbar/>
       <div className="messages-container">
         {/* Sidebar with conversations */}
@@ -550,7 +771,48 @@ const Messages = () => {
                       className={`message ${isSent ? 'sent' : 'received'}`}
                     >
                       <div className="message-content">
-                        <p>{message.message}</p>
+                        {/* Render image attachments */}
+                        {message.type === 'image' && message.attachmentUrl && (
+                          <div className="message-attachment">
+                            <img 
+                              src={message.attachmentUrl.startsWith('data:') 
+                                ? message.attachmentUrl  // Local preview URL
+                                : `http://localhost:8081${message.attachmentUrl}`} // Server URL
+                              alt="Image attachment" 
+                              className="message-image" 
+                              onClick={() => window.open(
+                                message.attachmentUrl.startsWith('data:') 
+                                  ? message.attachmentUrl 
+                                  : `http://localhost:8081${message.attachmentUrl}`, 
+                                '_blank'
+                              )}
+                            />
+                          </div>
+                        )}
+                        
+                        {/* Render file attachments */}
+                        {message.type === 'file' && message.attachmentUrl && (
+                          <div className="message-attachment file-attachment">
+                            <FaFile className="file-icon" />
+                            <span className="file-name">
+                              {message.fileName || message.attachmentUrl.split('/').pop()}
+                            </span>
+                            <a 
+                              href={`http://localhost:8081${message.attachmentUrl}`} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              download
+                              className="download-button"
+                            >
+                              <FaDownload />
+                            </a>
+                          </div>
+                        )}
+                        
+                        {/* Render message text only if it's not empty */}
+                        {message.message && (
+                          <p>{message.message}</p>
+                        )}
                         <div className="message-meta">
                           <span className="timestamp">{message.formattedTime}</span>
                           {isSent && (
@@ -566,13 +828,36 @@ const Messages = () => {
                 <div ref={chatEndRef} />
               </div>
 
+              {/* Attachment preview */}
+              {attachmentPreview && (
+                <div className="attachment-preview">
+                  <img src={attachmentPreview} alt="Attachment preview" />
+                  <button className="clear-attachment" onClick={clearAttachment}>×</button>
+                </div>
+              )}
+              {attachment && !attachmentPreview && (
+                <div className="attachment-preview file-preview">
+                  <div className="file-info">
+                    <FaFile className="file-icon" />
+                    <span className="file-name">{attachment.name}</span>
+                  </div>
+                  <button className="clear-attachment" onClick={clearAttachment}>×</button>
+                </div>
+              )}
+
               {/* Message input */}
               <form className="message-input-container" onSubmit={handleSendMessage}>
                 <div className="message-input-wrapper">
-                  <button type="button" className="attachment-button">
+                  <input 
+                    type="file" 
+                    ref={fileInputRef} 
+                    onChange={handleAttachment} 
+                    style={{ display: 'none' }} 
+                  />
+                  <button type="button" className="attachment-button" onClick={() => triggerFileInput()}>
                     <FaPaperclip />
                   </button>
-                  <button type="button" className="image-button">
+                  <button type="button" className="image-button" onClick={() => triggerFileInput('image/*')}>
                     <FaImage />
                   </button>
                   <input
@@ -582,7 +867,7 @@ const Messages = () => {
                     placeholder="Type a message..."
                     className="message-input"
                   />
-                  <button type="submit" className="send-button">
+                  <button type="submit" className="send-button" disabled={!messageInput.trim() && !attachment}>
                     <FaPaperPlane />
                   </button>
                 </div>
@@ -596,6 +881,12 @@ const Messages = () => {
           )}
         </div>
       </div>
+      {/* Debug info panel */}
+      {debugInfo && (
+        <div className="debug-info-panel">
+          {debugInfo}
+        </div>
+      )}
     </div>
   );
 };

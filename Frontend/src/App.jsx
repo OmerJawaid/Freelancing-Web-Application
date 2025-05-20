@@ -16,6 +16,7 @@ import Gig from './Pages/Gig Display/GigDsplay.jsx';
 import Messages from './Pages/Messages/Messages.jsx';
 import CreateGig from './Pages/CreateGig/CreateGig.jsx';
 import EditGig from './Pages/EditGig/EditGig.jsx';
+import Settings from './Pages/Settings/Settings.jsx';
 
 // Wrapper component for transitions
 const TransitionWrapper = ({ children }) => {
@@ -35,6 +36,21 @@ const TransitionWrapper = ({ children }) => {
       </CSSTransition>
     </TransitionGroup>
   );
+};
+
+// Generic wrapper for protected routes that don't require specific user type
+const AuthRequiredRoute = ({ children }) => {
+  const { isAuthenticated, loading } = useContext(AuthContext);
+
+  if (loading) {
+    return <div>Loading...</div>;
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return children;
 };
 
 function App() {
@@ -64,7 +80,11 @@ function App() {
     },
     {
       path:'/client/:id',
-      element:(<Gig/>)
+      element:(
+        <AuthRequiredRoute>
+          <Gig/>
+        </AuthRequiredRoute>
+      )
     },
     {
       path: '/freelancer',
@@ -76,7 +96,11 @@ function App() {
     },
     {
       path:'/messages',
-      element:(<Messages/>)
+      element:(
+        <AuthRequiredRoute>
+          <Messages/>
+        </AuthRequiredRoute>
+      )
     },
     // Create Gig Page (Protected for Freelancers)
     {
@@ -94,6 +118,14 @@ function App() {
         <ProtectedRoute userType="freelancer">
           <EditGig />
         </ProtectedRoute>
+      )
+    },
+    {
+      path: '/settings',
+      element: (
+        <AuthRequiredRoute>
+          <Settings />
+        </AuthRequiredRoute>
       )
     }
   ]);

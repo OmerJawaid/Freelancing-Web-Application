@@ -594,38 +594,6 @@ const Gig = () => {
               display: "flex",
               gap: "0.75rem"
             }}>
-              <button style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "0.5rem",
-                padding: "0.5rem 1rem",
-                borderRadius: "6px",
-                fontWeight: "500",
-                cursor: "pointer",
-                border: "1px solid #e5e7eb",
-                backgroundColor: "white",
-                color: "#ef4444",
-                transition: "all 0.2s ease"
-              }} onMouseOver={(e) => e.currentTarget.style.backgroundColor = "#fee2e2"}
-                onMouseOut={(e) => e.currentTarget.style.backgroundColor = "white"}>
-                <FaHeart /> Save
-              </button>
-              <button style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "0.5rem",
-                padding: "0.5rem 1rem",
-                borderRadius: "6px",
-                fontWeight: "500",
-                cursor: "pointer",
-                border: "1px solid #e5e7eb",
-                backgroundColor: "white",
-                color: "#1f2937",
-                transition: "all 0.2s ease"
-              }} onMouseOver={(e) => e.currentTarget.style.backgroundColor = "#f3f4f6"}
-                onMouseOut={(e) => e.currentTarget.style.backgroundColor = "white"}>
-                <FaShare /> Share
-              </button>
             </div>
           </div>
         </div>
