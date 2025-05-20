@@ -91,7 +91,9 @@ const Signup = () => {
         }
       });
 
-      if (result.data.Signup_Sucess) {
+      console.log('Signup response:', result.data); // Add logging to see the response
+
+      if (result.data.Signup_Success) {
         toast.success('Account created successfully! Redirecting to login...');
         // Add a delay before navigation to allow the success toast to be visible
         setTimeout(() => {
@@ -104,9 +106,11 @@ const Signup = () => {
           });
         }, 1500); // 1.5 second delay
       } else {
-        toast.error('Failed to create account. Please try again.');
+        toast.error(result.data.message || 'Failed to create account. Please try again.');
       }
     } catch (err) {
+      console.error('Signup error:', err);
+      // Show the specific error message from the server if available
       toast.error(err.response?.data?.message || 'An error occurred. Please try again.');
     } finally {
       setIsLoading(false);

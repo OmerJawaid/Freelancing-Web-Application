@@ -51,102 +51,134 @@ export const upload = multer({
 });
 
 //Registering a new user: Inserting data into table user
-const signup=async(req,res)=>{
-   try{
+const signup = async (req, res) => {
+   try {
+      console.log('Starting signup process...');
       // Extract data from form
-      const {Name, Email, Password, User_Type, Bio} = req.body;
+      const { Name, Email, Password, User_Type, Bio } = req.body;
+      console.log('Received signup data:', { Name, Email, User_Type, Bio: Bio ? 'provided' : 'not provided' });
       
       // Get profile image file if uploaded
       const profileImage = req.file;
       let imagePath = null;
       
       if (profileImage) {
-         // Store the public URL path to the image
          imagePath = `/public/profileImages/${profileImage.filename}`;
-         console.log(`Image path stored in database: ${imagePath}`);
+         console.log('Profile image uploaded:', imagePath);
       } else {
-         // Set a default image path
          imagePath = `/public/profileImages/default-user.png`;
+         console.log('Using default profile image');
          
-         // Copy default image if it doesn't exist
          const defaultImageSource = path.join(__dirname, '..', 'public', 'default-user.png');
          const defaultImageDest = path.join(publicImagesDir, 'default-user.png');
          
          if (!fs.existsSync(defaultImageDest) && fs.existsSync(defaultImageSource)) {
             fs.copyFileSync(defaultImageSource, defaultImageDest);
+            console.log('Default image copied successfully');
          } else if (!fs.existsSync(defaultImageDest)) {
-            // Create a simple default image as fallback (not implemented)
-            console.log("Default user image not found");
+            console.log("Warning: Default user image not found");
          }
       }
       
-      if(!Email || !Password || !Name || !User_Type){
-         return res.status(400).json({message:"Name, Email, Password or UserType is Empty"})
+      if (!Email || !Password || !Name || !User_Type) {
+         console.log('Validation failed:', { Email: !!Email, Password: !!Password, Name: !!Name, User_Type: !!User_Type });
+         return res.status(400).json({ message: "Name, Email, Password or UserType is Empty" });
       }
       
-      //Existing account(Email)
-      const [existing]=await database_pool.query('Select * From user where Email=?', Email)
-      if(existing.length>0){
-         return res.status(409).json({message:"Email already Registered"})
+      // Check for existing account
+      console.log('Checking for existing account...');
+      const [existing] = await database_pool.query('Select * From user where Email=?', Email);
+      if (existing.length > 0) {
+         console.log('Email already registered:', Email);
+         return res.status(409).json({ message: "Email already Registered" });
       }
 
-      //Bycrypting Password
-    bcrypt.genSalt(saltRounds, function(err, salt) {
-        if (err) {
-        console.error("Salt generation error:", err);
-        return;
-    }
-        bcrypt.hash(Password, salt, async function (err, hash) {
-            if (err) {
-            console.error("Hashing error:", err);
-            return;
-        }
-       try {
-            const [result] = await database_pool.query(
-                'INSERT INTO user(Email, Password, created_at) VALUES (?, ?, ?)',
-                [Email, hash, new Date()]
-            );
-            console.log("User created:", result);
-        } catch (dbError) {
-            console.error("Database error:", dbError);
-        }
-     });
-    });
-      
-      //Registering New User
-      if(User_Type=="freelancer"){
-         try{
-            // Include Bio field for freelancers if provided
-            const [Freelancer_Rows] = await database_pool.query(
+      // Hash password and create user in a single async operation
+      console.log('Hashing password...');
+      let hash;
+      try {
+         hash = await new Promise((resolve, reject) => {
+            bcrypt.hash(Password, saltRounds, (err, hash) => {
+               if (err) {
+                  console.error('Password hashing error:', err);
+                  reject(err);
+               } else {
+                  resolve(hash);
+               }
+            });
+         });
+         console.log('Password hashed successfully');
+      } catch (hashError) {
+         console.error('Failed to hash password:', hashError);
+         throw new Error('Failed to process password');
+      }
+
+      // Create user record
+      console.log('Creating user record...');
+      let result;
+      try {
+         [result] = await database_pool.query(
+            'INSERT INTO user(Email, Password, created_at) VALUES (?, ?, ?)',
+            [Email, hash, new Date()]
+         );
+         console.log('User record created successfully:', result.insertId);
+      } catch (dbError) {
+         console.error('Failed to create user record:', dbError);
+         throw new Error('Failed to create user account');
+      }
+
+      // Create profile based on user type
+      console.log('Creating user profile...');
+      try {
+         if (User_Type === "freelancer") {
+            await database_pool.query(
                'Insert INTO freelancers(Id, Name, bio, Image) VALUES(?,?,?,?)',
                [result.insertId, Name, Bio || null, imagePath]
-         );
+            );
+            console.log('Freelancer profile created successfully');
+         } else if (User_Type === "client") {
+            await database_pool.query(
+               'Insert INTO clients(Id, Name, Image) VALUES(?,?,?)',
+               [result.insertId, Name, imagePath]
+            );
+            console.log('Client profile created successfully');
+         } else {
+            console.log('Invalid user type:', User_Type);
+            return res.status(404).json({ message: "Invalid User Type" });
          }
-         catch(err){
-            console.error("Error creating freelancer profile:", err);
-            return res.status(404).json({ message: err.message || "Error creating freelancer profile" });   
+      } catch (profileError) {
+         console.error('Failed to create user profile:', profileError);
+         // If profile creation fails, we should clean up the user record
+         try {
+            await database_pool.query('DELETE FROM user WHERE id = ?', [result.insertId]);
+            console.log('Cleaned up user record after profile creation failure');
+         } catch (cleanupError) {
+            console.error('Failed to clean up user record:', cleanupError);
          }
+         throw new Error('Failed to create user profile');
       }
-      else if(User_Type == "client"){
-         const[Client_Rows]=await database_pool.query(
-            'Insert INTO clients(Id, Name, Image) VALUES(?,?,?)',
-            [result.insertId, Name, imagePath]
-         );
-      }
-      else{
-         return res.status(404).json({ message: "Invalid User Type"});
-      }
-      
 
+      console.log('Signup process completed successfully');
       return res.status(201).json({
-         Signup_Sucess: true, 
-         message: "User created successfully", 
+         Signup_Success: true,
+         message: "User created successfully",
          userId: result.insertId
       });
-   }
-   catch(err){
-      console.error("Signup error:", err);
-      return res.status(500).json({ message: err.message || "An error occurred during signup" });
+   } catch (err) {
+      console.error("Signup process failed:", err);
+      // Check if this is a known error with a specific message
+      if (err.message === 'Failed to process password' || 
+          err.message === 'Failed to create user account' || 
+          err.message === 'Failed to create user profile') {
+         return res.status(500).json({ 
+            message: err.message,
+            details: "Please try again. If the problem persists, contact support."
+         });
+      }
+      return res.status(500).json({ 
+         message: "An error occurred during signup",
+         details: process.env.NODE_ENV === 'development' ? err.message : undefined
+      });
    }
 }
 
