@@ -10,7 +10,8 @@ import {
   FaSignOutAlt, // Logout
   FaHome,       // Home/Dashboard
   FaSignInAlt,  // Login
-  FaUserPlus    // Sign Up
+  FaUserPlus,   // Sign Up
+  FaShoppingBag // Orders
 } from 'react-icons/fa';
 
 // Default image to use when user profile image is not available
@@ -37,7 +38,17 @@ const Navbar = () => {
    */
   const handleDashboardClick = () => {
     if (isAuthenticated && user?.User_Type) {
-      const path = user.User_Type === 'freelancer' ? '/freelancer' : '/client';
+      const path = user.User_Type === 'freelancer' ? '/freelancer-dashboard' : '/client-dashboard';
+      navigate(path);
+    }
+  };
+
+  /**
+   * Navigate to the appropriate orders page based on user type
+   */
+  const handleOrdersClick = () => {
+    if (isAuthenticated && user?.User_Type) {
+      const path = user.User_Type === 'freelancer' ? '/freelancer-orders' : '/client-orders';
       navigate(path);
     }
   };
@@ -56,7 +67,7 @@ const Navbar = () => {
     e.preventDefault();
     
     if (isAuthenticated && user) {
-      const path = user.User_Type === 'freelancer' ? '/freelancer' : '/client';
+      const path = user.User_Type === 'freelancer' ? '/freelancer-dashboard' : '/client-dashboard';
       navigate(path);
     } else {
       navigate('/');
@@ -152,6 +163,9 @@ const Navbar = () => {
       </button>
       <button className="nav-button" onClick={() => navigate('/messages')}>
         <FaEnvelope className="nav-icon" /> Messages
+      </button>
+      <button className="nav-button" onClick={handleOrdersClick}>
+        <FaShoppingBag className="nav-icon" /> {user.User_Type === 'client' ? 'My Orders' : 'Manage Orders'}
       </button>
       <button className="nav-button settings-button" onClick={handleOpenSettings}>
         <FaCog className="nav-icon" /> Settings

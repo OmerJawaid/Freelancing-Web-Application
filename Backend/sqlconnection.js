@@ -46,7 +46,7 @@ app.use(session({
 const database_pool = mysql.createPool({
     host: 'localhost',
     user: 'root',
-    password: 'Hina@1976',
+    password: 'Ahmad123',
     database: 'skillify',
     waitForConnections: true,
     connectionLimit: 10,

@@ -1,10 +1,11 @@
-import React, { useEffect, useState, useRef } from 'react'
+import React, { useEffect, useState, useRef, useContext } from 'react'
 import './GigDisplay.css'
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import Navbar from '../../Components/Navbar Client/Navbar';
 import { FaStar, FaClock, FaCheck, FaUser, FaEnvelope, FaShoppingCart, FaHeart, FaShare, FaQuoteLeft, FaChevronDown, FaChevronUp, FaChevronRight } from 'react-icons/fa';
 import axios from 'axios';
 import Footer from '../../Components/Footer/Footer';
+import { AuthContext } from '../../context/Authcontext';
 
 // Default images for fallbacks - using more reliable sources
 const DEFAULT_GIG_IMAGE = "https://dummyimage.com/800x450/e9ecef/495057&text=Gig+Image";
@@ -13,6 +14,8 @@ const DEFAULT_REVIEW_IMAGE = "https://dummyimage.com/50/e9ecef/495057&text=User"
 
 const Gig = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
+  const { user } = useContext(AuthContext);
   const [gig, setGig] = useState(null);
   const [freelancer, setFreelancer] = useState(null);
   const [packages, setPackages] = useState([]);
@@ -24,6 +27,7 @@ const Gig = () => {
   const [backendStatus, setBackendStatus] = useState("unknown");
   const [showAllReviews, setShowAllReviews] = useState(false);
   const [showFullDescription, setShowFullDescription] = useState(false);
+  const [orderSuccess, setOrderSuccess] = useState(false);
   const reviewsRef = useRef(null);
   
   // Helper to get package name based on Type
@@ -309,6 +313,55 @@ const Gig = () => {
     reviewsRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
+  // Handle the order creation
+  const handleOrder = async () => {
+    try {
+      if (!user || !user.id) {
+        alert("You need to be logged in to place an order!");
+        navigate('/login');
+        return;
+      }
+
+      if (user.User_Type !== 'client') {
+        alert("Only clients can place orders!");
+        return;
+      }
+
+      if (!gig || !gig.Id || !gig.Freelancer_Id) {
+        alert("Unable to place order. Missing gig information.");
+        return;
+      }
+
+      // Get the selected package
+      const selectedPkg = packages[selectedPackage];
+      if (!selectedPkg) {
+        alert("Please select a package to order.");
+        return;
+      }
+
+      const response = await axios.post(
+        "http://localhost:8081/orders/create",
+        {
+          User_Id: user.id,
+          Freelancer_Id: gig.Freelancer_Id,
+          Gig_Id: gig.Id,
+          Package_Id: selectedPkg.ID
+        },
+        { withCredentials: true }
+      );
+
+      if (response.data && response.data.message) {
+        setOrderSuccess(true);
+        setTimeout(() => {
+          navigate('/client-orders');
+        }, 2000);
+      }
+    } catch (err) {
+      console.error("Error creating order:", err);
+      alert("Failed to create order. Please try again.");
+    }
+  };
+
   // Loading state
   if (loading) {
     return (
@@ -527,6 +580,25 @@ const Gig = () => {
     <div className="gig-display-container">
       <Navbar />
       
+      {orderSuccess && (
+        <div style={{
+          position: "fixed",
+          top: "50%",
+          left: "50%",
+          transform: "translate(-50%, -50%)",
+          backgroundColor: "rgba(16, 185, 129, 0.95)",
+          color: "white",
+          padding: "20px 40px",
+          borderRadius: "8px",
+          zIndex: 1000,
+          boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+          textAlign: "center"
+        }}>
+          <h3 style={{ marginBottom: "10px" }}>Order Placed Successfully!</h3>
+          <p>Redirecting to your orders...</p>
+        </div>
+      )}
+
       <div className="gig-content">
         <div className="gig-header" style={{
           marginBottom: "2.5rem",
@@ -1253,7 +1325,8 @@ const Gig = () => {
                                 transition: "all 0.2s ease"
                               }}
                               onMouseOver={(e) => e.currentTarget.style.backgroundColor = "#059669"}
-                              onMouseOut={(e) => e.currentTarget.style.backgroundColor = "#10b981"}>
+                              onMouseOut={(e) => e.currentTarget.style.backgroundColor = "#10b981"}
+                              onClick={handleOrder}>
                                 <FaShoppingCart /> Order Now
                               </button>
                             </>
