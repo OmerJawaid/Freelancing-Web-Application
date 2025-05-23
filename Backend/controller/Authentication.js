@@ -50,6 +50,8 @@ export const upload = multer({
    }
 });
 
+import { UserFactory } from '../utils/UserFactory.js';
+
 //Registering a new user: Inserting data into table user
 const signup = async (req, res) => {
    try {
@@ -127,25 +129,17 @@ const signup = async (req, res) => {
          throw new Error('Failed to create user account');
       }
 
-      // Create profile based on user type
+      // Create profile based on user type using Factory Pattern
       console.log('Creating user profile...');
       try {
-         if (User_Type === "freelancer") {
-            await database_pool.query(
-               'Insert INTO freelancers(Id, Name, bio, Image) VALUES(?,?,?,?)',
-               [result.insertId, Name, Bio || null, imagePath]
-            );
-            console.log('Freelancer profile created successfully');
-         } else if (User_Type === "client") {
-            await database_pool.query(
-               'Insert INTO clients(Id, Name, Image) VALUES(?,?,?)',
-               [result.insertId, Name, imagePath]
-            );
-            console.log('Client profile created successfully');
-         } else {
-            console.log('Invalid user type:', User_Type);
-            return res.status(404).json({ message: "Invalid User Type" });
-         }
+         const user = UserFactory.createUser(User_Type, {
+            id: result.insertId,
+            name: Name,
+            bio: Bio || null,
+            image: imagePath
+         });
+         await user.saveProfile(database_pool);
+         console.log(`${User_Type} profile created successfully`);
       } catch (profileError) {
          console.error('Failed to create user profile:', profileError);
          // If profile creation fails, we should clean up the user record
