@@ -17,11 +17,11 @@ const BACKEND_URL = 'http://localhost:8081';
  * @returns {string} A valid image URL
  */
 export const getImageUrl = (imagePath, defaultImage = DEFAULT_USER_IMAGE) => {
-  console.log('Getting URL for image path:', imagePath);
+  // console.log('Getting URL for image path:', imagePath);
   
   // If path is null or empty, return default
   if (!imagePath) {
-    console.log('No image path provided, using default');
+    // console.log('No image path provided, using default');
     return defaultImage;
   }
 

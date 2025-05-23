@@ -5,12 +5,12 @@ import './Navbar.css';
 
 // Import icons
 import { 
-  FaCog,        // Settings
-  FaEnvelope,   // Messages
-  FaSignOutAlt, // Logout
-  FaHome,       // Home/Dashboard
-  FaSignInAlt,  // Login
-  FaUserPlus    // Sign Up
+  FaCog,        // Settings Icon
+  FaEnvelope,   // Messages Icon
+  FaSignOutAlt, // Logout Icon
+  FaHome,       // Home/Dashboard Icon
+  FaSignInAlt,  // Login Icon
+  FaUserPlus    // Sign Up Icon
 } from 'react-icons/fa';
 
 // Default image to use when user profile image is not available
@@ -42,16 +42,12 @@ const Navbar = () => {
     }
   };
 
-  /**
-   * Navigate to settings page
-   */
+  //Navigate to settings page
   const handleOpenSettings = () => {
     navigate('/settings');
   };
 
-  /**
-   * Handle logo click - go to dashboard if logged in, home page if not
-   */
+  //Handle logo click - go to dashboard if logged in, home page if not
   const handleLogoClick = (e) => {
     e.preventDefault();
     

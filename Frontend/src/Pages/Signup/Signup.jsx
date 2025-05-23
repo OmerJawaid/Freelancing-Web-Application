@@ -91,7 +91,7 @@ const Signup = () => {
         }
       });
 
-      console.log('Signup response:', result.data); // Add logging to see the response
+      // console.log('Signup response:', result.data); // Add logging to see the response
 
       if (result.data.Signup_Success) {
         toast.success('Account created successfully! Redirecting to login...');

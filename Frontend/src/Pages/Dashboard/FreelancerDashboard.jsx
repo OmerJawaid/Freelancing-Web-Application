@@ -11,7 +11,8 @@ const FreelancerDashboard = () => {
   const [animatingGigId, setAnimatingGigId] = useState(null);
   const navigate = useNavigate();
   const { user } = useContext(AuthContext);
-  const [filterType, setFilterType] = useState('all'); // 'all', 'active', or 'paused'
+  const [filterType, setFilterType] = useState('all');
+  const [isFiltering, setIsFiltering] = useState(false);
 
   useEffect(()=>{
     async function Gig_Retrival(){
@@ -56,9 +57,17 @@ const FreelancerDashboard = () => {
     });
   };
 
-  // Handle filter button click
+  // Handle filter button click with transition
   const handleFilterChange = (newFilter) => {
+    if (newFilter === filterType) return;
+    
+    setIsFiltering(true);
     setFilterType(newFilter);
+    
+    // Remove filtering flag after animation completes
+    setTimeout(() => {
+      setIsFiltering(false);
+    }, 400); // Match the duration of filterTransition animation
   };
 
   const [myGigs, setMyGigs] = useState([
@@ -91,7 +100,7 @@ const FreelancerDashboard = () => {
     avgRating: 4.9
   };
 
-  // Function to toggle gig state
+  // Function to toggle gig state with transition
   const toggleGigState = async (gigId, currentState) => {
     const newState = currentState === 1 ? 0 : 1;
     
@@ -109,19 +118,17 @@ const FreelancerDashboard = () => {
           gig.Id === gigId ? { ...gig, State: newState } : gig
         ));
         
-        console.log(`Gig ${gigId} state updated to ${newState}`);
-        
         // Allow animation to complete before clearing the animating state
         setTimeout(() => {
           setAnimatingGigId(null);
-        }, 600); // Animation duration plus a small buffer
+        }, 600); // Match the duration of stateTransition animation
       } else {
         console.error("Failed to update gig state:", response.data.message);
-        setAnimatingGigId(null); // Clear animating state on error
+        setAnimatingGigId(null);
       }
     } catch (error) {
       console.error(`Error toggling state for gig ${gigId}:`, error);
-      setAnimatingGigId(null); // Clear animating state on error
+      setAnimatingGigId(null);
     }
   };
 
@@ -213,11 +220,17 @@ const FreelancerDashboard = () => {
               )}
             </div>
           ) : (
-            <div className="gigs-grid" key={`gigs-grid-${filterType}`}>
+            <div 
+              className="gigs-grid" 
+              key={`gigs-grid-${filterType}`}
+              data-filtering={isFiltering}
+            >
               {filteredGigs().map((gig) => (
                 <div 
                   key={`${gig.Id}-${filterType}`} 
-                  className={`gig-card freelancer-gig ${animatingGigId === gig.Id ? 'gig-animating' : ''}`}
+                  className={`gig-card freelancer-gig ${
+                    animatingGigId === gig.Id ? 'state-transition' : ''
+                  }`}
                 >
                   <div className="gig-image">
                     <img src={gig.Image} alt={gig.Title} />

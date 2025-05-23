@@ -46,7 +46,7 @@ export const AuthProvider = ({ children }) => {
           socketRef.current = io('http://localhost:8081');
         }
         socketRef.current.emit('register', userData.id);
-        console.log("Socket registered for user:", userData.id);
+        // console.log("Socket registered for user:", userData.id);
       }
     };
 
