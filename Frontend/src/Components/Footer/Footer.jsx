@@ -4,7 +4,7 @@ import './Footer.css'
 const Footer = () => {
   return (
     <div> <footer className="footer">
-    <div className="container">
+    <div className="container" style={{backgroundColor: "#334155", border:"none"}}>
       <div className="footer-grid">
         <div className="footer-column">
           <h3 className="footer-heading">Categories</h3>

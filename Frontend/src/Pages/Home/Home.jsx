@@ -98,7 +98,7 @@ const Home = () => {
       
       {/* Hero Section */}
       <section className="hero-section">
-        <div className="container hero-container">
+        <div className="container hero-container" style={{backgroundColor: "#064e3b", border:"none"}}>
           <div className="hero-content">
             <h1 className="hero-title">
               Find the perfect <span>freelance</span> services for your business
@@ -129,7 +129,7 @@ const Home = () => {
 
       {/* Category Slider */}
       <section className="category-section" id="category-section">
-        <div className="container">
+        <div className="container" style={{boxShadow:"none"}}>
           <div className="category-header">
             <h2 className="category-title">Explore Popular Categories</h2>
             <div className="slider-controls">
