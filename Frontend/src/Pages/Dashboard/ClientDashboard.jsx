@@ -33,6 +33,13 @@ const ClientDashboard = () => {
     navigate(`/client/${id}`);
   }
 
+  const getFreelancerImageUrl = (imagePath) => {
+    if (!imagePath) return defaultFreelancerImage;
+    // Remove the /public prefix if it exists
+    const cleanPath = imagePath.replace(/^\/public/, '');
+    return `http://localhost:8081${cleanPath}`;
+  };
+
   return (
     <div className="dashboard">
       <Navbar/>
@@ -172,7 +179,7 @@ const ClientDashboard = () => {
                       </p>
                       <div className="freelancer-info">
                         <img
-                          src={gig.freelancerimage || defaultFreelancerImage}
+                          src={getFreelancerImageUrl(gig.freelancerimage)}
                           alt={gig.Name}
                           className="freelancer-image"
                           onError={(e) => {

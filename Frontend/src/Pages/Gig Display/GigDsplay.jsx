@@ -167,6 +167,14 @@ const Gig = () => {
     }
   };
 
+  // Function to get the correct image URL
+  const getImageUrl = (imagePath, defaultImage) => {
+    if (!imagePath) return defaultImage;
+    // Remove the /public prefix if it exists
+    const cleanPath = imagePath.replace(/^\/public/, '');
+    return `http://localhost:8081${cleanPath}`;
+  };
+
   // Main data fetching function
   useEffect(() => {
     const fetchGigData = async () => {
@@ -553,7 +561,7 @@ const Gig = () => {
               gap: "1rem"
             }}>
               <img 
-                src={getSafeImageUrl(safeFreelancer.Image, DEFAULT_USER_IMAGE)} 
+                src={getImageUrl(safeFreelancer.Image, DEFAULT_USER_IMAGE)} 
                 alt={safeFreelancer.Name || "Freelancer"} 
                 className="freelancer-avatar" 
                 style={{
@@ -772,7 +780,7 @@ const Gig = () => {
                 alignItems: "flex-start"
               }}>
                 <img 
-                  src={getSafeImageUrl(safeFreelancer.Image, DEFAULT_USER_IMAGE)} 
+                  src={getImageUrl(safeFreelancer.Image, DEFAULT_USER_IMAGE)} 
                   alt={safeFreelancer.Name || "Freelancer"} 
                   className="freelancer-profile-image" 
                   style={{
@@ -1013,7 +1021,7 @@ const Gig = () => {
                             }}>
                               <div style={{ display: 'flex', alignItems: 'center' }}>
                                 <img 
-                                  src={getSafeImageUrl(reviewData.clientImage, DEFAULT_REVIEW_IMAGE)} 
+                                  src={getImageUrl(reviewData.clientImage, DEFAULT_REVIEW_IMAGE)} 
                                   alt={reviewData.clientName} 
                                   className="reviewer-image"
                                   style={{

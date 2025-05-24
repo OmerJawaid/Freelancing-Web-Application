@@ -163,12 +163,6 @@ const Signup = () => {
             >
               <FaUpload /> Upload Photo
             </button>
-            <input 
-              type="file" 
-              ref={fileInputRef} 
-              onChange={handleImageChange} 
-              accept="image/*" 
-            />
           </div>
 
           <div className="form-group">

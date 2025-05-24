@@ -70,12 +70,20 @@
   border-radius: 6px;
   width: 100%;
   transition: all 0.2s ease;
+  background-color: #f9fafb;
+  color: #1f2937;
+  font-size: 0.95rem;
 }
 
 .price-input:focus {
   outline: none;
   border-color: var(--primary-color);
   box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.1);
+  background-color: #ffffff;
+}
+
+.price-input::placeholder {
+  color: #9ca3af;
 }
 
 .price-input::-webkit-inner-spin-button,
@@ -478,7 +486,8 @@
 }
 
 .edit-button,
-.pause-button {
+.pause-button,
+.activate-button {
   flex: 1;
   padding: 0.5rem;
   border-radius: 6px;
@@ -505,6 +514,16 @@
 
 .pause-button:hover {
   background-color: #d97706;
+}
+
+.activate-button {
+  background-color: var(--primary-color);
+  border: none;
+  color: white;
+}
+
+.activate-button:hover {
+  background-color: var(--primary-color-light);
 }
 
 /* Responsive Design */
