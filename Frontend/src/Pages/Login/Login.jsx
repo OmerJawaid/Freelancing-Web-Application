@@ -34,7 +34,7 @@ const Login = () => {
   useEffect(() => {
     if (isAuthenticated && user && user.User_Type) {
       const path = user.User_Type === 'freelancer' ? '/freelancer' : '/client';
-      console.log('Navigating to:', path);
+      // console.log('Navigating to:', path);
       navigate(path, { replace: true });
     }
   }, [isAuthenticated, user, navigate]);
@@ -59,7 +59,7 @@ const Login = () => {
 
     try {
       const result = await login(formData.email, formData.password);
-console.log("Login result:", result); // Add this
+      // console.log("Login result:", result); // Add this
 
 if (result.success) {
   if (rememberMe) {

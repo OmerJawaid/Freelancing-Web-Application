@@ -542,6 +542,7 @@ const CreateGig = () => {
                 <div className="form-group">
                   <label htmlFor="title">Gig Title</label>
                   <input 
+                  style={{color:'black'}}
                     type="text" 
                     id="title" 
                     name="title" 

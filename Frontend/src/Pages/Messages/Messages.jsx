@@ -142,7 +142,7 @@ const Messages = () => {
     }
 
     // Setup socket connection
-    console.log("Setting up socket connection for user:", currentUser.current.id);
+    // console.log("Setting up socket connection for user:", currentUser.current.id);
     
     socket.connect();
     socket.emit('join', { userId: currentUser.current.id });
@@ -151,7 +151,7 @@ const Messages = () => {
     socket.emit('get_online_users');
     
     socket.on('connect', () => {
-      console.log("Socket connected, ID:", socket.id);
+      // console.log("Socket connected, ID:", socket.id);
     });
     
     socket.on('connect_error', (error) => {
@@ -160,7 +160,7 @@ const Messages = () => {
     
     // Listen for online users list
     socket.on('online_users', (users) => {
-      console.log("Received online users:", users);
+      // console.log("Received online users:", users);
       setOnlineUsers(new Set(users));
     });
     
@@ -212,7 +212,7 @@ const Messages = () => {
 
     // Clean up socket connection on component unmount
     return () => {
-      console.log("Disconnecting socket");
+      // console.log("Disconnecting socket");
       socket.disconnect();
     };
   }, [navigate]);
@@ -221,7 +221,7 @@ const Messages = () => {
   useEffect(() => {
     const retriving_conversations = async () => {
       try {
-        console.log("Fetching conversations for user:", currentUser.current.id);
+        // console.log("Fetching conversations for user:", currentUser.current.id);
         const response = await axios.get(
           "http://localhost:8081/conversations/retrieve",
           {
@@ -230,7 +230,7 @@ const Messages = () => {
           }
         );
         
-        console.log("Conversations API response:", response.data);
+        // console.log("Conversations API response:", response.data);
         
         if (Array.isArray(response.data)) {
           const processedConversations = response.data.map(conv => {
@@ -288,7 +288,7 @@ const Messages = () => {
   useEffect(() => {
     // Socket listener for receiving messages
     const handleReceiveMessage = (data) => {
-      console.log("Received message via socket:", data);
+      // console.log("Received message via socket:", data);
       
       if (!data || !data.conversationId) {
         console.error("Invalid message data received:", data);
@@ -512,7 +512,7 @@ const Messages = () => {
         }
       );
       
-      console.log("Message saved to database:", response.data);
+      // console.log("Message saved to database:", response.data);
       
       // ===== Update with server data =====
       
@@ -621,7 +621,7 @@ const Messages = () => {
     
     const fetchMessages = async () => {
       try {
-        console.log("Fetching messages for conversation:", selectedConversationId);
+        // console.log("Fetching messages for conversation:", selectedConversationId);
         const response = await axios.get(
           "http://localhost:8081/messages/retrieve",
           {
@@ -630,7 +630,7 @@ const Messages = () => {
           }
         );
         
-        console.log("Messages API response:", response.data);
+        // console.log("Messages API response:", response.data);
         
         if (Array.isArray(response.data)) {
           setChat(
@@ -692,7 +692,7 @@ const Messages = () => {
                   key={conversation.id || Math.random()}
                   className={`conversation-item ${selectedConversation?.id === conversation.id ? 'active' : ''}`}
                   onClick={() => {
-                    console.log("Selected conversation:", conversation);
+                    // console.log("Selected conversation:", conversation);
                     setSelectedConversation(conversation);
                   }}
                 >

@@ -70,12 +70,20 @@
   border-radius: 6px;
   width: 100%;
   transition: all 0.2s ease;
+  background-color: #f9fafb;
+  color: #1f2937;
+  font-size: 0.95rem;
 }
 
 .price-input:focus {
   outline: none;
   border-color: var(--primary-color);
   box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.1);
+  background-color: #ffffff;
+}
+
+.price-input::placeholder {
+  color: #9ca3af;
 }
 
 .price-input::-webkit-inner-spin-button,
@@ -128,14 +136,17 @@
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 2rem;
   animation: fadeInGrid 0.4s ease-in-out;
+  position: relative;
 }
 
 @keyframes fadeInGrid {
   from {
     opacity: 0.7;
+    transform: translateY(10px);
   }
   to {
     opacity: 1;
+    transform: translateY(0);
   }
 }
 
@@ -145,8 +156,10 @@
   border-radius: 8px;
   overflow: hidden;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  transition: transform 0.2s, opacity 0.3s, box-shadow 0.3s;
+  transition: all 0.3s ease-in-out;
   animation: fadeIn 0.4s ease-in-out;
+  transform-origin: center;
+  opacity: 1;
 }
 
 /* Animation for gigs being toggled */
@@ -154,19 +167,40 @@
   animation: gigToggleAnimation 0.6s ease-in-out;
 }
 
-@keyframes gigToggleAnimation {
+/* State transition animations */
+.gig-card.state-transition {
+  animation: stateTransition 0.6s ease-in-out;
+}
+
+@keyframes stateTransition {
   0% {
-    opacity: 1;
     transform: scale(1);
+    opacity: 1;
   }
   50% {
-    opacity: 0.7;
     transform: scale(0.95);
-    box-shadow: 0 0 15px rgba(0, 100, 255, 0.2);
+    opacity: 0.7;
+    box-shadow: 0 0 15px rgba(16, 185, 129, 0.2);
   }
   100% {
-    opacity: 1;
     transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes gigToggleAnimation {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(0.95);
+    opacity: 0.7;
+    box-shadow: 0 0 15px rgba(16, 185, 129, 0.2);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
   }
 }
 
@@ -411,7 +445,7 @@
   border-radius: 9999px;
   font-size: 0.75rem;
   font-weight: 500;
-  transition: background-color 0.3s, color 0.3s, transform 0.2s;
+  transition: all 0.3s ease;
 }
 
 .status-badge.active {
@@ -452,7 +486,8 @@
 }
 
 .edit-button,
-.pause-button {
+.pause-button,
+.activate-button {
   flex: 1;
   padding: 0.5rem;
   border-radius: 6px;
@@ -479,6 +514,16 @@
 
 .pause-button:hover {
   background-color: #d97706;
+}
+
+.activate-button {
+  background-color: var(--primary-color);
+  border: none;
+  color: white;
+}
+
+.activate-button:hover {
+  background-color: var(--primary-color-light);
 }
 
 /* Responsive Design */
@@ -585,4 +630,24 @@
 
 .no-gigs-message .create-gig-button:hover {
   background-color: #375bbf;
+}
+
+/* Add transition for gig filtering */
+.gigs-grid[data-filtering="true"] .gig-card {
+  animation: filterTransition 0.4s ease-in-out;
+}
+
+@keyframes filterTransition {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(0.98);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
 } 
