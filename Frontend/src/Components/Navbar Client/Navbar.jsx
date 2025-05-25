@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../../context/Authcontext';
 import './Navbar.css';
 
+
 // Import icons
 import { 
   FaCog,        // Settings
@@ -89,6 +90,15 @@ const Navbar = () => {
     }
   };
 
+  const handleNotification  = async () => {
+    try {
+      navigate('/notifications');
+    } catch (error) { 
+      console.error('Error navigating to notifications:', error);
+      // Optionally handle error, e.g., show a toast notification
+    }
+  };
+
   // ===== Image handling =====
   
   /**
@@ -170,9 +180,13 @@ const Navbar = () => {
       <button className="nav-button settings-button" onClick={handleOpenSettings}>
         <FaCog className="nav-icon" /> Settings
       </button>
+       <button className="nav-button notification-button" onClick={handleNotification}>
+        <FaEnvelope className="nav-icon" /> Notifications
+      </button>
       <button className="nav-button logout-button" onClick={handleLogout}>
         <FaSignOutAlt className="nav-icon" /> Logout
       </button>
+     
     </>
   );
 
