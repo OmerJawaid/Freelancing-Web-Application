@@ -5,53 +5,6 @@ import { Server } from 'socket.io';
 const userConnections = {};
 const onlineUsers = new Set();
 
-// Add this to your existing socket.io implementation
-
-// Make io available globally
-global.io = io;
-global.users = {};
-
-io.on('connection', (socket) => {
-    console.log('New client connected:', socket.id);
-
-    // Join user to their own room for receiving messages
-    socket.on('join', (data) => {
-        const { userId } = data;
-        global.users[userId] = socket.id;
-        socket.join(`user_${userId}`);
-
-        // Mark user as online
-        onlineUsers.add(userId);
-        console.log(`User ${userId} joined with socket ${socket.id}`);
-
-        io.emit('user_status_change', { userId, status: 'online' });
-    });
-
-    // User requests current online users
-    socket.on('get_online_users', () => {
-        socket.emit('online_users', Array.from(onlineUsers));
-    });
-
-    // Handle disconnect
-    socket.on('disconnect', () => {
-        // Remove from `users` object
-        for (const [userId, sockId] of Object.entries(global.users)) {
-            if (sockId === socket.id) {
-                // Mark user as offline
-                onlineUsers.delete(userId);
-                delete global.users[userId];
-
-                // Notify all clients about the user going offline
-                io.emit('user_status_change', { userId, status: 'offline' });
-
-                console.log(`User ${userId} disconnected`);
-                break;
-            }
-        }
-        console.log('Socket disconnected:', socket.id);
-    });
-});
-
 /**
  * Configure and initialize Socket.IO server
  * @param {Object} server - HTTP server instance
