@@ -1,28 +1,68 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useContext } from 'react';
 import './Dashboard.css';
 import Navbar from '../../Components/Navbar Client/Navbar';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import Footer from '../../Components/Footer/Footer';
 import defaultFreelancerImage from '../../assets/react.svg';
+import { AuthContext } from '../../context/Authcontext';
 
 const ClientDashboard = () => {
+  const { user } = useContext(AuthContext);
+  const [gigs, setgigs] = useState([]);
+  const [stats, setStats] = useState({
+    totalEarnings: 0,
+    activeOrders: 0
+  });
+  const navigate = useNavigate();
 
-  const [gigs, setgigs]=useState([])
-  const navigate= useNavigate();
-  useEffect(()=>{
+  useEffect(() => {
     const fetchGigs = async () => {
       try {
         const result = await axios.get("http://localhost:8081/gigs/retrieveAllGigs");
         setgigs(result.data);
-       
       } catch (err) {
         console.error(err);
       }
     };
 
     fetchGigs();
-  }, [])
+  }, []);
+
+  // Fetch orders and calculate statistics
+  useEffect(() => {
+    const fetchOrderStats = async () => {
+      try {
+        if (!user || !user.id) return;
+
+        const response = await axios.get("http://localhost:8081/orders/client", {
+          params: { User_Id: user.id },
+          withCredentials: true
+        });
+
+        if (Array.isArray(response.data)) {
+          // Calculate total spending (earnings for freelancers)
+          const totalSpent = response.data.reduce((total, order) => {
+            return total + (parseFloat(order.Price) || 0);
+          }, 0);
+
+          // Count active orders (in_progress status)
+          const activeOrdersCount = response.data.filter(
+            order => order.Status === 'in_progress'
+          ).length;
+
+          setStats({
+            totalEarnings: totalSpent.toFixed(2),
+            activeOrders: activeOrdersCount
+          });
+        }
+      } catch (err) {
+        console.error("Error fetching order statistics:", err);
+      }
+    };
+
+    fetchOrderStats();
+  }, [user]);
 
   const categories = ["All", "Web Development", "Design", "Mobile Development", "Writing", "Marketing"];
   const [selectedCategory, setSelectedCategory] = useState("All");
@@ -45,8 +85,24 @@ const ClientDashboard = () => {
       <Navbar/>
       <div className="dashboard-content">
         
-        {/* Sidebar with Filters */}
+        {/* Sidebar with Stats and Filters */}
         <aside className="sidebar">
+          {/* Stats Section */}
+          <div className="stats-section">
+            <h3>Overview</h3>
+            <div className="stats-grid">
+              <div className="stat-card">
+                <span className="stat-label">Total Spent</span>
+                <span className="stat-value">${stats.totalEarnings}</span>
+              </div>
+              <div className="stat-card">
+                <span className="stat-label">Active Orders</span>
+                <span className="stat-value">{stats.activeOrders}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Existing Filter Sections */}
           <div className="filter-section">
             <h3>Categories</h3>
             {categories.map((category) => (
@@ -183,8 +239,14 @@ const ClientDashboard = () => {
                         <div className="freelancer-details">
                           <span className="freelancer-name">{gig.Name}</span>
                           <div className="rating">
-                            <span className="stars">{'⭐'.repeat(Math.floor(gig.Rating))}</span>
-                            <span className="rating-number">({gig.Rating})</span>
+                            {gig.Rating ? (
+                              <>
+                                <span className="stars">{'⭐'.repeat(Math.floor(gig.Rating))}</span>
+                                <span className="rating-number">({gig.Rating})</span>
+                              </>
+                            ) : (
+                              <span className="rating-number">No reviews</span>
+                            )}
                           </div>
                         </div>
                       </div>

@@ -19,6 +19,10 @@ function configureSocket(server) {
     }
   });
 
+  // Store io instance globally for notification system
+  global.io = io;
+  global.users = userConnections;
+
   // Handle socket connections
   io.on('connection', (socket) => {
     console.log('Socket connected:', socket.id);
@@ -26,6 +30,7 @@ function configureSocket(server) {
     // Register event handlers
     registerUserEvents(socket, io);
     registerMessageEvents(socket, io);
+    registerNotificationEvents(socket, io);
     registerDisconnectEvents(socket, io);
   });
 
@@ -106,6 +111,30 @@ function registerMessageEvents(socket, io) {
     } else {
       console.log(`Receiver ${receiverId} is not currently connected`);
     }
+  });
+}
+
+/**
+ * Register notification-specific socket events
+ * @param {Object} socket - Socket instance
+ * @param {Object} io - Socket.IO server instance
+ */
+function registerNotificationEvents(socket, io) {
+  // User subscribes to notifications
+  socket.on('subscribe_to_notifications', (userId) => {
+    if (!userId) return;
+    
+    const roomName = `notifications_${userId}`;
+    socket.join(roomName);
+    console.log(`User ${userId} subscribed to notifications`);
+    
+    // Store the user's socket ID for direct messaging
+    userConnections[userId] = socket.id;
+  });
+
+  // Handle notification acknowledgment
+  socket.on('notification_received', (data) => {
+    console.log('Notification acknowledged by user:', data);
   });
 }
 

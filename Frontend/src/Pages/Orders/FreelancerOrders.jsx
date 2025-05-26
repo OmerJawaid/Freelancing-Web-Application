@@ -5,6 +5,7 @@ import Navbar from '../../Components/Navbar Client/Navbar';
 import Footer from '../../Components/Footer/Footer';
 import './Orders.css';
 import { FaClock, FaCheckCircle, FaTimesCircle, FaHourglassHalf, FaSpinner, FaCheck, FaTimes, FaPlay, FaUpload, FaFile } from 'react-icons/fa';
+import { getImageUrl, DEFAULT_USER_IMAGE } from '../../utils/imageUtils';
 
 const FreelancerOrders = () => {
   const { user } = useContext(AuthContext);
@@ -420,12 +421,12 @@ const FreelancerOrders = () => {
                   <h3 className="order-title">{order.Title}</h3>
                   <div className="order-client">
                     <img 
-                      src={order.ClientImage || "https://dummyimage.com/50/e9ecef/495057&text=User"} 
+                      src={getImageUrl(order.ClientImage, DEFAULT_USER_IMAGE)} 
                       alt={order.ClientName} 
                       className="client-avatar"
                       onError={(e) => {
                         e.target.onerror = null;
-                        e.target.src = "https://dummyimage.com/50/e9ecef/495057&text=User";
+                        e.target.src = DEFAULT_USER_IMAGE;
                       }}
                     />
                     <span>Client: {order.ClientName}</span>

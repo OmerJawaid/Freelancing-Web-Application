@@ -5,6 +5,7 @@ import Navbar from '../../Components/Navbar Client/Navbar';
 import {io} from 'socket.io-client'
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+import { getImageUrl, DEFAULT_USER_IMAGE } from '../../utils/imageUtils';
 
 // Default avatar image
 const DEFAULT_AVATAR = "https://placehold.co/100/e9ecef/495057?text=User";
@@ -221,7 +222,6 @@ const Messages = () => {
   useEffect(() => {
     const retriving_conversations = async () => {
       try {
-        // console.log("Fetching conversations for user:", currentUser.current.id);
         const response = await axios.get(
           "http://localhost:8081/conversations/retrieve",
           {
@@ -229,8 +229,6 @@ const Messages = () => {
             withCredentials: true
           }
         );
-        
-        // console.log("Conversations API response:", response.data);
         
         if (Array.isArray(response.data)) {
           const processedConversations = response.data.map(conv => {
@@ -242,32 +240,40 @@ const Messages = () => {
               user: {
                 id: otherUserId,
                 name: conv.Name || "Unknown User",
-                avatar: conv.Image || DEFAULT_AVATAR,
+                avatar: getImageUrl(conv.Image, DEFAULT_USER_IMAGE),
                 status: onlineUsers.has(otherUserId.toString()) ? 'online' : 'offline'
               },
               lastMessage: conv.Last_message || "",
               timestamp: conv.Last_message_time || null,
               formattedTime: formatMessageTime(conv.Last_message_time),
-              unread: conv.User_one_id === currentUser.current.id ? 
-                conv.Unread_count_user_one : conv.Unread_count_user_two
+              unreadCount: conv.unread_count || 0
             };
           });
+
           setConversations(processedConversations);
-        } else {
-          console.error("Unexpected conversations response format:", response.data);
-          setConversations([]);
+          
+          // If URL has conversation parameter, select that conversation
+          const urlParams = new URLSearchParams(window.location.search);
+          const conversationId = urlParams.get('conversation');
+          if (conversationId) {
+            const conversation = processedConversations.find(c => c.id === parseInt(conversationId));
+            if (conversation) {
+              setSelectedConversation(conversation);
+            }
+          }
         }
+        
         setLoading(false);
       } catch (error) {
         console.error("Error fetching conversations:", error);
         setLoading(false);
       }
     };
-    
+
     if (currentUser.current?.id) {
       retriving_conversations();
     }
-  }, []);
+  }, [onlineUsers]);
 
   // Create a separate effect to update online status when onlineUsers changes
   useEffect(() => {
@@ -387,31 +393,29 @@ const Messages = () => {
     }
   }, [chat]);
 
-  // Function to handle file attachment
-  /**
-   * Handle file selection from the file input
-   * Creates a preview for image files
-   * @param {Event} e - The file input change event
-   */
+  // Function to handle file attachments
   const handleAttachment = (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    
+
+    // Check file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('File size should be less than 5MB');
+      return;
+    }
+
     setAttachment(file);
-    
-    // Create preview based on file type
+
+    // Create preview for images
     if (file.type.startsWith('image/')) {
       createImagePreview(file);
     } else {
-      // For non-image files, clear image preview
-      setAttachmentPreview(null);
+      // For non-image files, just show the filename
+      setAttachmentPreview(file.name);
     }
   };
 
-  /**
-   * Create a preview image for image attachments using FileReader
-   * @param {File} imageFile - The image file to preview
-   */
+  // Function to create image preview
   const createImagePreview = (imageFile) => {
     const reader = new FileReader();
     reader.onloadend = () => {
@@ -658,6 +662,88 @@ const Messages = () => {
     fetchMessages();
   }, [selectedConversationId]);
 
+  // Function to handle message with attachment
+  const handleMessageWithAttachment = async (messageData) => {
+    try {
+      const formData = new FormData();
+      formData.append('file', attachment);
+      formData.append('message', messageData.message);
+      formData.append('conversation_id', messageData.conversation_id);
+      formData.append('sender_id', messageData.sender_id);
+      formData.append('receiver_id', messageData.receiver_id);
+
+      const response = await axios.post('http://localhost:8081/messages/send-with-attachment', 
+        formData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          },
+          withCredentials: true
+        }
+      );
+
+      if (response.data && response.data.message) {
+        const attachmentUrl = response.data.attachment_path;
+        
+        // Add message to chat with attachment
+        addMessageToChat({
+          ...messageData,
+          id: response.data.message_id,
+          attachment: attachmentUrl,
+          attachment_type: attachment.type.startsWith('image/') ? 'image' : 'file',
+          timestamp: new Date().toISOString()
+        });
+
+        // Update conversation list
+        updateConversationList(
+          messageData.conversation_id,
+          messageData.message,
+          new Date().toISOString()
+        );
+
+        // Clear attachment and input
+        setAttachment(null);
+        setAttachmentPreview(null);
+        setMessageInput('');
+      }
+    } catch (error) {
+      console.error('Error sending message with attachment:', error);
+      alert('Failed to send message with attachment');
+    }
+  };
+
+  // Function to render message attachment
+  const renderAttachment = (message) => {
+    if (!message.attachment) return null;
+
+    if (message.attachment_type === 'image') {
+      return (
+        <div className="image-attachment">
+          <img 
+            src={getImageUrl(message.attachment)} 
+            alt="Attachment"
+            onError={(e) => {
+              console.error('Error loading image attachment:', message.attachment);
+              e.target.style.display = 'none';
+            }}
+            onClick={() => window.open(getImageUrl(message.attachment), '_blank')}
+          />
+        </div>
+      );
+    } else {
+      return (
+        <div className="file-attachment">
+          <FaFile className="file-icon" />
+          <span className="file-name">{message.attachment.split('/').pop()}</span>
+          <FaDownload 
+            className="download-icon" 
+            onClick={() => handleDownload(message.attachment)}
+          />
+        </div>
+      );
+    }
+  };
+
   if (loading) {
     return (
       <div className="loading-container">
@@ -703,7 +789,7 @@ const Messages = () => {
                       onError={(e) => {
                         console.log("Avatar load error, using default");
                         e.target.onerror = null;
-                        e.target.src = DEFAULT_AVATAR;
+                        e.target.src = DEFAULT_USER_IMAGE;
                       }}
                     />
                     <span className={`status-indicator ${conversation.user?.status || 'offline'}`} />
@@ -715,8 +801,8 @@ const Messages = () => {
                     </div>
                     <div className="conversation-preview">
                       <p>{conversation.lastMessage || "No messages yet"}</p>
-                      {conversation.unread > 0 && (
-                        <span className="unread-badge">{conversation.unread}</span>
+                      {conversation.unreadCount > 0 && (
+                        <span className="unread-badge">{conversation.unreadCount}</span>
                       )}
                     </div>
                   </div>
@@ -744,7 +830,7 @@ const Messages = () => {
                     className="chat-avatar"
                     onError={(e) => {
                       e.target.onerror = null;
-                      e.target.src = DEFAULT_AVATAR;
+                      e.target.src = DEFAULT_USER_IMAGE;
                     }}
                   />
                   <div>

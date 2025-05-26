@@ -13,6 +13,94 @@ const FreelancerDashboard = () => {
   const { user } = useContext(AuthContext);
   const [filterType, setFilterType] = useState('all');
   const [isFiltering, setIsFiltering] = useState(false);
+  const [stats, setStats] = useState({
+    totalEarnings: 0,
+    activeOrders: 0,
+    completionRate: 0,
+    avgRating: 0,
+    totalReviews: 0
+  });
+
+  // Fetch orders, reviews and calculate statistics
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        if (!user || !user.id) return;
+
+        // Fetch orders
+        const ordersResponse = await axios.get("http://localhost:8081/orders/freelancer", {
+          params: { Freelancer_Id: user.id },
+          withCredentials: true
+        });
+
+        // Fetch all gigs for this freelancer
+        const gigsResponse = await axios.get('http://localhost:8081/gigs/retrieveGigForFreelancer', {
+          params: { freelancer_Id: user.id }
+        });
+
+        if (Array.isArray(ordersResponse.data)) {
+          // Calculate total earnings
+          const totalEarnings = ordersResponse.data.reduce((total, order) => {
+            return total + (parseFloat(order.Price) || 0);
+          }, 0);
+
+          // Count active orders
+          const activeOrders = ordersResponse.data.filter(
+            order => order.Status === 'in_progress'
+          ).length;
+
+          // Calculate completion rate
+          const completedOrders = ordersResponse.data.filter(
+            order => order.Status === 'completed'
+          ).length;
+          const totalOrders = ordersResponse.data.length;
+          const completionRate = totalOrders > 0 
+            ? ((completedOrders / totalOrders) * 100).toFixed(1)
+            : 0;
+
+          // Get all gig IDs
+          const gigIds = gigsResponse.data.map(gig => gig.Id);
+
+          // Fetch reviews for all gigs
+          let allReviews = [];
+          for (const gigId of gigIds) {
+            try {
+              const reviewsResponse = await axios.get(
+                `http://localhost:8081/reviews/retrieve`,
+                { 
+                  params: { Gig_Id: gigId },
+                  withCredentials: true 
+                }
+              );
+              if (Array.isArray(reviewsResponse.data)) {
+                allReviews = [...allReviews, ...reviewsResponse.data];
+              }
+            } catch (error) {
+              console.error(`Error fetching reviews for gig ${gigId}:`, error);
+            }
+          }
+
+          // Calculate average rating from reviews
+          const totalReviews = allReviews.length;
+          const avgRating = totalReviews > 0
+            ? (allReviews.reduce((sum, review) => sum + (review.Rating || 0), 0) / totalReviews).toFixed(1)
+            : 0;
+
+          setStats({
+            totalEarnings: totalEarnings.toFixed(2),
+            activeOrders,
+            completionRate,
+            avgRating,
+            totalReviews
+          });
+        }
+      } catch (err) {
+        console.error("Error fetching statistics:", err);
+      }
+    };
+
+    fetchStats();
+  }, [user]);
 
   useEffect(()=>{
     async function Gig_Retrival(){
@@ -93,13 +181,6 @@ const FreelancerDashboard = () => {
     }
   ]);
 
-  const stats = {
-    totalEarnings: 2500,
-    activeOrders: 3,
-    completionRate: 98,
-    avgRating: 4.9
-  };
-
   // Function to toggle gig state with transition
   const toggleGigState = async (gigId, currentState) => {
     const newState = currentState === 1 ? 0 : 1;
@@ -157,7 +238,13 @@ const FreelancerDashboard = () => {
               </div>
               <div className="stat-card">
                 <span className="stat-label">Average Rating</span>
-                <span className="stat-value">⭐ {stats.avgRating}</span>
+                <span className="stat-value">
+                  {stats.totalReviews > 0 ? (
+                    <>⭐ {stats.avgRating} ({stats.totalReviews} reviews)</>
+                  ) : (
+                    'No reviews yet'
+                  )}
+                </span>
               </div>
             </div>
           </div>

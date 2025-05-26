@@ -57,7 +57,15 @@ const NotificationComponent = () => {
       console.log('Notifications response:', response.data);
       
       if (Array.isArray(response.data)) {
-        setNotifications(response.data);
+        // Sort notifications: unread first, then by date
+        const sortedNotifications = response.data.sort((a, b) => {
+          if (a.Is_Read !== b.Is_Read) {
+            return a.Is_Read ? 1 : -1; // Unread first
+          }
+          return new Date(b.Created_At) - new Date(a.Created_At);
+        });
+        
+        setNotifications(sortedNotifications);
         // Count unread notifications
         const unread = response.data.filter(notification => !notification.Is_Read).length;
         setUnreadCount(unread);
@@ -218,17 +226,20 @@ const NotificationComponent = () => {
     
     // Set up socket connection
     try {
-      socket.current = io('http://localhost:8081');
+      socket.current = io('http://localhost:8081', {
+        withCredentials: true,
+        transports: ['websocket', 'polling']
+      });
       
-      // Join user's room for personalized notifications
-      socket.current.emit('join', { userId: user.id });
+      // Subscribe to notifications
+      socket.current.emit('subscribe_to_notifications', user.id);
       
       // Listen for new notifications
       socket.current.on('new_notification', (data) => {
         console.log('New notification received:', data);
         
-        // Add the new notification to the state
-        setNotifications(prev => [{
+        // Create notification object
+        const newNotification = {
           Id: Date.now(), // Temporary ID until refresh
           User_Id: user.id,
           Type: data.type,
@@ -237,21 +248,65 @@ const NotificationComponent = () => {
           Related_Id: data.relatedId,
           Is_Read: false,
           Created_At: new Date().toISOString()
-        }, ...prev]);
+        };
+
+        // Add to notifications state
+        setNotifications(prev => {
+          const updatedNotifications = [newNotification, ...prev];
+          return updatedNotifications.sort((a, b) => {
+            if (a.Is_Read !== b.Is_Read) {
+              return a.Is_Read ? 1 : -1;
+            }
+            return new Date(b.Created_At) - new Date(a.Created_At);
+          });
+        });
         
         // Increment unread count
         setUnreadCount(prev => prev + 1);
         
-        // Play notification sound
+        // Acknowledge receipt
+        socket.current.emit('notification_received', {
+          userId: user.id,
+          notificationId: newNotification.Id
+        });
+        
+        // Play notification sound and show browser notification
         try {
+          // Play sound
           const audio = new Audio('/notification-sound.mp3');
           audio.play().catch(err => console.error('Error playing notification sound:', err));
+          
+          // Show browser notification if permission granted
+          if (Notification.permission === 'granted') {
+            new Notification(data.title, {
+              body: data.message,
+              icon: '/notification-icon.png'
+            });
+          }
         } catch (err) {
-          console.error('Error with notification sound:', err);
+          console.error('Error with notification feedback:', err);
         }
       });
+
+      // Handle socket connection errors
+      socket.current.on('connect_error', (error) => {
+        console.error('Socket connection error:', error);
+        setError('Unable to connect to notification service');
+      });
+
+      // Handle socket disconnection
+      socket.current.on('disconnect', () => {
+        console.log('Socket disconnected, attempting to reconnect...');
+      });
+
     } catch (err) {
       console.error('Error setting up socket connection:', err);
+      setError('Failed to initialize notification service');
+    }
+    
+    // Request notification permission
+    if (Notification.permission === 'default') {
+      Notification.requestPermission();
     }
     
     // Clean up socket connection on unmount
@@ -262,13 +317,28 @@ const NotificationComponent = () => {
     };
   }, [user]);
 
-  // Periodically refresh unread count
+  // Refresh notifications periodically and after window focus
   useEffect(() => {
+    if (!user || !user.id) return;
+
+    // Refresh when window gains focus
+    const handleFocus = () => {
+      fetchNotifications();
+    };
+
+    window.addEventListener('focus', handleFocus);
+
+    // Periodic refresh every 30 seconds when window is active
     const intervalId = setInterval(() => {
-      fetchUnreadCount();
-    }, 60000); // Every minute
-    
-    return () => clearInterval(intervalId);
+      if (!document.hidden) {
+        fetchUnreadCount();
+      }
+    }, 30000);
+
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      clearInterval(intervalId);
+    };
   }, [user]);
 
   if (!user) return null;
