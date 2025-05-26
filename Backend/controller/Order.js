@@ -2,6 +2,8 @@ import { database_pool } from "../config/dbconnection.js";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
+import { createNotification } from './Notification.js';
+
 
 // Configure multer for file storage
 const storage = multer.diskStorage({
@@ -53,6 +55,14 @@ const createOrder = async (req, res) => {
       'INSERT INTO orders (User_Id, Freelancer_Id, Gig_Id, Package_Id, Status) VALUES (?, ?, ?, ?, "pending")',
       [User_Id, Freelancer_Id, Gig_Id, Package_Id]
     );
+
+     await createNotification(
+            Freelancer_Id,
+            'order',
+            'New Order Received',
+            'You have received a new order. Check your orders page for details.',
+            result.insertId
+        );
 
     return res.status(201).json({ 
       message: "Order created successfully", 
@@ -176,6 +186,22 @@ const uploadCompletedWork = async (req, res) => {
       return res.status(404).json({ message: "Order not found" });
     }
 
+     const [order] = await database_pool.query(
+            'SELECT User_Id FROM orders WHERE Id = ?',
+            [Id]
+        );
+        
+        if (order && order.length > 0) {
+            // Create notification for the client
+            await createNotification(
+                order[0].User_Id,
+                'order_work',
+                'Work Uploaded',
+                'A freelancer has uploaded work for your order. Check your orders page for details.',
+                Id
+            );
+        }
+
     return res.status(200).json({ 
       message: "File uploaded successfully",
       filePath: filePath
@@ -248,6 +274,22 @@ const approveCompletedWork = async (req, res) => {
       return res.status(404).json({ message: "Order not found" });
     }
 
+       const [order] = await database_pool.query(
+            'SELECT Freelancer_Id FROM orders WHERE Id = ?',
+            [Id]
+        );
+        
+        if (order && order.length > 0) {
+            // Create notification for the freelancer
+            await createNotification(
+                order[0].Freelancer_Id,
+                'order_approved',
+                'Work Approved',
+                'A client has approved your work. Check your orders page for details.',
+                Id
+            );
+        }
+
     return res.status(200).json({ 
       message: "Work approved successfully and order marked as completed"
     });
@@ -272,6 +314,22 @@ const disapproveCompletedWork = async (req, res) => {
     if (result.affectedRows === 0) {
       return res.status(404).json({ message: "Order not found" });
     }
+
+    const [order] = await database_pool.query(
+            'SELECT Freelancer_Id FROM orders WHERE Id = ?',
+            [Id]
+        );
+        
+        if (order && order.length > 0) {
+            // Create notification for the freelancer
+            await createNotification(
+                order[0].Freelancer_Id,
+                'order_revision',
+                'Revision Requested',
+                'A client has requested revisions for your work. Check your orders page for details.',
+                Id
+            );
+        }
 
     return res.status(200).json({ 
       message: "Work marked for revision and sent back to freelancer"

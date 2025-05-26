@@ -2,6 +2,7 @@
 import dotenv from 'dotenv';
 dotenv.config();
 import { database_pool } from '../config/dbconnection.js';
+import { createNotification } from './Notification.js';
 
 /**
  * Upload a new message and attachment to the database
@@ -43,6 +44,26 @@ const uploadMessages = async (req, res) => {
         // Update conversation with last message info
         await updateConversationLastMessage(Conversation_Id, messageData.lastMessagePreview);
 
+
+            const [conversation] = await database_pool.query(
+            `SELECT * FROM conversations WHERE Id = ?`,
+            [Conversation_Id]
+        );
+        
+        if (conversation && conversation.length > 0) {
+            const conv = conversation[0];
+            const receiverId = conv.User_one_id === parseInt(Sender_Id) ? conv.User_two_id : conv.User_one_id;
+            
+            // Create notification
+            await createNotification(
+                receiverId,
+                'message',
+                'New Message',
+                messageData.lastMessagePreview,
+                Conversation_Id
+            );
+        }
+        
         // Return success response
         res.status(200).json({
             success: true,

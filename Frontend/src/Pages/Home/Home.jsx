@@ -27,7 +27,7 @@ const Navbar = () => {
 
   return (
     <nav className="navbar">
-      <div className="container navbar-container">
+      <div className="container navbar-container" style={{backgroundColor: "white", border:"none",boxShadow:"none"}}>
         <div className="navbar-logo">
           <a href="/" className="logo">Skillify</a>
         </div>
@@ -98,7 +98,7 @@ const Home = () => {
       
       {/* Hero Section */}
       <section className="hero-section">
-        <div className="container hero-container" style={{backgroundColor: "#064e3b", border:"none"}}>
+        <div className="container hero-container" style={{backgroundColor: "#064e3b", border:"none", boxShadow:"none"}}>
           <div className="hero-content">
             <h1 className="hero-title">
               Find the perfect <span>freelance</span> services for your business
@@ -129,7 +129,7 @@ const Home = () => {
 
       {/* Category Slider */}
       <section className="category-section" id="category-section">
-        <div className="container" style={{boxShadow:"none"}}>
+        <div className="container" style={{boxShadow:"none",backgroundColor:"#f7f7f7",border:"none"}}>
           <div className="category-header">
             <h2 className="category-title">Explore Popular Categories</h2>
             <div className="slider-controls">
@@ -167,7 +167,7 @@ const Home = () => {
 
       {/* How It Works Section */}
       <section className="how-section" id="how-it-works">
-        <div className="container">
+        <div className="container" style={{boxShadow:"none",backgroundColor:"white",border:"none"}}>
           <h2 className="how-title">How GreenLance Works</h2>
           <p className="how-description">
             Skillify makes it simple to connect with skilled professionals to get your projects done quickly and efficiently.
@@ -200,7 +200,7 @@ const Home = () => {
 
       {/* Features Section */}
       <section className="features-section">
-        <div className="container">
+        <div className="container" style={{boxShadow:"none",backgroundColor:"#F7F7F7",border:"none"}}>
           <h2 className="features-title">Why Choose Skillify</h2>
           <p className="features-description">
             Join thousands of businesses and freelancers who trust Skillify for their project needs.
@@ -266,7 +266,7 @@ const Home = () => {
 
       {/* CTA Section */}
       <section className="cta-section" id="cta-section">
-        <div className="container">
+        <div className="container" style={{boxShadow:"none",backgroundColor:"var(--primary-color)",border:"none"}}>
           <h2 className="cta-title">Ready to get started?</h2>
           <p className="cta-description">
             Join thousands of clients and freelancers who are already using GreenLance to bring their projects to life.
