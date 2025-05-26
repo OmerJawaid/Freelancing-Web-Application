@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "start": "node index.js",
-    "build": "echo \"No build step needed\"",
+    "build": "npm install",
     "server": "nodemon ./index.js",
     "client": "npm run dev --prefix ../Frontend",
     "dev": "concurrently \"npm run server\" \"npm run client\""
@@ -13,7 +13,19 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": "",
+  "description": "Backend server for Freelancing Web Application",
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
+  "nixpacks": {
+    "build": {
+      "command": "npm install"
+    },
+    "start": {
+      "command": "npm start"
+    }
+  },
   "dependencies": {
     "bcrypt": "^6.0.0",
     "cookie-parser": "^1.4.7",
