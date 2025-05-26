@@ -264,8 +264,8 @@ const ClientOrders = () => {
       );
     }
 
-    // Show download/approve buttons for completed orders with files
-    if (order.Status === 'completed' && order.file_path) {
+    // Show download/approve buttons when file is uploaded
+    if (order.file_path) {
       return (
         <div className="action-buttons client-actions">
           <button 
