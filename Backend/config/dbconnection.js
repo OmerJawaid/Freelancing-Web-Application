@@ -4,13 +4,19 @@ import mysql from 'mysql2';
 // Load environment variables
 dotenv.config();
 
+const DB_HOST = process.env.DB_HOST || 'localhost'; // Fallback to your local host
+const DB_USER = process.env.DB_USER || 'root'; // Fallback to your local user
+const DB_PASSWORD = process.env.DB_PASSWORD || ''; // Fallback to your local password
+const DB_NAME = process.env.DB_NAME || 'skillify'; // Fallback to your local database name
+const DB_PORT = process.env.DB_PORT ? parseInt(process.env.DB_PORT, 10) : 31935; // Fallback to your local port
+
 // Create database connection pool
 const database_pool = mysql.createPool({
-    host: process.env.MYSQL_HOST || 'localhost', // Use Railway's host or localhost for local
-    user: process.env.MYSQL_USER || 'your_local_user', // Use Railway's user or your local user
-    password: process.env.MYSQL_PASSWORD || 'your_local_password', // Use Railway's password or your local password
-    database: process.env.MYSQL_DATABASE || 'your_local_database_name', // Use Railway's db or your local db name
-    port: process.env.MYSQL_PORT ? parseInt(process.env.MYSQL_PORT) : 31935,
+    host: DB_HOST,
+    user: DB_USER,
+    password: DB_PASSWORD,
+    database: DB_NAME,
+    port: DB_PORT,
    
     waitForConnections: true,
     connectionLimit: 10,
