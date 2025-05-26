@@ -1,9 +1,4 @@
 import express from 'express';
-
-notificationRouter.get('/test', (req, res) => {
-  res.status(200).json({ message: "Notification routes are working" });
-});
-
 import { 
     getUserNotifications, 
     markNotificationAsRead, 
@@ -12,6 +7,11 @@ import {
 } from "../controller/Notification.js";
 
 const notificationRouter = express.Router();
+
+// Simple test route
+notificationRouter.get('/test', (req, res) => {
+    res.status(200).json({ message: "Notification routes are working" });
+});
 
 // Get all notifications for a user
 notificationRouter.get('/user/:userId', getUserNotifications);
