@@ -25,6 +25,18 @@ const Signup = () => {
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
+      // Check file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('Image size should be less than 5MB');
+        return;
+      }
+
+      // Check file type
+      if (!file.type.startsWith('image/')) {
+        toast.error('Please upload an image file');
+        return;
+      }
+
       setProfileImage(file);
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -35,7 +47,9 @@ const Signup = () => {
   };
 
   const triggerFileInput = () => {
-    fileInputRef.current.click();
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -146,6 +160,15 @@ const Signup = () => {
               </button>
             </div>
           </div>
+
+          {/* Hidden file input */}
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleImageChange}
+            accept="image/*"
+            style={{ display: 'none' }}
+          />
 
           {/* Profile Image Upload */}
           <div className="profile-upload-container">

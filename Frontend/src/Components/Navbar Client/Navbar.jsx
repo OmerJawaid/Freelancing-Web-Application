@@ -238,11 +238,71 @@ const Navbar = () => {
         <div className="nav-left">
           <a href="#" onClick={handleLogoClick} className="nav-logo">Skillify</a>
         </div>
+        <div className="nav-center">
+          {isAuthenticated && user && (
+            <>
+              <button className="nav-button dashboard-button" onClick={handleDashboardClick}>
+                <FaHome className="nav-icon" /> {user.User_Type === 'client' ? 'Home' : 'Dashboard'}
+              </button>
+              <button className="nav-button" onClick={() => navigate('/messages')}>
+                <FaEnvelope className="nav-icon" /> Messages
+              </button>
+              <button className="nav-button" onClick={handleOrdersClick}>
+                <FaShoppingBag className="nav-icon" /> {user.User_Type === 'client' ? 'My Orders' : 'Manage Orders'}
+              </button>
+            </>
+          )}
+        </div>
         <div className="nav-right">
-          {isAuthenticated && user 
-            ? renderAuthenticatedNav() 
-            : renderUnauthenticatedNav()
-          }
+          {isAuthenticated && user ? (
+            <>
+              <button className="nav-button icon-only" onClick={handleOpenSettings} title="Settings">
+                <FaCog className="nav-icon" />
+              </button>
+              <NotificationComponent />
+              <div className="profile-dropdown" ref={profileRef}>
+                <div className="profile-trigger" onClick={toggleProfile}>
+                  <img 
+                    src={imgSrc || DEFAULT_USER_IMAGE}
+                    alt="Profile" 
+                    className="profile-image" 
+                    onError={handleImageError}
+                  />
+                </div>
+                {isProfileOpen && (
+                  <div className="profile-menu">
+                    <div className="profile-header">
+                      <img 
+                        src={imgSrc || DEFAULT_USER_IMAGE}
+                        alt="Profile" 
+                        className="profile-image-large" 
+                        onError={handleImageError}
+                      />
+                      <div className="profile-info">
+                        <span className="profile-name">{user.name || user.email || "User"}</span>
+                        <span className="profile-email">{user.email}</span>
+                      </div>
+                    </div>
+                    <div className="profile-menu-items">
+                      <button className="profile-menu-item" onClick={handleLogout}>
+                        <FaSignOutAlt className="menu-icon" />
+                        <span>Logout</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </>
+          ) : (
+            <>
+              <button className="nav-button login-button" onClick={() => navigate('/login')}>
+                <FaSignInAlt className="nav-icon" /> Login
+              </button>
+              <button className="nav-button signup-button" onClick={() => navigate('/signup')}>
+                <FaUserPlus className="nav-icon" /> Sign Up
+              </button>
+            </>
+          )}
         </div>
       </nav>
       

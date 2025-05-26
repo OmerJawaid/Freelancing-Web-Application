@@ -168,7 +168,7 @@ const Home = () => {
       {/* How It Works Section */}
       <section className="how-section" id="how-it-works">
         <div className="container" style={{boxShadow:"none",backgroundColor:"white",border:"none"}}>
-          <h2 className="how-title">How GreenLance Works</h2>
+          <h2 className="how-title">How Skillify Works</h2>
           <p className="how-description">
             Skillify makes it simple to connect with skilled professionals to get your projects done quickly and efficiently.
           </p>

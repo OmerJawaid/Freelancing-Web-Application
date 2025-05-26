@@ -277,7 +277,7 @@
 
 .user-type-btn:hover {
   border-color: #10b981;
-  color: #10b981;
+  color: black;
 }
 
 .user-type-btn.active {

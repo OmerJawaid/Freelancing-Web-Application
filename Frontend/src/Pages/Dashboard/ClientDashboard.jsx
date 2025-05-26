@@ -169,14 +169,7 @@ const ClientDashboard = () => {
                       />
                     </div>
                     <div className="gig-details">
-                      <h4 className="gig-title" title={gig.Title} style={{fontSize:"1.2rem",paddingTop:"0px"}}>{gig.Title}</h4>
-                      <p className="gig-description" title={gig.Description}>
-                        {gig.Description ? 
-                          (gig.Description.length > 100 
-                            ? gig.Description.substring(0, 100).trim() + '...' 
-                            : gig.Description)
-                          : "No description available"}
-                      </p>
+                      <h4 className="gig-title" style={{fontSize: '1.1rem', color: '#1f2937', marginBottom: '1rem', overflow: 'visible', whiteSpace: 'normal', textOverflow: 'unset', maxWidth: '100%', fontWeight: '600', lineHeight: '1.4', minHeight: '2.8em', display: '-webkit-box', WebkitLineClamp: '2', WebkitBoxOrient: 'vertical'}}>{gig.Title}</h4>
                       <div className="freelancer-info">
                         <img
                           src={getFreelancerImageUrl(gig.freelancerimage)}
