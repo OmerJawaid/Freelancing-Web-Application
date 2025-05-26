@@ -178,7 +178,7 @@ const uploadCompletedWork = async (req, res) => {
 
     // Update the order with the file path and reset disapproval status if it was previously disapproved
     const [result] = await database_pool.query(
-      'UPDATE orders SET file_path = ?, file_uploaded_at = NOW(), file_approved = FALSE, file_disapproved = FALSE WHERE Id = ?',
+      'UPDATE orders SET file_path = ?, file_uploaded_at = NOW(), file_approved = FALSE, file_disapproved = FALSE, Status = "completed" WHERE Id = ?',
       [filePath, Id]
     );
 
