@@ -6,25 +6,14 @@
   "scripts": {
     "start": "node index.js",
     "build": "npm install",
-    "server": "nodemon ./index.js",
-    "client": "npm run dev --prefix ../Frontend",
-    "dev": "concurrently \"npm run server\" \"npm run client\""
+    "dev": "nodemon index.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "description": "Backend server for Freelancing Web Application",
   "engines": {
-    "node": ">=18.0.0",
-    "npm": ">=9.0.0"
-  },
-  "nixpacks": {
-    "build": {
-      "command": "npm install"
-    },
-    "start": {
-      "command": "npm start"
-    }
+    "node": "18.x"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
