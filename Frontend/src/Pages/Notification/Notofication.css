@@ -1,5 +1,7 @@
 .notification-component {
   position: relative;
+  display: flex;
+  align-items: center;
 }
 
 .notification-icon {
@@ -13,17 +15,19 @@
   height: 40px;
   border-radius: 50%;
   transition: background-color 0.3s;
+  color: #4a5568;
 }
 
 .notification-icon:hover {
   background-color: rgba(0, 0, 0, 0.05);
+  color: #2d3748;
 }
 
 .notification-badge {
   position: absolute;
-  top: 0;
-  right: 0;
-  background-color: #ff4d4f;
+  top: 4px;
+  right: 4px;
+  background-color: #e53e3e;
   color: white;
   border-radius: 50%;
   min-width: 18px;
@@ -37,10 +41,10 @@
 
 .notification-panel {
   position: absolute;
-  top: 45px;
-  right: 0;
+  top: 50px;
+  right: -10px;
   width: 350px;
-  max-height: 500px;
+  max-height: calc(100vh - 80px);
   background-color: white;
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
@@ -48,6 +52,8 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  border: 1px solid #e2e8f0;
+  animation: slideDown 0.2s ease-out;
 }
 
 .notification-header {
@@ -162,12 +168,27 @@
   color: #ff4d4f;
 }
 
+/* Add animation for the panel */
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 /* Responsive styles */
 @media (max-width: 768px) {
   .notification-panel {
-    width: 300px;
-    max-height: 450px;
-    right: -10px;
+    position: fixed;
+    top: 60px;
+    right: 10px;
+    left: 10px;
+    width: auto;
+    max-height: calc(100vh - 70px);
   }
 
   .notification-content h4 {
@@ -176,5 +197,45 @@
 
   .notification-content p {
     font-size: 0.8rem;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .notification-panel {
+    background-color: #1a202c;
+    border-color: #2d3748;
+  }
+
+  .notification-header {
+    border-bottom-color: #2d3748;
+  }
+
+  .notification-item {
+    border-bottom-color: #2d3748;
+  }
+
+  .notification-item:hover {
+    background-color: #2d3748;
+  }
+
+  .notification-item.unread {
+    background-color: #2c5282;
+  }
+
+  .notification-item.unread:hover {
+    background-color: #2b6cb0;
+  }
+
+  .notification-content h4 {
+    color: #e2e8f0;
+  }
+
+  .notification-content p {
+    color: #a0aec0;
+  }
+
+  .notification-time {
+    color: #718096;
   }
 }

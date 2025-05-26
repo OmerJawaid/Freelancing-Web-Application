@@ -17,30 +17,6 @@ const NotificationComponent = () => {
   const socket = useRef(null);
   const navigate = useNavigate();
 
-  // Mock data for testing
-  const mockNotifications = [
-    {
-      Id: 1,
-      User_Id: user?.id || 1,
-      Type: 'message',
-      Title: 'New Message',
-      Message: 'You have received a new message from John',
-      Related_Id: 1,
-      Is_Read: false,
-      Created_At: new Date().toISOString()
-    },
-    {
-      Id: 2,
-      User_Id: user?.id || 1,
-      Type: 'order',
-      Title: 'New Order',
-      Message: 'You have received a new order #12345',
-      Related_Id: 2,
-      Is_Read: true,
-      Created_At: new Date(Date.now() - 3600000).toISOString()
-    }
-  ];
-
   // Function to format time for notifications
   const formatNotificationTime = (timestamp) => {
     const now = new Date();
@@ -74,38 +50,25 @@ const NotificationComponent = () => {
       const url = `http://localhost:8081/notifications/user/${user.id}`;
       console.log(`Request URL: ${url}`);
       
-      // First, check if the server is reachable by pinging a test endpoint
-      try {
-        await axios.get('http://localhost:8081/notifications/test', {
-          withCredentials: true
-        });
-        console.log("Notification test endpoint is reachable");
-      } catch (testError) {
-        console.error("Test endpoint not reachable:", testError);
-        // If test endpoint fails, fall back to mock data
-        setNotifications(mockNotifications);
-        setUnreadCount(mockNotifications.filter(n => !n.Is_Read).length);
-        setLoading(false);
-        return;
-      }
-      
       const response = await axios.get(url, {
         withCredentials: true
       });
       
       console.log('Notifications response:', response.data);
-      setNotifications(response.data);
       
-      // Count unread notifications
-      const unread = response.data.filter(notification => !notification.Is_Read).length;
-      setUnreadCount(unread);
+      if (Array.isArray(response.data)) {
+        setNotifications(response.data);
+        // Count unread notifications
+        const unread = response.data.filter(notification => !notification.Is_Read).length;
+        setUnreadCount(unread);
+      } else {
+        throw new Error('Invalid response format');
+      }
     } catch (error) {
       console.error('Error fetching notifications:', error);
-      setError('Failed to load notifications');
-      
-      // If API fails, use mock data for demonstration
-      setNotifications(mockNotifications);
-      setUnreadCount(mockNotifications.filter(n => !n.Is_Read).length);
+      setError('Failed to load notifications. Please try again later.');
+      setNotifications([]);
+      setUnreadCount(0);
       
       if (error.response) {
         console.error('Response data:', error.response.data);
@@ -340,7 +303,6 @@ const NotificationComponent = () => {
             ) : error ? (
               <div className="error">
                 <p>{error}</p>
-                <p>Using demo notifications instead</p>
               </div>
             ) : notifications.length === 0 ? (
               <div className="no-notifications">
