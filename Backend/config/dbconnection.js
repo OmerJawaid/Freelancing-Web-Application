@@ -7,8 +7,9 @@ dotenv.config();
 // Create database connection pool
 const database_pool = mysql.createPool({
     host: process.env.DB_HOST || 'localhost',
+    port: process.env.DB_PORT || 3306,
     user: process.env.DB_USER || 'root',
-    password: process.env.DB_PASSWORD || 'Hina@1976',  // Remove hardcoded password
+    password: process.env.DB_PASSWORD || '',  // Remove hardcoded password
     database: process.env.DB_NAME || 'skillify',
     waitForConnections: true,
     connectionLimit: 10,
