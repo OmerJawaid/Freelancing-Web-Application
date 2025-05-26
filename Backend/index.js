@@ -21,6 +21,7 @@ import { gigRouter } from './router/gigRouter.js';
 import { packageRouter } from './router/packageRouter.js';
 import { reviewRouter } from './router/reviewRouter.js';
 import profileRouter from './router/profileRouter.js';
+import { orderRouter } from './router/orderRouter.js';
 
 // Get current dirname
 const __filename = fileURLToPath(import.meta.url);
@@ -106,6 +107,7 @@ function configureRoutes(app) {
   app.use('/packages', packageRouter);
   app.use('/reviews', reviewRouter);
   app.use('/profile', profileRouter);
+  app.use('/orders', orderRouter);
   
   // Legacy endpoint for backward compatibility
   app.post('/create-conversation', (req, res) => {

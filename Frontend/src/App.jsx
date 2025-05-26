@@ -17,6 +17,8 @@ import Messages from './Pages/Messages/Messages.jsx';
 import CreateGig from './Pages/CreateGig/CreateGig.jsx';
 import EditGig from './Pages/EditGig/EditGig.jsx';
 import Settings from './Pages/Settings/Settings.jsx';
+import ClientOrders from './Pages/Orders/ClientOrders.jsx';
+import FreelancerOrders from './Pages/Orders/FreelancerOrders.jsx';
 
 // Wrapper component for transitions
 const TransitionWrapper = ({ children }) => {
@@ -71,7 +73,7 @@ function App() {
       element: <Signup />
     },
     {
-      path: '/client',
+      path: '/client-dashboard',
       element: (
         <ProtectedRoute userType="client">
           <ClientDashboard />
@@ -87,7 +89,7 @@ function App() {
       )
     },
     {
-      path: '/freelancer',
+      path: '/freelancer-dashboard',
       element: (
         <ProtectedRoute userType="freelancer">
           <FreelancerDashboard />
@@ -127,6 +129,33 @@ function App() {
           <Settings />
         </AuthRequiredRoute>
       )
+    },
+    // Client Orders Page
+    {
+      path: '/client-orders',
+      element: (
+        <ProtectedRoute userType="client">
+          <ClientOrders />
+        </ProtectedRoute>
+      )
+    },
+    // Freelancer Orders Page
+    {
+      path: '/freelancer-orders',
+      element: (
+        <ProtectedRoute userType="freelancer">
+          <FreelancerOrders />
+        </ProtectedRoute>
+      )
+    },
+    // Maintain backward compatibility
+    {
+      path: '/client',
+      element: <Navigate to="/client-dashboard" replace />
+    },
+    {
+      path: '/freelancer',
+      element: <Navigate to="/freelancer-dashboard" replace />
     }
   ]);
 

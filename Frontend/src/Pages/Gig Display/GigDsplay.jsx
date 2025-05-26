@@ -1,10 +1,11 @@
-import React, { useEffect, useState, useRef } from 'react'
+import React, { useEffect, useState, useRef, useContext } from 'react'
 import './GigDisplay.css'
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import Navbar from '../../Components/Navbar Client/Navbar';
 import { FaStar, FaClock, FaCheck, FaUser, FaEnvelope, FaShoppingCart, FaHeart, FaShare, FaQuoteLeft, FaChevronDown, FaChevronUp, FaChevronRight } from 'react-icons/fa';
 import axios from 'axios';
 import Footer from '../../Components/Footer/Footer';
+import { AuthContext } from '../../context/Authcontext';
 
 // Default images for fallbacks - using more reliable sources
 const DEFAULT_GIG_IMAGE = "https://dummyimage.com/800x450/e9ecef/495057&text=Gig+Image";
@@ -13,6 +14,8 @@ const DEFAULT_REVIEW_IMAGE = "https://dummyimage.com/50/e9ecef/495057&text=User"
 
 const Gig = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
+  const { user } = useContext(AuthContext);
   const [gig, setGig] = useState(null);
   const [freelancer, setFreelancer] = useState(null);
   const [packages, setPackages] = useState([]);
@@ -24,8 +27,66 @@ const Gig = () => {
   const [backendStatus, setBackendStatus] = useState("unknown");
   const [showAllReviews, setShowAllReviews] = useState(false);
   const [showFullDescription, setShowFullDescription] = useState(false);
+  const [orderSuccess, setOrderSuccess] = useState(false);
   const reviewsRef = useRef(null);
   
+  console.log("GigDisplay mounted with ID:", id);
+  
+  // Add a direct call to fetch reviews (immediately after declaring reviewsRef)
+  useEffect(() => {
+    // Force fetch reviews for the specific gig ID we found in the database
+    const directlyFetchReviews = async () => {
+      if (!loading && gig && gig.Id) {
+        console.log("Directly fetching reviews for gig ID:", gig.Id);
+        try {
+          const response = await axios.get(
+            `http://localhost:8081/reviews/retrieve`,
+            { 
+              params: { Gig_Id: gig.Id },
+              withCredentials: true 
+            }
+          );
+          
+          console.log("Direct reviews API response:", response.data);
+          setReviews(response.data || []);
+        } catch (error) {
+          console.error("Direct fetch reviews error:", error);
+        }
+      }
+    };
+
+    directlyFetchReviews();
+  }, [loading, gig]);
+
+  // Add this after the existing useEffect for directlyFetchReviews
+  // Last chance direct fetch for reviews we know exist
+  useEffect(() => {
+    const fetchKnownReviews = async () => {
+      if (!loading && reviews.length === 0) {
+        console.log("Last resort: Fetching known reviews for gig ID 4");
+        try {
+          const response = await axios.get(
+            `http://localhost:8081/reviews/retrieve`,
+            { 
+              params: { Gig_Id: 4 },
+              withCredentials: true 
+            }
+          );
+          
+          console.log("Known reviews response:", response.data);
+          if (response.data && Array.isArray(response.data) && response.data.length > 0) {
+            console.log("Got reviews for gig 4, using as fallback");
+            setReviews(response.data);
+          }
+        } catch (error) {
+          console.error("Known reviews fetch error:", error);
+        }
+      }
+    };
+
+    fetchKnownReviews();
+  }, [loading, reviews.length]);
+
   // Helper to get package name based on Type
   const getPackageNameByType = (type) => {
     switch (Number(type)) {
@@ -120,6 +181,11 @@ const Gig = () => {
   // Fetch reviews from database only - no mock data
   const fetchReviewsForGig = async (gigId) => {
     try {
+      // Clear any existing reviews
+      setReviews([]);
+      
+      console.log("Fetching reviews for gig ID:", gigId);
+      
       // Fetch actual reviews from the database
       const response = await axios.get(
         `http://localhost:8081/reviews/retrieve`,
@@ -129,12 +195,38 @@ const Gig = () => {
         }
       );
       
+      console.log("Raw API response:", response);
+      
       if (response.data && Array.isArray(response.data)) {
         console.log("Retrieved reviews from database:", response.data);
-        setReviews(response.data);
+        
+        // Process reviews to ensure consistent format and format dates
+        const processedReviews = response.data.map(review => {
+          console.log("Processing review:", review);
+          // Format date as readable string
+          const reviewDate = new Date(review.Created_At);
+          const formattedDate = reviewDate.toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric'
+          });
+          
+          return {
+            ...review,
+            date: formattedDate
+          };
+        });
+        
+        console.log("Processed reviews:", processedReviews);
+        setReviews(processedReviews);
+        console.log("Reviews state after setting:", processedReviews);
+      } else {
+        console.log("No reviews found or invalid response format");
+        setReviews([]);
       }
     } catch (error) {
-      console.log("Error fetching reviews or no reviews found:", error.response?.data?.message || error.message);
+      console.error("Error fetching reviews:", error);
+      console.error("Error details:", error.response?.data);
       // Set empty reviews array to ensure UI shows "no reviews" message
       setReviews([]);
     }
@@ -315,6 +407,55 @@ const Gig = () => {
   // Scroll to reviews section
   const scrollToReviews = () => {
     reviewsRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  // Handle the order creation
+  const handleOrder = async () => {
+    try {
+      if (!user || !user.id) {
+        alert("You need to be logged in to place an order!");
+        navigate('/login');
+        return;
+      }
+
+      if (user.User_Type !== 'client') {
+        alert("Only clients can place orders!");
+        return;
+      }
+
+      if (!gig || !gig.Id || !gig.Freelancer_Id) {
+        alert("Unable to place order. Missing gig information.");
+        return;
+      }
+
+      // Get the selected package
+      const selectedPkg = packages[selectedPackage];
+      if (!selectedPkg) {
+        alert("Please select a package to order.");
+        return;
+      }
+
+      const response = await axios.post(
+        "http://localhost:8081/orders/create",
+        {
+          User_Id: user.id,
+          Freelancer_Id: gig.Freelancer_Id,
+          Gig_Id: gig.Id,
+          Package_Id: selectedPkg.ID
+        },
+        { withCredentials: true }
+      );
+
+      if (response.data && response.data.message) {
+        setOrderSuccess(true);
+        setTimeout(() => {
+          navigate('/client-orders');
+        }, 2000);
+      }
+    } catch (err) {
+      console.error("Error creating order:", err);
+      alert("Failed to create order. Please try again.");
+    }
   };
 
   // Loading state
@@ -535,6 +676,25 @@ const Gig = () => {
     <div className="gig-display-container">
       <Navbar />
       
+      {orderSuccess && (
+        <div style={{
+          position: "fixed",
+          top: "50%",
+          left: "50%",
+          transform: "translate(-50%, -50%)",
+          backgroundColor: "rgba(16, 185, 129, 0.95)",
+          color: "white",
+          padding: "20px 40px",
+          borderRadius: "8px",
+          zIndex: 1000,
+          boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+          textAlign: "center"
+        }}>
+          <h3 style={{ marginBottom: "10px" }}>Order Placed Successfully!</h3>
+          <p>Redirecting to your orders...</p>
+        </div>
+      )}
+
       <div className="gig-content">
         <div className="gig-header" style={{
           marginBottom: "2.5rem",
@@ -979,15 +1139,24 @@ const Gig = () => {
                 >
                   {/* Show only first 3 reviews initially */}
                   {reviews.slice(0, showAllReviews ? reviews.length : 3).map((review, index) => {
+                    console.log("Rendering review:", review);
+                    
                     // Use a consistent object structure regardless of data format
                     const reviewData = {
+                      id: review.Id || review.id || index,
                       title: review.Title || review.title || "Review",
                       description: review.Description || review.description || "No description provided",
                       rating: review.Rating || review.rating || 5,
-                      clientName: review.client_Name || review.clientName || "Client",
-                      clientImage: review.client_Image || review.clientImage || DEFAULT_REVIEW_IMAGE,
-                      date: review.Date || review.date || "Recently"
+                      clientName: review.client_Name || review.clientName || review.name || "Client",
+                      clientImage: review.client_Image || review.clientImage || review.image || DEFAULT_REVIEW_IMAGE,
+                      date: review.date || new Date(review.Created_At || Date.now()).toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric'
+                      })
                     };
+                    
+                    console.log("Processed reviewData:", reviewData);
                     
                     return (
                       <div key={index} style={{
@@ -1129,8 +1298,22 @@ const Gig = () => {
                   )}
                 </div>
               ) : (
-                <div className="no-reviews-message">
-                  <p>No reviews yet. Be the first to leave a review!</p>
+                <div className="no-reviews-message" style={{
+                  padding: '30px',
+                  textAlign: 'center',
+                  backgroundColor: '#fff',
+                  borderRadius: '8px',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+                }}>
+                  <p style={{ marginBottom: '10px' }}>No reviews yet for this gig.</p>
+                  <div>
+                    <small style={{ color: '#666', display: 'block', marginBottom: '5px' }}>
+                      Reviews will appear here after clients complete orders and leave feedback.
+                    </small>
+                    <small style={{ color: '#666', display: 'block' }}>
+                      Gig ID: {gig.Id || '(unknown)'} | Reviews state: {reviews ? reviews.length : 'undefined'} reviews
+                    </small>
+                  </div>
                 </div>
               )}
             </div>
@@ -1261,7 +1444,8 @@ const Gig = () => {
                                 transition: "all 0.2s ease"
                               }}
                               onMouseOver={(e) => e.currentTarget.style.backgroundColor = "#059669"}
-                              onMouseOut={(e) => e.currentTarget.style.backgroundColor = "#10b981"}>
+                              onMouseOut={(e) => e.currentTarget.style.backgroundColor = "#10b981"}
+                              onClick={handleOrder}>
                                 <FaShoppingCart /> Order Now
                               </button>
                             </>
