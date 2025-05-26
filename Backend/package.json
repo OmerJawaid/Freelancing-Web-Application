@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "start": "node index.js",
+    "build": "echo \"No build step needed\"",
     "server": "nodemon ./index.js",
     "client": "npm run dev --prefix ../Frontend",
     "dev": "concurrently \"npm run server\" \"npm run client\""
