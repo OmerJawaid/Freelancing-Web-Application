@@ -19,6 +19,7 @@ import EditGig from './Pages/EditGig/EditGig.jsx';
 import Settings from './Pages/Settings/Settings.jsx';
 import ClientOrders from './Pages/Orders/ClientOrders.jsx';
 import FreelancerOrders from './Pages/Orders/FreelancerOrders.jsx';
+import Notification from './Pages/Notification/Notification.jsx';
 
 // Wrapper component for transitions
 const TransitionWrapper = ({ children }) => {
@@ -137,6 +138,13 @@ function App() {
         <ProtectedRoute userType="client">
           <ClientOrders />
         </ProtectedRoute>
+      )
+    },
+      {
+      path: '/notifications',
+      element: (
+        
+          <Notification/>
       )
     },
     // Freelancer Orders Page

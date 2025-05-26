@@ -1,7 +1,9 @@
-import React, { useContext, useState, useEffect } from 'react';
+import React, { useContext, useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../../context/Authcontext';
+import NotificationComponent from '../../Pages/Notification/Notification';
 import './Navbar.css';
+
 
 // Import icons
 import { 
@@ -11,7 +13,8 @@ import {
   FaHome,       // Home/Dashboard
   FaSignInAlt,  // Login
   FaUserPlus,   // Sign Up
-  FaShoppingBag // Orders
+  FaShoppingBag, // Orders
+  FaUser        // User profile
 
 } from 'react-icons/fa';
 
@@ -31,6 +34,22 @@ const Navbar = () => {
   const [imgSrc, setImgSrc] = useState(DEFAULT_USER_IMAGE);
   const [imgError, setImgError] = useState(false);
   const [debugInfo, setDebugInfo] = useState('');
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const profileRef = useRef(null);
+
+  // Handle click outside to close profile dropdown
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (profileRef.current && !profileRef.current.contains(event.target)) {
+        setIsProfileOpen(false);
+      }
+    };
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   // ===== Navigation handlers =====
   
@@ -86,11 +105,16 @@ const Navbar = () => {
     }
   };
 
+  /**
+   * Toggle profile dropdown
+   */
+  const toggleProfile = () => {
+    setIsProfileOpen(!isProfileOpen);
+  };
+
   // ===== Image handling =====
   
-  /**
-   * Resolve the user profile image URL based on different path formats
-   */
+  //Resolve the user profile image URL based on different path formats
   useEffect(() => {
     // Default to fallback image right away to prevent empty string src
     setImgSrc(DEFAULT_USER_IMAGE);
@@ -146,15 +170,6 @@ const Navbar = () => {
    */
   const renderAuthenticatedNav = () => (
     <>
-      <div className="user-profile">
-        <img 
-          src={imgSrc || DEFAULT_USER_IMAGE}
-          alt="Profile" 
-          className="profile-image" 
-          onError={handleImageError}
-        />
-        <span className="username">{user.name || user.email || "User"}</span>
-      </div>
       <button className="nav-button dashboard-button" onClick={handleDashboardClick}>
         <FaHome className="nav-icon" /> {user.User_Type === 'client' ? 'Home' : 'Dashboard'}
       </button>
@@ -164,12 +179,42 @@ const Navbar = () => {
       <button className="nav-button" onClick={handleOrdersClick}>
         <FaShoppingBag className="nav-icon" /> {user.User_Type === 'client' ? 'My Orders' : 'Manage Orders'}
       </button>
-      <button className="nav-button settings-button" onClick={handleOpenSettings}>
-        <FaCog className="nav-icon" /> Settings
+      <button className="nav-button icon-only" onClick={handleOpenSettings} title="Settings">
+        <FaCog className="nav-icon" />
       </button>
-      <button className="nav-button logout-button" onClick={handleLogout}>
-        <FaSignOutAlt className="nav-icon" /> Logout
-      </button>
+      <NotificationComponent />
+      <div className="profile-dropdown" ref={profileRef}>
+        <div className="profile-trigger" onClick={toggleProfile}>
+          <img 
+            src={imgSrc || DEFAULT_USER_IMAGE}
+            alt="Profile" 
+            className="profile-image" 
+            onError={handleImageError}
+          />
+        </div>
+        {isProfileOpen && (
+          <div className="profile-menu">
+            <div className="profile-header">
+              <img 
+                src={imgSrc || DEFAULT_USER_IMAGE}
+                alt="Profile" 
+                className="profile-image-large" 
+                onError={handleImageError}
+              />
+              <div className="profile-info">
+                <span className="profile-name">{user.name || user.email || "User"}</span>
+                <span className="profile-email">{user.email}</span>
+              </div>
+            </div>
+            <div className="profile-menu-items">
+              <button className="profile-menu-item" onClick={handleLogout}>
+                <FaSignOutAlt className="menu-icon" />
+                <span>Logout</span>
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
     </>
   );
 
