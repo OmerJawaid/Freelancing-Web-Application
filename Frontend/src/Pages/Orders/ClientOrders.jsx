@@ -5,7 +5,7 @@ import Navbar from '../../Components/Navbar Client/Navbar';
 import Footer from '../../Components/Footer/Footer';
 import './Orders.css';
 import { FaClock, FaCheckCircle, FaTimesCircle, FaHourglassHalf, FaSpinner, FaDownload, FaFile, FaThumbsUp, FaThumbsDown, FaTimes, FaStar } from 'react-icons/fa';
-import ReviewForm from '../../components/ReviewForm/ReviewForm';
+import ReviewForm from '../../Components/ReviewForm/ReviewForm';
 import { getImageUrl, DEFAULT_USER_IMAGE } from '../../utils/imageUtils';
 
 const ClientOrders = () => {

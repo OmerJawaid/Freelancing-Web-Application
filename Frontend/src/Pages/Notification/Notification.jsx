@@ -50,8 +50,10 @@ const NotificationComponent = () => {
       const url = `https://freelancing-web-application-production.up.railway.app/notifications/user/${user.id}`;
       console.log(`Request URL: ${url}`);
       
+      // Add a timeout to the axios request to prevent long loading times
       const response = await axios.get(url, {
-        withCredentials: true
+        withCredentials: true,
+        timeout: 5000 // 5 second timeout
       });
       
       console.log('Notifications response:', response.data);
@@ -70,11 +72,25 @@ const NotificationComponent = () => {
         const unread = response.data.filter(notification => !notification.Is_Read).length;
         setUnreadCount(unread);
       } else {
-        throw new Error('Invalid response format');
+        // Handle non-array response gracefully
+        console.log('Received non-array response:', response.data);
+        setNotifications([]);
+        setUnreadCount(0);
       }
     } catch (error) {
       console.error('Error fetching notifications:', error);
-      setError('Failed to load notifications. Please try again later.');
+      
+      // Check for specific database error
+      if (error.response && 
+          error.response.data && 
+          error.response.data.error && 
+          error.response.data.error.includes("Table 'railway.notifications' doesn't exist")) {
+        console.log('Notifications table does not exist on the server');
+        setError('Notifications feature is currently unavailable.');
+      } else {
+        setError('Failed to load notifications. Please try again later.');
+      }
+      
       setNotifications([]);
       setUnreadCount(0);
       
@@ -97,14 +113,24 @@ const NotificationComponent = () => {
       console.log(`Request URL: ${url}`);
       
       const response = await axios.get(url, {
-        withCredentials: true
+        withCredentials: true,
+        timeout: 3000 // 3 second timeout
       });
       
       console.log('Unread count response:', response.data);
       setUnreadCount(response.data.count);
     } catch (error) {
       console.error('Error fetching unread count:', error);
-      // Keep the current unread count
+      // Check for specific database error
+      if (error.response && 
+          error.response.data && 
+          error.response.data.error && 
+          error.response.data.error.includes("Table 'railway.notifications' doesn't exist")) {
+        console.log('Notifications table does not exist on the server');
+        // Set unread count to 0 silently
+        setUnreadCount(0);
+      }
+      // For other errors, keep the current unread count
     }
   };
 

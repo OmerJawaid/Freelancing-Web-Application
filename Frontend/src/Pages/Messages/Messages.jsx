@@ -14,7 +14,9 @@ const DEFAULT_AVATAR = "https://placehold.co/100/e9ecef/495057?text=User";
 const socket = io('https://freelancing-web-application-production.up.railway.app', { 
   reconnection: true,
   reconnectionAttempts: 5,
-  reconnectionDelay: 1000
+  reconnectionDelay: 1000,
+  transports: ['websocket', 'polling'], // Support both WebSocket and polling for better compatibility
+  withCredentials: true
 });
 
 // Utility function to format timestamps
@@ -143,13 +145,23 @@ const Messages = () => {
     }
 
     // Setup socket connection
-    // console.log("Setting up socket connection for user:", currentUser.current.id);
+    console.log("Setting up socket connection for user:", currentUser.current.id);
     
-    socket.connect();
+    // Connect socket if not already connected
+    if (!socket.connected) {
+      socket.connect();
+    }
+    
+    // Join user's room and get online users
     socket.emit('join', { userId: currentUser.current.id });
-    
-    // Request list of online users
     socket.emit('get_online_users');
+    
+    socket.on('connect', () => {
+      console.log("Socket connected with ID:", socket.id);
+      // Join user's room and get online users
+      socket.emit('join', { userId: currentUser.current.id });
+      socket.emit('get_online_users');
+    });
     
     socket.on('connect', () => {
       // console.log("Socket connected, ID:", socket.id);
@@ -288,35 +300,23 @@ const Messages = () => {
         }
       }))
     );
-  }, [onlineUsers]);
-
+  }, [onlineUsers]); // Remove conversations from dependency array to prevent infinite loop
+  
   // Listen for new messages
   useEffect(() => {
+    if (!selectedConversation.id) return;
+    
     // Socket listener for receiving messages
     const handleReceiveMessage = (data) => {
-      // console.log("Received message via socket:", data);
+      console.log("Received message via socket:", data);
       
       if (!data || !data.conversationId) {
         console.error("Invalid message data received:", data);
         return;
       }
       
-      // Store received message by conversation ID
-      setReceivedMessages(prev => {
-        const conversationMessages = prev[data.conversationId] || [];
-        
-        // Check if message already exists
-        const messageExists = conversationMessages.some(msg => 
-          msg.message === data.message && 
-          msg.senderId === data.senderId &&
-          msg.type === data.type &&
-          Math.abs(new Date(msg.timestamp) - new Date(data.timestamp || new Date())) < 1000
-        );
-        
-        if (messageExists) {
-          return prev;
-        }
-        
+      // Only process messages for the current conversation
+      if (parseInt(data.conversationId) === parseInt(selectedConversation.id)) {
         const msgTimestamp = data.timestamp || new Date().toISOString();
         const newMessage = {
           senderId: data.senderId,
@@ -329,59 +329,59 @@ const Messages = () => {
           fileName: data.fileName || (data.attachmentUrl ? data.attachmentUrl.split('/').pop() : null)
         };
         
-        return {
-          ...prev,
-          [data.conversationId]: [...conversationMessages, newMessage]
-        };
-      });
-      
-      // Update conversations list with latest message
-      setConversations(prevConversations => {
-        return prevConversations.map(conv => {
-          if (conv.id === data.conversationId) {
-            const msgTimestamp = data.timestamp || new Date().toISOString();
-            return {
-              ...conv,
-              lastMessage: data.lastMessagePreview || data.message || 'New message',
-              timestamp: msgTimestamp,
-              formattedTime: formatMessageTime(msgTimestamp),
-              unread: conv.user.id === data.senderId ? conv.unread + 1 : conv.unread
-            };
+        // Add message to chat if it doesn't already exist
+        setChat(prevChat => {
+          // Check if message already exists
+          const msgExists = prevChat.some(msg => 
+            msg.senderId === newMessage.senderId &&
+            msg.message === newMessage.message &&
+            Math.abs(new Date(msg.timestamp) - new Date(msgTimestamp)) < 1000
+          );
+          
+          if (!msgExists) {
+            console.log("Adding new message to chat:", newMessage);
+            return [...prevChat, newMessage];
           }
-          return conv;
+          return prevChat;
         });
-      });
+        
+        // Update conversation list with latest message
+        setConversations(prevConversations => {
+          return prevConversations.map(conv => {
+            if (parseInt(conv.id) === parseInt(data.conversationId)) {
+              return {
+                ...conv,
+                lastMessage: data.lastMessagePreview || data.message || 'New message',
+                timestamp: msgTimestamp,
+                formattedTime: formatMessageTime(msgTimestamp),
+                unread: conv.user.id === data.senderId ? (conv.unread || 0) + 1 : (conv.unread || 0)
+              };
+            }
+            return conv;
+          });
+        });
+      }
     };
     
+    // Make sure socket is connected
+    if (!socket.connected) {
+      socket.connect();
+    }
+    
+    // Remove any existing listeners to prevent duplicates
+    socket.off('receive_message');
+    
+    // Register for receive_message events
     socket.on('receive_message', handleReceiveMessage);
+    console.log("Registered receive_message handler for conversation:", selectedConversation.id);
     
     return () => {
       socket.off('receive_message', handleReceiveMessage);
     };
-  }, []);
-
-  // Update chat when selectedConversation or receivedMessages changes
-  useEffect(() => {
-    if (!selectedConversation.id) return;
-    
-    // Add received messages for this conversation to the chat
-    const conversationMessages = receivedMessages[selectedConversation.id] || [];
-    if (conversationMessages.length > 0) {
-      setChat(prevChat => {
-        // Filter out messages that are already in the chat
-        const newMessages = conversationMessages.filter(newMsg => 
-          !prevChat.some(existingMsg => 
-            existingMsg.senderId === newMsg.senderId &&
-            existingMsg.message === newMsg.message &&
-            existingMsg.timestamp === newMsg.timestamp
-          )
-        );
-        
-        if (newMessages.length === 0) return prevChat;
-        return [...prevChat, ...newMessages];
-      });
-    }
-  }, [selectedConversation.id, receivedMessages]);
+  }, [selectedConversation.id]);
+  
+  // We're removing this effect to prevent infinite loops
+  // The message handling is now done in the socket event handler and fetch messages effect
 
   // Create a separate memo for selected conversation ID for message filtering
   const selectedConversationId = selectedConversation?.id;
@@ -459,6 +459,7 @@ const Messages = () => {
     }
     
     const msgTimestamp = new Date().toISOString();
+    console.log("Sending message at timestamp:", msgTimestamp);
     
     try {
       // ===== Prepare message data =====
@@ -486,63 +487,129 @@ const Messages = () => {
         ? createTemporaryAttachmentUrl(attachment, attachmentPreview)
         : null;
       
-      // ===== Update UI immediately for responsiveness =====
-      
-      // Add message to chat display
-      addMessageToChat({
+      // ===== Create message object for immediate display =====
+      const messageObj = {
         senderId: currentUser.current.id,
         message: messageInput,
         timestamp: msgTimestamp,
-        attachmentUrl: temporaryAttachmentUrl,
+        formattedTime: formatMessageTime(msgTimestamp),
+        status: 'sent',
         type: messageType,
+        attachmentUrl: temporaryAttachmentUrl,
         fileName: attachment?.name
+      };
+      
+      // ===== Update UI immediately for responsiveness =====
+      
+      // Add message directly to chat display
+      setChat(prevChat => {
+        const updatedChat = [...prevChat, messageObj];
+        
+        // Cache the messages in localStorage
+        try {
+          localStorage.setItem(`chat_${selectedConversation.id}`, JSON.stringify(updatedChat));
+        } catch (e) {
+          console.error('Error caching messages:', e);
+        }
+        
+        return updatedChat;
       });
       
       // Clear input fields
       setMessageInput('');
       clearAttachment();
       
-      // ===== Send to server =====
-      
-      // Submit to API
-      const response = await axios.post(
-        "https://freelancing-web-application-production.up.railway.app/messages/upload",
-        formData,
-        { 
-          withCredentials: true,
-          headers: {
-            'Content-Type': 'multipart/form-data'
-          }
+      // Scroll to bottom after sending
+      setTimeout(() => {
+        if (chatEndRef.current) {
+          chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
         }
-      );
+      }, 100);
       
-      // console.log("Message saved to database:", response.data);
-      
-      // ===== Update with server data =====
-      
-      // Prepare socket message
-      const newMessage = {
-        conversationId: selectedConversation.id,
-        senderId: currentUser.current.id,
-        receiverId: selectedConversation.user.id,
-        message: messageInput,
-        timestamp: msgTimestamp,
-        status: 'sent',
-        attachmentUrl: response.data.attachmentUrl,
-        type: response.data.type
-      };
-      
-      // Emit via socket for real-time updates
-      socket.emit('send_message', newMessage);
+      // ===== Send to server =====
+      try {
+        // Submit to API
+        const response = await axios.post(
+          "https://freelancing-web-application-production.up.railway.app/messages/upload",
+          formData,
+          { 
+            withCredentials: true,
+            headers: {
+              'Content-Type': 'multipart/form-data'
+            }
+          }
+        );
+        
+        console.log("Message saved to database:", response.data);
+        
+        // ===== Update with server data =====
+        
+        // Prepare socket message
+        const newMessage = {
+          conversationId: selectedConversation.id,
+          senderId: currentUser.current.id,
+          receiverId: selectedConversation.user.id,
+          message: messageInput,
+          timestamp: msgTimestamp,
+          status: 'sent',
+          attachmentUrl: response.data.attachmentUrl,
+          type: response.data.type || messageType
+        };
+        
+        // Ensure socket is connected before emitting
+        if (!socket.connected) {
+          console.log("Socket not connected, reconnecting...");
+          socket.connect();
+        }
+        
+        // Emit via socket for real-time updates
+        socket.emit('send_message', newMessage);
+        console.log("Emitted send_message event:", newMessage);
+      } catch (apiError) {
+        console.error("API error when sending message:", apiError);
+        
+        // Even if API fails, still try to send via socket
+        if (socket.connected) {
+          // Emit message via socket anyway for real-time updates
+          socket.emit('send_message', {
+            conversationId: selectedConversation.id,
+            senderId: currentUser.current.id,
+            receiverId: selectedConversation.user.id,
+            message: messageInput,
+            timestamp: msgTimestamp,
+            type: messageType,
+            attachmentUrl: temporaryAttachmentUrl
+          });
+        }
+      }
       
       // Update conversation list with latest message
       updateConversationList(
         selectedConversation.id, 
-        response.data.lastMessagePreview || messageInput,
+        messageInput.trim() || 'Sent an attachment',
         msgTimestamp
       );
     } catch(err) {
       console.error("Error sending message:", err);
+      
+      // Update message status to show error
+      setChat(prevChat => {
+        const updatedChat = prevChat.map(msg => {
+          if (msg.timestamp === msgTimestamp && msg.senderId === currentUser.current.id) {
+            return { ...msg, status: 'error' };
+          }
+          return msg;
+        });
+        
+        // Update cache with error status
+        try {
+          localStorage.setItem(`chat_${selectedConversation.id}`, JSON.stringify(updatedChat));
+        } catch (e) {
+          console.error('Error updating cached messages:', e);
+        }
+        
+        return updatedChat;
+      });
     }
   };
 
@@ -621,46 +688,190 @@ const Messages = () => {
 
   // Fetch messages for selected conversation
   useEffect(() => {
-    if (!selectedConversationId) return;
+    // Store the current conversation ID to prevent stale closures
+    const currentConversationId = selectedConversationId;
+    if (!currentConversationId) return;
+    
+    let isMounted = true; // Flag to prevent state updates after unmount
     
     const fetchMessages = async () => {
       try {
-        // console.log("Fetching messages for conversation:", selectedConversationId);
-        const response = await axios.get(
-          "https://freelancing-web-application-production.up.railway.app/messages/retrieve",
-          {
-            params: { conversation_id: selectedConversationId },
-            withCredentials: true
+        console.log("Fetching messages for conversation:", currentConversationId);
+        
+        // Only clear chat if component is still mounted
+        if (isMounted) {
+          // Instead of clearing chat immediately, show a loading message
+          setChat([{
+            senderId: 'system',
+            message: 'Loading messages...',
+            timestamp: new Date().toISOString(),
+            formattedTime: formatMessageTime(new Date().toISOString()),
+            status: 'pending',
+            type: 'text'
+          }]);
+        }
+        
+        // Set a timeout to handle long-running requests
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error('Request timeout')), 10000);
+        });
+        
+        // Check if we should use the API or fallback to local storage
+        // We know there's a database issue, so we'll try to use cached messages if available
+        const cachedMessages = localStorage.getItem(`chat_${currentConversationId}`);
+        
+        if (cachedMessages) {
+          console.log("Using cached messages for conversation:", currentConversationId);
+          const parsedMessages = JSON.parse(cachedMessages);
+          
+          if (isMounted) {
+            setChat(parsedMessages);
+            // Scroll to bottom after messages are loaded
+            setTimeout(() => {
+              if (chatEndRef.current && isMounted) {
+                chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
+              }
+            }, 100);
           }
-        );
+          
+          // Still try the API in the background, but don't wait for it
+          axios.get(
+            "https://freelancing-web-application-production.up.railway.app/messages/retrieve",
+            {
+              params: { conversation_id: currentConversationId },
+              withCredentials: true
+            }
+          ).then(response => {
+            // If we get a successful response, update the cache and UI
+            if (isMounted && Array.isArray(response.data)) {
+              handleApiMessagesResponse(response.data, currentConversationId, isMounted);
+            }
+          }).catch(error => {
+            // Silently fail - we're already showing cached messages
+            console.error("Background API fetch failed:", error);
+          });
+          
+          return; // Exit early since we're using cached messages
+        }
         
-        // console.log("Messages API response:", response.data);
+        // If no cached messages, try the API with timeout
+        const response = await Promise.race([
+          axios.get(
+            "https://freelancing-web-application-production.up.railway.app/messages/retrieve",
+            {
+              params: { conversation_id: currentConversationId },
+              withCredentials: true
+            }
+          ),
+          timeoutPromise
+        ]);
         
-        if (Array.isArray(response.data)) {
-          setChat(
-            response.data.map(msg => ({
-              senderId: msg.Sender_Id,
-              message: msg.Content,
-              timestamp: msg.Created_at,
-              formattedTime: formatMessageTime(msg.Created_at),
-              status: msg.Status,
-              type: msg.Type || 'text',
-              attachmentUrl: msg.Attachment_url,
-              fileName: msg.Attachment_url ? msg.Attachment_url.split('/').pop() : null
-            }))
-          );
-        } else {
-          console.error("Unexpected response format:", response.data);
-          setChat([]);
+        // Helper function to process API response
+        function handleApiMessagesResponse(data, convId, mounted) {
+          // Map messages and sort by timestamp to ensure correct order
+          const messages = data.map(msg => ({
+            senderId: msg.Sender_Id,
+            message: msg.Content,
+            timestamp: msg.Created_at,
+            formattedTime: formatMessageTime(msg.Created_at),
+            status: msg.Status,
+            type: msg.Type || 'text',
+            attachmentUrl: msg.Attachment_url,
+            fileName: msg.Attachment_url ? msg.Attachment_url.split('/').pop() : null
+          }));
+          
+          // Sort messages by timestamp
+          messages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+          
+          console.log("Loaded", messages.length, "messages for conversation", convId);
+          
+          // Cache the messages for future use
+          localStorage.setItem(`chat_${convId}`, JSON.stringify(messages));
+          
+          if (mounted) {
+            setChat(messages);
+            // Scroll to bottom after messages are loaded
+            setTimeout(() => {
+              if (chatEndRef.current && mounted) {
+                chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
+              }
+            }, 100);
+          }
+        }
+        
+        // Only process response if component is still mounted and conversation hasn't changed
+        if (isMounted && currentConversationId === selectedConversationId) {
+          console.log("Messages API response:", response.data);
+          
+          if (Array.isArray(response.data)) {
+            // Use the helper function to process the response
+            handleApiMessagesResponse(response.data, currentConversationId, isMounted);
+          } else {
+            console.error("Unexpected response format:", response.data);
+            // Show empty chat with a placeholder message
+            if (isMounted) {
+              setChat([{
+                senderId: 'system',
+                message: 'No messages available for this conversation.',
+                timestamp: new Date().toISOString(),
+                formattedTime: formatMessageTime(new Date().toISOString()),
+                status: 'delivered',
+                type: 'text'
+              }]);
+            }
+          }
         }
       } catch (error) {
         console.error("Error fetching messages:", error);
-        setChat([]);
+        if (isMounted) {
+          // Handle specific error cases
+          if (error.response && error.response.status === 500) {
+            // Server error - show a friendly message
+            setChat([{
+              senderId: 'system',
+              message: 'Unable to load messages. There might be an issue with the server or database. You can still send new messages.',
+              timestamp: new Date().toISOString(),
+              formattedTime: formatMessageTime(new Date().toISOString()),
+              status: 'error',
+              type: 'text'
+            }]);
+          } else if (error.message === 'Request timeout') {
+            // Timeout error
+            setChat([{
+              senderId: 'system',
+              message: 'Request timed out. The server might be busy. Please try again later.',
+              timestamp: new Date().toISOString(),
+              formattedTime: formatMessageTime(new Date().toISOString()),
+              status: 'error',
+              type: 'text'
+            }]);
+          } else {
+            // Generic error
+            setChat([{
+              senderId: 'system',
+              message: 'An error occurred while loading messages. Please try again later.',
+              timestamp: new Date().toISOString(),
+              formattedTime: formatMessageTime(new Date().toISOString()),
+              status: 'error',
+              type: 'text'
+            }]);
+          }
+        }
       }
     };
     
     fetchMessages();
-  }, [selectedConversationId]);
+    
+    // Make sure socket is connected when viewing a conversation
+    if (!socket.connected) {
+      socket.connect();
+    }
+    
+    // Cleanup function to prevent state updates after unmount
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedConversationId]); // Only depend on selectedConversationId
 
   // Function to handle message with attachment
   const handleMessageWithAttachment = async (messageData) => {
