@@ -6,6 +6,7 @@ import { FaStar, FaClock, FaCheck, FaUser, FaEnvelope, FaShoppingCart, FaHeart, 
 import axios from 'axios';
 import Footer from '../../Components/Footer/Footer';
 import { AuthContext } from '../../context/Authcontext';
+import WorkExperience from '../../components/WorkExperience';
 
 // Default images for fallbacks - using more reliable sources
 const DEFAULT_GIG_IMAGE = "https://dummyimage.com/800x450/e9ecef/495057&text=Gig+Image";
@@ -982,77 +983,12 @@ const Gig = () => {
                     lineHeight: 1.6,
                     fontSize: "0.95rem"
                   }}>{safeFreelancer.Bio || "No bio available"}</p>
-                  <div style={{ 
-                    display: "flex",
-                    gap: "1rem",
-                    flexWrap: "wrap"
-                  }}
-                  >
-                    {/* Contact button */}
-                    <button
-                      className="contact-seller-button"
-                      style={{
-                        backgroundColor: 'white',
-                        color: '#10b981',
-                        border: '1px solid #10b981',
-                        borderRadius: '8px',
-                        padding: '12px 24px',
-                        width: 'auto',
-                        fontSize: '15px',
-                        fontWeight: '500',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s ease',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px'
-                      }}
-                      onMouseOver={(e) => {
-                        e.currentTarget.style.backgroundColor = '#f0fffa';
-                      }}
-                      onMouseOut={(e) => {
-                        e.currentTarget.style.backgroundColor = 'white';
-                      }}
-                      onClick={() => {
-                        console.log("Contact seller clicked");
-                        Contact()
-                      }}
-                    >
-                      <FaEnvelope /> Contact Me
-                    </button>
-                    
-                    {/* Continue button */}
-                    <button
-                      className="continue-button"
-                      style={{
-                        backgroundColor: '#10b981',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '8px',
-                        padding: '12px 24px',
-                        width: 'auto',
-                        fontSize: '15px',
-                        fontWeight: '500',
-                        cursor: 'pointer',
-                        boxShadow: '0 2px 6px rgba(16, 185, 129, 0.2)',
-                        transition: 'all 0.2s ease',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px'
-                      }}
-                      onMouseOver={(e) => {
-                        e.currentTarget.style.backgroundColor = '#059669';
-                      }}
-                      onMouseOut={(e) => {
-                        e.currentTarget.style.backgroundColor = '#10b981';
-                      }}
-                      onClick={() => {
-                        console.log("Continue clicked");
-                        document.querySelector('.pricing-card').scrollIntoView({ behavior: 'smooth' });
-                      }}
-                    >
-                      Continue
-                    </button>
-                  </div>
+                  
+                  {/* Add Work Experience Section */}
+                  <WorkExperience 
+                    freelancerId={safeFreelancer.Id} 
+                    isOwner={user && user.id === safeFreelancer.Id}
+                  />
                 </div>
               </div>
             </div>
