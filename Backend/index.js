@@ -23,6 +23,7 @@ import { reviewRouter } from './router/reviewRouter.js';
 import profileRouter from './router/profileRouter.js';
 import { orderRouter } from './router/orderRouter.js';
 import { notificationRouter } from './router/notificationRoutes.js';
+import workExperienceRouter from './router/workExperience.js';
 
 // Get current dirname
 const __filename = fileURLToPath(import.meta.url);
@@ -72,6 +73,9 @@ function configureMiddleware(app) {
     }
     next();
   });
+
+  // Serve static files
+  app.use('/uploads/work-experience', express.static('public/uploads/work-experience'));
 }
 
 /**
@@ -129,6 +133,7 @@ function configureRoutes(app) {
   app.use('/profile', profileRouter);
   app.use('/orders', orderRouter);
   app.use('/notifications', notificationRouter);
+  app.use('/api/work-experience', workExperienceRouter);
   
   // Legacy endpoint for backward compatibility
   app.post('/create-conversation', (req, res) => {
