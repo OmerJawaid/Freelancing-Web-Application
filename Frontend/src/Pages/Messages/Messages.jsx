@@ -302,6 +302,28 @@ const Messages = () => {
     );
   }, [onlineUsers]); // Remove conversations from dependency array to prevent infinite loop
   
+  // Set up socket connection and global handlers
+  useEffect(() => {
+    // Ensure socket is connected
+    if (!socket.connected) {
+      socket.connect();
+    }
+    
+    // Handle connection establishment
+    const handleConnectionEstablished = (data) => {
+      console.log("Socket connection established:", data.socketId);
+    };
+    
+    // Remove any existing listeners to prevent duplicates
+    socket.off('connection_established');
+    socket.on('connection_established', handleConnectionEstablished);
+    
+    // Clean up on unmount
+    return () => {
+      socket.off('connection_established', handleConnectionEstablished);
+    };
+  }, []); // Empty dependency array - only run once on mount
+  
   // Global socket event handler for all messages
   useEffect(() => {
     // Socket listener for receiving messages
@@ -347,6 +369,13 @@ const Messages = () => {
               console.error('Error caching messages:', e);
             }
             
+            // Scroll to bottom after adding new message
+            setTimeout(() => {
+              if (chatEndRef.current) {
+                chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
+              }
+            }, 100);
+            
             return updatedChat;
           }
           return prevChat;
@@ -372,27 +401,26 @@ const Messages = () => {
       });
     };
     
-    // Make sure socket is connected
-    if (!socket.connected) {
-      socket.connect();
-    }
+    // Handle user joining conversation
+    const handleUserJoinedConversation = (data) => {
+      console.log(`User ${data.userId} joined conversation ${data.conversationId}`);
+    };
     
     // Remove any existing listeners to prevent duplicates
     socket.off('receive_message');
+    socket.off('user_joined_conversation');
     
-    // Register for receive_message events - this is now global, not tied to a specific conversation
+    // Register for socket events
     socket.on('receive_message', handleReceiveMessage);
-    console.log("Registered global receive_message handler");
+    socket.on('user_joined_conversation', handleUserJoinedConversation);
     
-    // Auto-scroll when new messages arrive
-    if (chat.length > 0 && chatEndRef.current) {
-      chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
-    }
+    console.log("Registered global socket event handlers");
     
     return () => {
       socket.off('receive_message', handleReceiveMessage);
+      socket.off('user_joined_conversation', handleUserJoinedConversation);
     };
-  }, [selectedConversation, chat.length]); // Add chat.length to dependencies to trigger scrolling
+  }, [selectedConversation]); // Only re-run when selected conversation changes
   
   // We're removing this effect to prevent infinite loops
   // The message handling is now done in the socket event handler and fetch messages effect
@@ -558,8 +586,8 @@ const Messages = () => {
         
         // ===== Update with server data =====
         
-        // Prepare socket message
-        const newMessage = {
+        // Prepare socket message with all necessary fields
+        const socketMessage = {
           conversationId: selectedConversation.id,
           senderId: currentUser.current.id,
           receiverId: selectedConversation.user.id,
@@ -567,36 +595,26 @@ const Messages = () => {
           timestamp: msgTimestamp,
           status: 'sent',
           attachmentUrl: response.data.attachmentUrl,
-          type: response.data.type || messageType
+          type: response.data.type || messageType,
+          fileName: attachment?.name,
+          lastMessagePreview: messageInput.trim() || 'Sent an attachment'
         };
         
-        // Ensure socket is connected before emitting
+        // Make sure socket is connected before emitting
         if (!socket.connected) {
-          console.log("Socket not connected, reconnecting...");
+          console.log("Socket reconnecting before sending message...");
           socket.connect();
         }
         
-        // Emit via socket for real-time updates
-        socket.emit('send_message', newMessage);
-        console.log("Emitted send_message event:", newMessage);
-        
-        // IMPORTANT: Manually trigger the receive_message event for the sender
-        // This is a workaround since the backend only sends to the receiver
-        handleReceiveMessage({
-          conversationId: selectedConversation.id,
-          senderId: currentUser.current.id,
-          message: messageInput,
-          timestamp: msgTimestamp,
-          status: 'sent',
-          type: messageType,
-          attachmentUrl: response.data.attachmentUrl || temporaryAttachmentUrl
-        });
+        socket.emit('send_message', socketMessage);
+        console.log("Emitted send_message event:", socketMessage);
       } catch (apiError) {
         console.error("API error when sending message:", apiError);
         
         // Even if API fails, still try to send via socket
         if (socket.connected) {
-          const socketMessage = {
+          // Emit message via socket anyway for real-time updates
+          socket.emit('send_message', {
             conversationId: selectedConversation.id,
             senderId: currentUser.current.id,
             receiverId: selectedConversation.user.id,
@@ -604,13 +622,7 @@ const Messages = () => {
             timestamp: msgTimestamp,
             type: messageType,
             attachmentUrl: temporaryAttachmentUrl
-          };
-          
-          // Emit message via socket anyway for real-time updates
-          socket.emit('send_message', socketMessage);
-          
-          // Manually trigger the receive_message event for the sender
-          handleReceiveMessage(socketMessage);
+          });
         }
       }
       
@@ -717,13 +729,24 @@ const Messages = () => {
     }
   };
 
-  // Fetch messages for selected conversation
+  // Fetch messages for selected conversation and join the conversation room
   useEffect(() => {
     // Store the current conversation ID to prevent stale closures
     const currentConversationId = selectedConversationId;
     if (!currentConversationId) return;
     
     let isMounted = true; // Flag to prevent state updates after unmount
+    
+    // Join the conversation room via socket
+    if (socket.connected && currentUser.current?.id) {
+      const roomData = {
+        userId: currentUser.current.id,
+        conversationId: currentConversationId
+      };
+      
+      console.log(`Joining conversation room for conversation ${currentConversationId}`);
+      socket.emit('join_conversation', roomData);
+    }
     
     const fetchMessages = async () => {
       try {
@@ -742,60 +765,69 @@ const Messages = () => {
           }]);
         }
         
-        // Set a timeout to handle long-running requests
-        const timeoutPromise = new Promise((_, reject) => {
-          setTimeout(() => reject(new Error('Request timeout')), 10000);
-        });
-        
         // Check if we should use the API or fallback to local storage
-        // We know there's a database issue, so we'll try to use cached messages if available
         const cachedMessages = localStorage.getItem(`chat_${currentConversationId}`);
         
         if (cachedMessages) {
           console.log("Using cached messages for conversation:", currentConversationId);
-          const parsedMessages = JSON.parse(cachedMessages);
-          
-          if (isMounted) {
-            setChat(parsedMessages);
-            // Scroll to bottom after messages are loaded
-            setTimeout(() => {
-              if (chatEndRef.current && isMounted) {
-                chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
-              }
-            }, 100);
+          try {
+            const parsedMessages = JSON.parse(cachedMessages);
+            
+            if (isMounted) {
+              setChat(parsedMessages);
+              // Scroll to bottom after messages are loaded
+              setTimeout(() => {
+                if (chatEndRef.current && isMounted) {
+                  chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
+                }
+              }, 100);
+            }
+          } catch (parseError) {
+            console.error("Error parsing cached messages:", parseError);
+            // If we can't parse the cached messages, we'll try the API
           }
-          
-          // Still try the API in the background, but don't wait for it
-          axios.get(
-            "https://freelancing-web-application-production.up.railway.app/messages/retrieve",
-            {
-              params: { conversation_id: currentConversationId },
-              withCredentials: true
-            }
-          ).then(response => {
-            // If we get a successful response, update the cache and UI
-            if (isMounted && Array.isArray(response.data)) {
-              handleApiMessagesResponse(response.data, currentConversationId, isMounted);
-            }
-          }).catch(error => {
-            // Silently fail - we're already showing cached messages
-            console.error("Background API fetch failed:", error);
-          });
-          
-          return; // Exit early since we're using cached messages
         }
         
-        // If no cached messages, try the API with timeout
-        const response = await Promise.race([
-          axios.get(
+        // Always try to get fresh messages from the API, even if we have cached messages
+        try {
+          console.log("Attempting to fetch messages from API for conversation:", currentConversationId);
+          
+          // Set a longer timeout for the request
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 20000); // 20 seconds timeout
+          
+          const response = await axios.get(
             "https://freelancing-web-application-production.up.railway.app/messages/retrieve",
             {
               params: { conversation_id: currentConversationId },
-              withCredentials: true
+              withCredentials: true,
+              signal: controller.signal
             }
-          ),
-          timeoutPromise
-        ]);
+          );
+          
+          // Clear the timeout since the request completed
+          clearTimeout(timeoutId);
+          
+          // Only process response if component is still mounted and conversation hasn't changed
+          if (isMounted && currentConversationId === selectedConversationId && Array.isArray(response.data)) {
+            console.log("Successfully fetched messages from API:", response.data.length);
+            handleApiMessagesResponse(response.data, currentConversationId, isMounted);
+          }
+        } catch (error) {
+          console.log("API fetch failed, using cached messages if available:", error.message);
+          
+          // If we don't have cached messages or couldn't parse them, show an error message
+          if (!cachedMessages && isMounted) {
+            setChat([{
+              senderId: 'system',
+              message: 'Unable to load messages. Please check your connection and try again.',
+              timestamp: new Date().toISOString(),
+              formattedTime: formatMessageTime(new Date().toISOString()),
+              status: 'error',
+              type: 'text'
+            }]);
+          }
+        }
         
         // Helper function to process API response
         function handleApiMessagesResponse(data, convId, mounted) {
@@ -830,63 +862,32 @@ const Messages = () => {
           }
         }
         
-        // Only process response if component is still mounted and conversation hasn't changed
-        if (isMounted && currentConversationId === selectedConversationId) {
-          console.log("Messages API response:", response.data);
-          
-          if (Array.isArray(response.data)) {
-            // Use the helper function to process the response
-            handleApiMessagesResponse(response.data, currentConversationId, isMounted);
-          } else {
-            console.error("Unexpected response format:", response.data);
-            // Show empty chat with a placeholder message
-            if (isMounted) {
-              setChat([{
-                senderId: 'system',
-                message: 'No messages available for this conversation.',
-                timestamp: new Date().toISOString(),
-                formattedTime: formatMessageTime(new Date().toISOString()),
-                status: 'delivered',
-                type: 'text'
-              }]);
-            }
-          }
-        }
+        // This block has been removed as it's now handled in the try/catch block above
       } catch (error) {
         console.error("Error fetching messages:", error);
-        if (isMounted) {
-          // Handle specific error cases
-          if (error.response && error.response.status === 500) {
-            // Server error - show a friendly message
-            setChat([{
-              senderId: 'system',
-              message: 'Unable to load messages. There might be an issue with the server or database. You can still send new messages.',
-              timestamp: new Date().toISOString(),
-              formattedTime: formatMessageTime(new Date().toISOString()),
-              status: 'error',
-              type: 'text'
-            }]);
-          } else if (error.message === 'Request timeout') {
-            // Timeout error
-            setChat([{
-              senderId: 'system',
-              message: 'Request timed out. The server might be busy. Please try again later.',
-              timestamp: new Date().toISOString(),
-              formattedTime: formatMessageTime(new Date().toISOString()),
-              status: 'error',
-              type: 'text'
-            }]);
-          } else {
-            // Generic error
-            setChat([{
-              senderId: 'system',
-              message: 'An error occurred while loading messages. Please try again later.',
-              timestamp: new Date().toISOString(),
-              formattedTime: formatMessageTime(new Date().toISOString()),
-              status: 'error',
-              type: 'text'
-            }]);
+        
+        // Only show error message if we don't have cached messages and component is mounted
+        if (isMounted && (!cachedMessages || cachedMessages.length === 0)) {
+          let errorMessage = 'An error occurred while loading messages. Please try again later.';
+          
+          // Customize error message based on error type
+          if (error.name === 'AbortError') {
+            errorMessage = 'Request timed out. The server might be busy. Please try again later.';
+          } else if (error.response && error.response.status === 500) {
+            errorMessage = 'Unable to load messages. There might be an issue with the server or database. You can still send new messages.';
+          } else if (error.code === 'ERR_NETWORK') {
+            errorMessage = 'Network error. Please check your internet connection and try again.';
           }
+          
+          // Show error message in chat
+          setChat([{
+            senderId: 'system',
+            message: errorMessage,
+            timestamp: new Date().toISOString(),
+            formattedTime: formatMessageTime(new Date().toISOString()),
+            status: 'error',
+            type: 'text'
+          }]);
         }
       }
     };
