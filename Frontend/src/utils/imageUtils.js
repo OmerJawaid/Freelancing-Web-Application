@@ -7,8 +7,10 @@ export const DEFAULT_USER_IMAGE = "https://dummyimage.com/100/e9ecef/495057&text
 export const DEFAULT_GIG_IMAGE = "https://dummyimage.com/800x450/e9ecef/495057&text=Gig+Image";
 export const DEFAULT_REVIEW_IMAGE = "https://dummyimage.com/50/e9ecef/495057&text=User";
 
-// Backend server URL
-const BACKEND_URL = 'https://freelancing-web-application-production.up.railway.app';
+// Backend server URL - same as in axiosConfig.js
+const BACKEND_URL = import.meta.env.DEV 
+  ? 'https://freelancing-web-application-production.up.railway.app' 
+  : '';
 
 /**
  * Converts a database image path to a valid frontend path

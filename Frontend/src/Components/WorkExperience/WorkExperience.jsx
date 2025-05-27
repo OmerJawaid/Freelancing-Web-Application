@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { FaPlus, FaEdit, FaTrash, FaCheck, FaStar } from 'react-icons/fa';
-import axiosInstance from '../../utils/axiosConfig';
+import axios from 'axios';
 import './WorkExperience.css';
 import WorkExperienceForm from './WorkExperienceForm';
 
@@ -29,6 +29,7 @@ const WorkExperience = ({ freelancerId, isEditable = false, limitToThree = true 
         
         // Ensure response.data is always an array
         const experiences = Array.isArray(response.data) ? response.data : [];
+        console.log('Work experiences fetched:', experiences);
         setWorkExperiences(experiences);
         setError(null);
       } catch (error) {
@@ -69,7 +70,7 @@ const WorkExperience = ({ freelancerId, isEditable = false, limitToThree = true 
   const handleDelete = async (id) => {
     if (confirmDelete === id) {
       try {
-        await axiosInstance.delete(
+        await axios.delete(
           `/work-experience/delete/${id}`,
           { withCredentials: true }
         );
@@ -94,7 +95,7 @@ const WorkExperience = ({ freelancerId, isEditable = false, limitToThree = true 
     try {
       if (editingExperience) {
         // Update existing work experience
-        await axiosInstance.put(
+        await axios.put(
           `/work-experience/update/${editingExperience.Id}`,
           formData,
           { 
@@ -106,7 +107,7 @@ const WorkExperience = ({ freelancerId, isEditable = false, limitToThree = true 
         );
         
         // Refresh the list after update
-        const response = await axiosInstance.get(
+        const response = await axios.get(
           `/work-experience/retrieve`,
           {
             params: { freelancerId },
@@ -117,7 +118,7 @@ const WorkExperience = ({ freelancerId, isEditable = false, limitToThree = true 
         setWorkExperiences(response.data);
       } else {
         // Create new work experience
-        const response = await axiosInstance.post(
+        const response = await axios.post(
           `/work-experience/create`,
           formData,
           { 
@@ -129,7 +130,7 @@ const WorkExperience = ({ freelancerId, isEditable = false, limitToThree = true 
         );
         
         // Refresh the list after creation
-        const updatedResponse = await axiosInstance.get(
+        const updatedResponse = await axios.get(
           `/work-experience/retrieve`,
           {
             params: { freelancerId },
@@ -198,9 +199,10 @@ const WorkExperience = ({ freelancerId, isEditable = false, limitToThree = true 
               <div className="work-experience-image">
                 {experience.primaryImage ? (
                   <img 
-                    src={`${experience.primaryImage}`} 
+                    src={experience.primaryImage} 
                     alt={experience.Project_Title}
                     onError={(e) => {
+                      console.log('Image failed to load:', experience.primaryImage);
                       e.target.onerror = null;
                       e.target.src = "https://placehold.co/300x200/e9e9e9/5d5d5d?text=No+Image";
                     }}
