@@ -38,7 +38,7 @@ const FreelancerProfile = () => {
       try {
         // Fetch freelancer profile
         const profileResponse = await axios.get(
-          `https://freelancing-web-application-production.up.railway.app/profile/freelancer/${freelancerId}`,
+          `/profile/freelancer/${freelancerId}`,
           { withCredentials: true }
         );
         
@@ -50,7 +50,7 @@ const FreelancerProfile = () => {
         
         // Fetch completed orders for this freelancer
         const ordersResponse = await axios.get(
-          `https://freelancing-web-application-production.up.railway.app/orders/freelancer-completed`,
+          `/orders/freelancer-completed`,
           { 
             params: { freelancerId },
             withCredentials: true 

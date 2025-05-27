@@ -20,7 +20,7 @@ const WorkExperience = ({ freelancerId, isEditable = false, limitToThree = true 
       setLoading(true);
       try {
         const response = await axios.get(
-          `https://freelancing-web-application-production.up.railway.app/work-experience/retrieve`,
+          `/work-experience/retrieve`,
           {
             params: { freelancerId },
             withCredentials: true
@@ -67,7 +67,7 @@ const WorkExperience = ({ freelancerId, isEditable = false, limitToThree = true 
     if (confirmDelete === id) {
       try {
         await axios.delete(
-          `https://freelancing-web-application-production.up.railway.app/work-experience/delete/${id}`,
+          `/work-experience/delete/${id}`,
           { withCredentials: true }
         );
         
@@ -92,7 +92,7 @@ const WorkExperience = ({ freelancerId, isEditable = false, limitToThree = true 
       if (editingExperience) {
         // Update existing work experience
         await axios.put(
-          `https://freelancing-web-application-production.up.railway.app/work-experience/update/${editingExperience.Id}`,
+          `/work-experience/update/${editingExperience.Id}`,
           formData,
           { 
             withCredentials: true,
@@ -104,7 +104,7 @@ const WorkExperience = ({ freelancerId, isEditable = false, limitToThree = true 
         
         // Refresh the list after update
         const response = await axios.get(
-          `https://freelancing-web-application-production.up.railway.app/work-experience/retrieve`,
+          `/work-experience/retrieve`,
           {
             params: { freelancerId },
             withCredentials: true
@@ -115,7 +115,7 @@ const WorkExperience = ({ freelancerId, isEditable = false, limitToThree = true 
       } else {
         // Create new work experience
         const response = await axios.post(
-          `https://freelancing-web-application-production.up.railway.app/work-experience/create`,
+          `/work-experience/create`,
           formData,
           { 
             withCredentials: true,
@@ -127,7 +127,7 @@ const WorkExperience = ({ freelancerId, isEditable = false, limitToThree = true 
         
         // Refresh the list after creation
         const updatedResponse = await axios.get(
-          `https://freelancing-web-application-production.up.railway.app/work-experience/retrieve`,
+          `/work-experience/retrieve`,
           {
             params: { freelancerId },
             withCredentials: true
@@ -194,7 +194,7 @@ const WorkExperience = ({ freelancerId, isEditable = false, limitToThree = true 
               <div className="work-experience-image">
                 {experience.primaryImage ? (
                   <img 
-                    src={`https://freelancing-web-application-production.up.railway.app${experience.primaryImage}`} 
+                    src={`${experience.primaryImage}`} 
                     alt={experience.Project_Title}
                     onError={(e) => {
                       e.target.onerror = null;
