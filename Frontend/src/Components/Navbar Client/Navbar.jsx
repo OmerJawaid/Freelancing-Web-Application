@@ -207,6 +207,12 @@ const Navbar = () => {
               </div>
             </div>
             <div className="profile-menu-items">
+              {user.User_Type === 'freelancer' && (
+                <button className="profile-menu-item" onClick={() => navigate(`/freelancer/${user.id}`)}>
+                  <FaUser className="menu-icon" />
+                  <span>My Profile</span>
+                </button>
+              )}
               <button className="profile-menu-item" onClick={handleLogout}>
                 <FaSignOutAlt className="menu-icon" />
                 <span>Logout</span>
@@ -284,6 +290,12 @@ const Navbar = () => {
                       </div>
                     </div>
                     <div className="profile-menu-items">
+                      {user.User_Type === 'freelancer' && (
+                        <button className="profile-menu-item" onClick={() => navigate(`/freelancer/${user.id}`)}>
+                          <FaUser className="menu-icon" />
+                          <span>My Profile</span>
+                        </button>
+                      )}
                       <button className="profile-menu-item" onClick={handleLogout}>
                         <FaSignOutAlt className="menu-icon" />
                         <span>Logout</span>

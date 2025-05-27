@@ -20,6 +20,7 @@ import Settings from './Pages/Settings/Settings.jsx';
 import ClientOrders from './Pages/Orders/ClientOrders.jsx';
 import FreelancerOrders from './Pages/Orders/FreelancerOrders.jsx';
 import Notification from './Pages/Notification/Notification.jsx';
+import FreelancerProfile from './Pages/FreelancerProfile/FreelancerProfile.jsx';
 
 // Wrapper component for transitions
 const TransitionWrapper = ({ children }) => {
@@ -140,7 +141,7 @@ function App() {
         </ProtectedRoute>
       )
     },
-      {
+    {
       path: '/notifications',
       element: (
         
@@ -154,6 +155,15 @@ function App() {
         <ProtectedRoute userType="freelancer">
           <FreelancerOrders />
         </ProtectedRoute>
+      )
+    },
+    // Freelancer Profile Page
+    {
+      path: '/freelancer/:id',
+      element: (
+        <AuthRequiredRoute>
+          <FreelancerProfile />
+        </AuthRequiredRoute>
       )
     },
     // Maintain backward compatibility

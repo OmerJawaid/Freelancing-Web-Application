@@ -6,6 +6,7 @@ import { FaStar, FaClock, FaCheck, FaUser, FaEnvelope, FaShoppingCart, FaHeart, 
 import axios from 'axios';
 import Footer from '../../Components/Footer/Footer';
 import { AuthContext } from '../../context/Authcontext';
+import WorkExperienceSelector from '../../Components/WorkExperienceSelector/WorkExperienceSelector';
 
 // Default images for fallbacks - using more reliable sources
 const DEFAULT_GIG_IMAGE = "https://dummyimage.com/800x450/e9ecef/495057&text=Gig+Image";
@@ -1057,7 +1058,17 @@ const Gig = () => {
               </div>
             </div>
 
-            {/* Reviews Section */}
+            {/* Work Experience Section */}
+            {freelancer && freelancer.Id && (
+              <div style={{
+                padding: "2.5rem",
+                borderBottom: "1px solid #eaeaea",
+                backgroundColor: "#fff"
+              }}>
+                <WorkExperienceSelector freelancerId={freelancer.Id} maxDisplay={3} />
+              </div>
+            )}
+
             <div className="reviews-section" ref={reviewsRef} style={{
               marginTop: '40px',
               padding: '30px 20px',

@@ -23,6 +23,7 @@ import { reviewRouter } from './router/reviewRouter.js';
 import profileRouter from './router/profileRouter.js';
 import { orderRouter } from './router/orderRouter.js';
 import { notificationRouter } from './router/notificationRoutes.js';
+import { workExperienceRouter } from './router/workExperienceRouter.js';
 
 // Get current dirname
 const __filename = fileURLToPath(import.meta.url);
@@ -114,7 +115,8 @@ function configureRoutes(app) {
         '/reviews',
         '/profile',
         '/orders',
-        '/notifications'
+        '/notifications',
+        '/work-experience'
         // ... and any other specific endpoints you might have
       ]
     });
@@ -129,6 +131,7 @@ function configureRoutes(app) {
   app.use('/profile', profileRouter);
   app.use('/orders', orderRouter);
   app.use('/notifications', notificationRouter);
+  app.use('/work-experience', workExperienceRouter);
   
   // Legacy endpoint for backward compatibility
   app.post('/create-conversation', (req, res) => {

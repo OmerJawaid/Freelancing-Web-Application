@@ -103,6 +103,64 @@ export const updateProfile = async (req, res) => {
 };
 
 // Update password
+// Get freelancer profile by ID
+export const getFreelancerProfile = async (req, res) => {
+  try {
+    const { freelancerId } = req.params;
+    
+    if (!freelancerId) {
+      return res.status(400).json({
+        success: false,
+        message: "Freelancer ID is required"
+      });
+    }
+
+    // Query to get freelancer data combining user and freelancer tables
+    const [rows] = await database_pool.query(
+      `SELECT u.id, u.Email, u.User_Type, u.Image, 
+              f.Name, f.bio, f.Rating
+       FROM user u
+       LEFT JOIN freelancers f ON u.id = f.Id
+       WHERE u.id = ? AND u.User_Type = 'freelancer'`,
+      [freelancerId]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Freelancer not found"
+      });
+    }
+
+    // Get completed orders count
+    const [orderRows] = await database_pool.query(
+      `SELECT COUNT(*) as completedOrdersCount 
+       FROM orders 
+       WHERE Freelancer_Id = ? AND Status = 'completed'`,
+      [freelancerId]
+    );
+
+    const completedOrdersCount = orderRows[0].completedOrdersCount || 0;
+
+    // Format the response
+    const freelancer = {
+      ...rows[0],
+      completedOrdersCount
+    };
+
+    return res.status(200).json({
+      success: true,
+      freelancer
+    });
+  } catch (error) {
+    console.error('Error fetching freelancer profile:', error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error while fetching freelancer profile"
+    });
+  }
+};
+
 export const updatePassword = async (req, res) => {
   try {
     const { currentPassword, newPassword, userId } = req.body;

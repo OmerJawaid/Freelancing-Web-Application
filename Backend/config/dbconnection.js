@@ -6,8 +6,8 @@ dotenv.config();
 
 const DB_HOST = process.env.DB_HOST || 'localhost'; // Fallback to your local host
 const DB_USER = process.env.DB_USER || 'root'; // Fallback to your local user
-const DB_PASSWORD = process.env.DB_PASSWORD || ''; // Fallback to your local password
-const DB_NAME = process.env.DB_NAME || 'railway'; // Fallback to your local database name
+const DB_PASSWORD = process.env.DB_PASSWORD || 'Hina@1976'; // Fallback to your local password
+const DB_NAME = process.env.DB_NAME || 'Skillify'; // Fallback to your local database name
 const DB_PORT = process.env.DB_PORT ? parseInt(process.env.DB_PORT, 10) : 31935; // Fallback to your local port
 
 // Create database connection pool
