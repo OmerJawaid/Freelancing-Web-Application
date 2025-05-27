@@ -103,6 +103,48 @@ export const updateProfile = async (req, res) => {
 };
 
 // Update password
+// Get freelancer profile by ID
+export const getFreelancerProfile = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        message: "Freelancer ID is required"
+      });
+    }
+    
+    // Query to get freelancer details
+    const [freelancers] = await database_pool.query(
+      `SELECT f.Id, f.Name, f.Email, f.Image, f.bio, f.created_at, 
+              AVG(r.Rating) as Rating, COUNT(r.Id) as totalReviews
+       FROM freelancers f
+       LEFT JOIN reviews r ON f.Id = r.Freelancer_Id
+       WHERE f.Id = ?
+       GROUP BY f.Id`,
+      [id]
+    );
+    
+    if (freelancers.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Freelancer not found"
+      });
+    }
+    
+    return res.status(200).json(freelancers[0]);
+  }
+  catch (error) {
+    console.error("Error fetching freelancer profile:", error);
+    return res.status(500).json({
+      success: false,
+      message: "An error occurred while fetching the freelancer profile",
+      error: error.message
+    });
+  }
+};
+
 export const updatePassword = async (req, res) => {
   try {
     const { currentPassword, newPassword, userId } = req.body;
