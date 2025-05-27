@@ -1,5 +1,5 @@
 // workExperienceController.js - Controller for work experience management
-import { pool } from '../sqlconnection.js';
+import { database_pool } from '../config/dbconnection.js';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
@@ -32,7 +32,7 @@ export const addWorkExperience = async (req, res) => {
 
   try {
     // Check if freelancer exists
-    const [freelancerRows] = await pool.query(
+    const [freelancerRows] = await database_pool.query(
       'SELECT Id FROM freelancers WHERE Id = ?',
       [freelancerId]
     );
@@ -45,7 +45,7 @@ export const addWorkExperience = async (req, res) => {
     }
 
     // Check if freelancer already has 3 work experiences
-    const [countRows] = await pool.query(
+    const [countRows] = await database_pool.query(
       'SELECT COUNT(*) as count FROM work_experience WHERE Freelancer_Id = ?',
       [freelancerId]
     );
@@ -58,7 +58,7 @@ export const addWorkExperience = async (req, res) => {
     }
 
     // Insert new work experience
-    const [result] = await pool.query(
+    const [result] = await database_pool.query(
       `INSERT INTO work_experience 
       (Freelancer_Id, Project_Title, Description, Client_Name, Completion_Date, Skills_Used) 
       VALUES (?, ?, ?, ?, ?, ?)`,
@@ -112,7 +112,7 @@ export const updateWorkExperience = async (req, res) => {
 
   try {
     // Check if work experience exists
-    const [rows] = await pool.query(
+    const [rows] = await database_pool.query(
       'SELECT * FROM work_experience WHERE Id = ?',
       [id]
     );
@@ -125,7 +125,7 @@ export const updateWorkExperience = async (req, res) => {
     }
 
     // Update work experience
-    await pool.query(
+    await database_pool.query(
       `UPDATE work_experience 
       SET Project_Title = ?, Description = ?, Client_Name = ?, 
       Completion_Date = ?, Skills_Used = ? 
@@ -164,13 +164,13 @@ export const deleteWorkExperience = async (req, res) => {
 
   try {
     // Get image URLs before deleting to remove files from disk
-    const [imageRows] = await pool.query(
+    const [imageRows] = await database_pool.query(
       'SELECT Image_Url FROM work_experience_images WHERE Work_Experience_Id = ?',
       [id]
     );
 
     // Check if work experience exists
-    const [rows] = await pool.query(
+    const [rows] = await database_pool.query(
       'SELECT * FROM work_experience WHERE Id = ?',
       [id]
     );
@@ -183,7 +183,7 @@ export const deleteWorkExperience = async (req, res) => {
     }
 
     // Delete work experience (cascade will delete images from database)
-    await pool.query(
+    await database_pool.query(
       'DELETE FROM work_experience WHERE Id = ?',
       [id]
     );
@@ -223,7 +223,7 @@ export const getWorkExperienceById = async (req, res) => {
 
   try {
     // Get work experience details
-    const [rows] = await pool.query(
+    const [rows] = await database_pool.query(
       `SELECT * FROM work_experience WHERE Id = ?`,
       [id]
     );
@@ -236,7 +236,7 @@ export const getWorkExperienceById = async (req, res) => {
     }
 
     // Get associated images
-    const [imageRows] = await pool.query(
+    const [imageRows] = await database_pool.query(
       `SELECT Id, Image_Url, Is_Primary, Created_At 
       FROM work_experience_images 
       WHERE Work_Experience_Id = ?`,
@@ -278,13 +278,13 @@ export const getWorkExperienceByFreelancer = async (req, res) => {
 
   try {
     // Get all work experiences for the freelancer
-    const [rows] = await pool.query(
+    const [rows] = await database_pool.query(
       `SELECT * FROM work_experience WHERE Freelancer_Id = ? ORDER BY Completion_Date DESC`,
       [freelancerId]
     );
 
     // Get all associated images in a single query
-    const [imageRows] = await pool.query(
+    const [imageRows] = await database_pool.query(
       `SELECT wei.Id, wei.Work_Experience_Id, wei.Image_Url, wei.Is_Primary, wei.Created_At 
       FROM work_experience_images wei
       JOIN work_experience we ON wei.Work_Experience_Id = we.Id
@@ -344,7 +344,7 @@ export const uploadWorkExperienceImages = async (req, res) => {
 
   try {
     // Check if work experience exists
-    const [rows] = await pool.query(
+    const [rows] = await database_pool.query(
       'SELECT * FROM work_experience WHERE Id = ?',
       [workExperienceId]
     );
@@ -357,7 +357,7 @@ export const uploadWorkExperienceImages = async (req, res) => {
     }
 
     // Check how many images already exist for this work experience
-    const [countRows] = await pool.query(
+    const [countRows] = await database_pool.query(
       'SELECT COUNT(*) as count FROM work_experience_images WHERE Work_Experience_Id = ?',
       [workExperienceId]
     );
@@ -373,7 +373,7 @@ export const uploadWorkExperienceImages = async (req, res) => {
     }
 
     // Check if there's already a primary image
-    const [primaryRows] = await pool.query(
+    const [primaryRows] = await database_pool.query(
       'SELECT COUNT(*) as count FROM work_experience_images WHERE Work_Experience_Id = ? AND Is_Primary = true',
       [workExperienceId]
     );
@@ -389,7 +389,7 @@ export const uploadWorkExperienceImages = async (req, res) => {
       // Set the first image as primary if no primary image exists
       const isPrimary = !hasPrimaryImage && i === 0;
       
-      const [result] = await pool.query(
+      const [result] = await database_pool.query(
         'INSERT INTO work_experience_images (Work_Experience_Id, Image_Url, Is_Primary) VALUES (?, ?, ?)',
         [workExperienceId, imageUrl, isPrimary]
       );
@@ -427,7 +427,7 @@ export const deleteWorkExperienceImage = async (req, res) => {
 
   try {
     // Get image details
-    const [imageRows] = await pool.query(
+    const [imageRows] = await database_pool.query(
       'SELECT * FROM work_experience_images WHERE Id = ?',
       [imageId]
     );
@@ -444,7 +444,7 @@ export const deleteWorkExperienceImage = async (req, res) => {
     const workExperienceId = image.Work_Experience_Id;
 
     // Delete image from database
-    await pool.query(
+    await database_pool.query(
       'DELETE FROM work_experience_images WHERE Id = ?',
       [imageId]
     );
@@ -459,13 +459,13 @@ export const deleteWorkExperienceImage = async (req, res) => {
 
     // If the deleted image was primary, set another image as primary
     if (isPrimary) {
-      const [remainingImages] = await pool.query(
+      const [remainingImages] = await database_pool.query(
         'SELECT Id FROM work_experience_images WHERE Work_Experience_Id = ? LIMIT 1',
         [workExperienceId]
       );
 
       if (remainingImages.length > 0) {
-        await pool.query(
+        await database_pool.query(
           'UPDATE work_experience_images SET Is_Primary = true WHERE Id = ?',
           [remainingImages[0].Id]
         );
@@ -496,7 +496,7 @@ export const setPrimaryImage = async (req, res) => {
 
   try {
     // Get image details
-    const [imageRows] = await pool.query(
+    const [imageRows] = await database_pool.query(
       'SELECT * FROM work_experience_images WHERE Id = ?',
       [imageId]
     );
@@ -511,13 +511,13 @@ export const setPrimaryImage = async (req, res) => {
     const workExperienceId = imageRows[0].Work_Experience_Id;
 
     // Clear primary flag from all images for this work experience
-    await pool.query(
+    await database_pool.query(
       'UPDATE work_experience_images SET Is_Primary = false WHERE Work_Experience_Id = ?',
       [workExperienceId]
     );
 
     // Set this image as primary
-    await pool.query(
+    await database_pool.query(
       'UPDATE work_experience_images SET Is_Primary = true WHERE Id = ?',
       [imageId]
     );
