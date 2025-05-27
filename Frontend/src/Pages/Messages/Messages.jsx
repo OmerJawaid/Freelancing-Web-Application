@@ -302,10 +302,8 @@ const Messages = () => {
     );
   }, [onlineUsers]); // Remove conversations from dependency array to prevent infinite loop
   
-  // Listen for new messages
+  // Global socket event handler for all messages
   useEffect(() => {
-    if (!selectedConversation.id) return;
-    
     // Socket listener for receiving messages
     const handleReceiveMessage = (data) => {
       console.log("Received message via socket:", data);
@@ -315,20 +313,20 @@ const Messages = () => {
         return;
       }
       
-      // Only process messages for the current conversation
-      if (parseInt(data.conversationId) === parseInt(selectedConversation.id)) {
-        const msgTimestamp = data.timestamp || new Date().toISOString();
-        const newMessage = {
-          senderId: data.senderId,
-          message: data.message || '',
-          timestamp: msgTimestamp,
-          formattedTime: formatMessageTime(msgTimestamp),
-          status: data.status || 'delivered',
-          type: data.type || 'text',
-          attachmentUrl: data.attachmentUrl,
-          fileName: data.fileName || (data.attachmentUrl ? data.attachmentUrl.split('/').pop() : null)
-        };
-        
+      const msgTimestamp = data.timestamp || new Date().toISOString();
+      const newMessage = {
+        senderId: data.senderId,
+        message: data.message || '',
+        timestamp: msgTimestamp,
+        formattedTime: formatMessageTime(msgTimestamp),
+        status: data.status || 'delivered',
+        type: data.type || 'text',
+        attachmentUrl: data.attachmentUrl,
+        fileName: data.fileName || (data.attachmentUrl ? data.attachmentUrl.split('/').pop() : null)
+      };
+      
+      // Process for currently selected conversation
+      if (selectedConversation && parseInt(data.conversationId) === parseInt(selectedConversation.id)) {
         // Add message to chat if it doesn't already exist
         setChat(prevChat => {
           // Check if message already exists
@@ -340,27 +338,38 @@ const Messages = () => {
           
           if (!msgExists) {
             console.log("Adding new message to chat:", newMessage);
-            return [...prevChat, newMessage];
+            
+            // Update the local storage cache with the new message
+            const updatedChat = [...prevChat, newMessage];
+            try {
+              localStorage.setItem(`chat_${selectedConversation.id}`, JSON.stringify(updatedChat));
+            } catch (e) {
+              console.error('Error caching messages:', e);
+            }
+            
+            return updatedChat;
           }
           return prevChat;
         });
-        
-        // Update conversation list with latest message
-        setConversations(prevConversations => {
-          return prevConversations.map(conv => {
-            if (parseInt(conv.id) === parseInt(data.conversationId)) {
-              return {
-                ...conv,
-                lastMessage: data.lastMessagePreview || data.message || 'New message',
-                timestamp: msgTimestamp,
-                formattedTime: formatMessageTime(msgTimestamp),
-                unread: conv.user.id === data.senderId ? (conv.unread || 0) + 1 : (conv.unread || 0)
-              };
-            }
-            return conv;
-          });
-        });
       }
+      
+      // Always update conversation list with latest message regardless of selected conversation
+      setConversations(prevConversations => {
+        return prevConversations.map(conv => {
+          if (parseInt(conv.id) === parseInt(data.conversationId)) {
+            return {
+              ...conv,
+              lastMessage: data.lastMessagePreview || data.message || 'New message',
+              timestamp: msgTimestamp,
+              formattedTime: formatMessageTime(msgTimestamp),
+              unread: selectedConversation && parseInt(selectedConversation.id) === parseInt(data.conversationId) ? 
+                conv.unread || 0 : 
+                (conv.user.id === data.senderId ? (conv.unread || 0) + 1 : (conv.unread || 0))
+            };
+          }
+          return conv;
+        });
+      });
     };
     
     // Make sure socket is connected
@@ -371,14 +380,19 @@ const Messages = () => {
     // Remove any existing listeners to prevent duplicates
     socket.off('receive_message');
     
-    // Register for receive_message events
+    // Register for receive_message events - this is now global, not tied to a specific conversation
     socket.on('receive_message', handleReceiveMessage);
-    console.log("Registered receive_message handler for conversation:", selectedConversation.id);
+    console.log("Registered global receive_message handler");
+    
+    // Auto-scroll when new messages arrive
+    if (chat.length > 0 && chatEndRef.current) {
+      chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
     
     return () => {
       socket.off('receive_message', handleReceiveMessage);
     };
-  }, [selectedConversation.id]);
+  }, [selectedConversation, chat.length]); // Add chat.length to dependencies to trigger scrolling
   
   // We're removing this effect to prevent infinite loops
   // The message handling is now done in the socket event handler and fetch messages effect
@@ -565,13 +579,24 @@ const Messages = () => {
         // Emit via socket for real-time updates
         socket.emit('send_message', newMessage);
         console.log("Emitted send_message event:", newMessage);
+        
+        // IMPORTANT: Manually trigger the receive_message event for the sender
+        // This is a workaround since the backend only sends to the receiver
+        handleReceiveMessage({
+          conversationId: selectedConversation.id,
+          senderId: currentUser.current.id,
+          message: messageInput,
+          timestamp: msgTimestamp,
+          status: 'sent',
+          type: messageType,
+          attachmentUrl: response.data.attachmentUrl || temporaryAttachmentUrl
+        });
       } catch (apiError) {
         console.error("API error when sending message:", apiError);
         
         // Even if API fails, still try to send via socket
         if (socket.connected) {
-          // Emit message via socket anyway for real-time updates
-          socket.emit('send_message', {
+          const socketMessage = {
             conversationId: selectedConversation.id,
             senderId: currentUser.current.id,
             receiverId: selectedConversation.user.id,
@@ -579,7 +604,13 @@ const Messages = () => {
             timestamp: msgTimestamp,
             type: messageType,
             attachmentUrl: temporaryAttachmentUrl
-          });
+          };
+          
+          // Emit message via socket anyway for real-time updates
+          socket.emit('send_message', socketMessage);
+          
+          // Manually trigger the receive_message event for the sender
+          handleReceiveMessage(socketMessage);
         }
       }
       
