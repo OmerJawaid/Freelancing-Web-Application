@@ -22,8 +22,30 @@ const upload = multer({ storage: storage });
 // Get work experience for a freelancer
 router.get('/:freelancerId', async (req, res) => {
   try {
+    // First check if the freelancer exists
+    const [freelancer] = await db.query(
+      'SELECT Id FROM users WHERE Id = ? AND User_Type = "freelancer"',
+      [req.params.freelancerId]
+    );
+
+    if (!freelancer || freelancer.length === 0) {
+      return res.status(404).json({ 
+        error: 'Freelancer not found',
+        message: 'No freelancer found with the provided ID'
+      });
+    }
+
+    // Get work experience with proper error handling
     const [workExperience] = await db.query(
-      `SELECT we.*, GROUP_CONCAT(wei.Image_Url) as images 
+      `SELECT 
+        we.Id,
+        we.Freelancer_Id,
+        we.Project_Title,
+        we.Description,
+        we.Client_Name,
+        we.Completion_Date,
+        we.Skills_Used,
+        GROUP_CONCAT(wei.Image_Url) as images
        FROM work_experience we 
        LEFT JOIN work_experience_images wei ON we.Id = wei.Work_Experience_Id 
        WHERE we.Freelancer_Id = ? 
@@ -33,9 +55,14 @@ router.get('/:freelancerId', async (req, res) => {
       [req.params.freelancerId]
     );
 
-    res.json(workExperience);
+    // Always return an array, even if empty
+    res.json(workExperience || []);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Work experience fetch error:', error);
+    res.status(500).json({ 
+      error: 'Database error',
+      message: error.message 
+    });
   }
 });
 
@@ -88,12 +115,25 @@ router.post('/', verifyToken, upload.array('images', 5), async (req, res) => {
 // Delete work experience
 router.delete('/:id', verifyToken, async (req, res) => {
   try {
-    await db.query('DELETE FROM work_experience WHERE Id = ? AND Freelancer_Id = ?', 
+    const [result] = await db.query(
+      'DELETE FROM work_experience WHERE Id = ? AND Freelancer_Id = ?', 
       [req.params.id, req.user.id]
     );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ 
+        error: 'Not found',
+        message: 'Work experience not found or you do not have permission to delete it'
+      });
+    }
+
     res.json({ message: 'Work experience deleted successfully' });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Delete work experience error:', error);
+    res.status(500).json({ 
+      error: 'Database error',
+      message: error.message 
+    });
   }
 });
 
