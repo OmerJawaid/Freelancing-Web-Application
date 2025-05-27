@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { FaStar, FaRegStar, FaMapMarkerAlt, FaCalendarAlt, FaBriefcase, FaCheckCircle } from 'react-icons/fa';
-import axios from 'axios';
+import axiosInstance from '../../utils/axiosConfig';
 import Navbar from '../../Components/Navbar Client/Navbar';
 import WorkExperience from '../../Components/WorkExperience/WorkExperience';
 import './FreelancerProfile.css';
@@ -37,7 +37,7 @@ const FreelancerProfile = () => {
       setLoading(true);
       try {
         // Fetch freelancer profile
-        const profileResponse = await axios.get(
+        const profileResponse = await axiosInstance.get(
           `/profile/freelancer/${freelancerId}`,
           { withCredentials: true }
         );
@@ -49,7 +49,7 @@ const FreelancerProfile = () => {
         }
         
         // Fetch completed orders for this freelancer
-        const ordersResponse = await axios.get(
+        const ordersResponse = await axiosInstance.get(
           `/orders/freelancer-completed`,
           { 
             params: { freelancerId },

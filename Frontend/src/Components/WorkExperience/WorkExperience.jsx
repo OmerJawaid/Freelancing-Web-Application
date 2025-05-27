@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { FaPlus, FaEdit, FaTrash, FaCheck, FaStar } from 'react-icons/fa';
-import axios from 'axios';
+import axiosInstance from '../../utils/axiosConfig';
 import './WorkExperience.css';
 import WorkExperienceForm from './WorkExperienceForm';
 
@@ -19,7 +19,7 @@ const WorkExperience = ({ freelancerId, isEditable = false, limitToThree = true 
       
       setLoading(true);
       try {
-        const response = await axios.get(
+        const response = await axiosInstance.get(
           `/work-experience/retrieve`,
           {
             params: { freelancerId },
@@ -27,11 +27,14 @@ const WorkExperience = ({ freelancerId, isEditable = false, limitToThree = true 
           }
         );
         
-        setWorkExperiences(response.data);
+        // Ensure response.data is always an array
+        const experiences = Array.isArray(response.data) ? response.data : [];
+        setWorkExperiences(experiences);
         setError(null);
       } catch (error) {
         console.error('Error fetching work experiences:', error);
         setError('Failed to load work experience data');
+        setWorkExperiences([]); // Set empty array on error
       } finally {
         setLoading(false);
       }
@@ -66,7 +69,7 @@ const WorkExperience = ({ freelancerId, isEditable = false, limitToThree = true 
   const handleDelete = async (id) => {
     if (confirmDelete === id) {
       try {
-        await axios.delete(
+        await axiosInstance.delete(
           `/work-experience/delete/${id}`,
           { withCredentials: true }
         );
@@ -91,7 +94,7 @@ const WorkExperience = ({ freelancerId, isEditable = false, limitToThree = true 
     try {
       if (editingExperience) {
         // Update existing work experience
-        await axios.put(
+        await axiosInstance.put(
           `/work-experience/update/${editingExperience.Id}`,
           formData,
           { 
@@ -103,7 +106,7 @@ const WorkExperience = ({ freelancerId, isEditable = false, limitToThree = true 
         );
         
         // Refresh the list after update
-        const response = await axios.get(
+        const response = await axiosInstance.get(
           `/work-experience/retrieve`,
           {
             params: { freelancerId },
@@ -114,7 +117,7 @@ const WorkExperience = ({ freelancerId, isEditable = false, limitToThree = true 
         setWorkExperiences(response.data);
       } else {
         // Create new work experience
-        const response = await axios.post(
+        const response = await axiosInstance.post(
           `/work-experience/create`,
           formData,
           { 
@@ -126,7 +129,7 @@ const WorkExperience = ({ freelancerId, isEditable = false, limitToThree = true 
         );
         
         // Refresh the list after creation
-        const updatedResponse = await axios.get(
+        const updatedResponse = await axiosInstance.get(
           `/work-experience/retrieve`,
           {
             params: { freelancerId },
@@ -151,10 +154,11 @@ const WorkExperience = ({ freelancerId, isEditable = false, limitToThree = true 
     setEditingExperience(null);
   };
 
-  // Filter to show only 3 experiences if limitToThree is true
+  // Ensure workExperiences is always an array and filter to show only 3 experiences if limitToThree is true
+  const safeWorkExperiences = Array.isArray(workExperiences) ? workExperiences : [];
   const displayedExperiences = limitToThree 
-    ? workExperiences.slice(0, 3) 
-    : workExperiences;
+    ? safeWorkExperiences.slice(0, 3) 
+    : safeWorkExperiences;
 
   if (loading) {
     return <div className="work-experience-loading">Loading work experience...</div>;
