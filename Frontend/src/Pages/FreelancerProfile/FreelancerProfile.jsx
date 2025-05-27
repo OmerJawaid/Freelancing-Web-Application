@@ -1,180 +1,212 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { FaStar, FaRegStar, FaMapMarkerAlt, FaCalendarAlt, FaBriefcase, FaCheckCircle } from 'react-icons/fa';
 import axios from 'axios';
-import { FaStar, FaMapMarkerAlt, FaUser, FaCalendarAlt, FaBriefcase, FaCheckCircle } from 'react-icons/fa';
 import Navbar from '../../Components/Navbar Client/Navbar';
 import WorkExperience from '../../Components/WorkExperience/WorkExperience';
-import { getImageUrl, DEFAULT_USER_IMAGE } from '../../utils/imageUtils';
 import './FreelancerProfile.css';
+import { getImageUrl, DEFAULT_USER_IMAGE } from '../../utils/imageUtils';
 
 const FreelancerProfile = () => {
-  const { id } = useParams();
+  const { id } = useParams(); // Changed from freelancerId to id to match the route parameter
   const navigate = useNavigate();
+  const freelancerId = id; // Keep freelancerId as a variable for backward compatibility
   const [freelancer, setFreelancer] = useState(null);
+  const [completedOrders, setCompletedOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [completedOrders, setCompletedOrders] = useState([]);
-  const [isOwner, setIsOwner] = useState(false);
-  
-  const apiUrl = 'https://freelancing-web-application-production.up.railway.app';
+  const [currentUser, setCurrentUser] = useState(null);
+  const [isOwnProfile, setIsOwnProfile] = useState(false);
 
+  // Fetch the logged-in user
+  useEffect(() => {
+    const user = JSON.parse(localStorage.getItem('user') || 'null');
+    setCurrentUser(user);
+    
+    // Check if viewing own profile
+    if (user && freelancerId && user.id.toString() === freelancerId.toString()) {
+      setIsOwnProfile(true);
+    }
+  }, [freelancerId]);
+
+  // Fetch freelancer data
   useEffect(() => {
     const fetchFreelancerData = async () => {
+      if (!freelancerId) return;
+      
       setLoading(true);
       try {
-        // Get the current user from localStorage
-        const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+        // Fetch freelancer profile
+        const profileResponse = await axios.get(
+          `https://freelancing-web-application-production.up.railway.app/profile/freelancer/${freelancerId}`,
+          { withCredentials: true }
+        );
         
-        // Check if the current user is the owner of this profile
-        const isCurrentUserProfile = currentUser && currentUser.id === parseInt(id);
-        setIsOwner(isCurrentUserProfile);
-        
-        // Create a mock profile if API endpoints aren't available yet
-        if (isCurrentUserProfile) {
-          // If this is the current user's profile, use their data
-          setFreelancer({
-            id: currentUser.id,
-            Email: currentUser.Email || currentUser.email,
-            Image: currentUser.Image || currentUser.image,
-            Name: currentUser.Name || currentUser.name || 'Freelancer',
-            bio: currentUser.bio || 'No bio available',
-            Rating: currentUser.Rating || 0,
-            completedOrdersCount: 0,
-            created_at: currentUser.created_at || new Date().toISOString()
-          });
-          setLoading(false);
-          return;
+        if (profileResponse.data) {
+          setFreelancer(profileResponse.data);
+        } else {
+          setError('Freelancer not found');
         }
         
-        // If not the current user, try to fetch from API
-        try {
-          // Fetch freelancer data
-          const response = await axios.get(
-            `${apiUrl}/profile/freelancer/${id}`,
-            { withCredentials: true }
-          );
-          
-          if (response.data.success) {
-            setFreelancer(response.data.freelancer);
-          } else {
-            throw new Error('Failed to load freelancer profile');
+        // Fetch completed orders for this freelancer
+        const ordersResponse = await axios.get(
+          `https://freelancing-web-application-production.up.railway.app/orders/freelancer-completed`,
+          { 
+            params: { freelancerId },
+            withCredentials: true 
           }
-          
-          // Fetch completed orders for this freelancer
-          try {
-            const ordersResponse = await axios.get(
-              `${apiUrl}/orders/completed-by-freelancer/${id}`,
-              { withCredentials: true }
-            );
-            
-            if (ordersResponse.data.success) {
-              setCompletedOrders(ordersResponse.data.orders || []);
-            }
-          } catch (orderErr) {
-            console.error('Error fetching orders:', orderErr);
-            // Don't fail the whole profile if orders can't be fetched
-            setCompletedOrders([]);
-          }
-        } catch (apiErr) {
-          console.error('API endpoints not available:', apiErr);
-          
-          // Create mock data for development/testing
-          const mockFreelancer = {
-            id: parseInt(id),
-            Email: 'freelancer@example.com',
-            Image: null,
-            Name: 'Freelancer ' + id,
-            bio: 'This is a placeholder profile until the API is available.',
-            Rating: 4.5,
-            completedOrdersCount: 12,
-            created_at: new Date().toISOString()
-          };
-          
-          setFreelancer(mockFreelancer);
-          setCompletedOrders([]);
+        );
+        
+        if (ordersResponse.data && Array.isArray(ordersResponse.data)) {
+          setCompletedOrders(ordersResponse.data);
         }
-      } catch (err) {
-        console.error('Error in freelancer profile:', err);
-        setError('Unable to load freelancer profile');
+      } catch (error) {
+        console.error('Error fetching freelancer data:', error);
+        setError('Failed to load freelancer profile');
       } finally {
         setLoading(false);
       }
     };
-    
+
     fetchFreelancerData();
-  }, [id, navigate, apiUrl]);
-  
+  }, [freelancerId]);
+
+  // Function to render star rating
+  const renderStarRating = (rating) => {
+    const stars = [];
+    const fullStars = Math.floor(rating);
+    const hasHalfStar = rating % 1 >= 0.5;
+    
+    for (let i = 1; i <= 5; i++) {
+      if (i <= fullStars) {
+        stars.push(<FaStar key={i} className="star filled" />);
+      } else if (i === fullStars + 1 && hasHalfStar) {
+        stars.push(<FaStar key={i} className="star half-filled" />);
+      } else {
+        stars.push(<FaRegStar key={i} className="star empty" />);
+      }
+    }
+    
+    return (
+      <div className="star-rating">
+        {stars}
+        <span className="rating-value">{rating.toFixed(1)}</span>
+      </div>
+    );
+  };
+
+  // Format date for display
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
+
+  // Handle contact freelancer
+  const handleContactFreelancer = () => {
+    if (!currentUser) {
+      // Redirect to login if not logged in
+      navigate('/login', { state: { redirectTo: `/freelancer/${freelancerId}` } });
+      return;
+    }
+    
+    // Create conversation and redirect to messages
+    navigate(`/messages?newConversation=${freelancerId}`);
+  };
+
+  // Handle view gigs
+  const handleViewGigs = () => {
+    navigate(`/search?freelancer=${freelancerId}`);
+  };
+
   if (loading) {
     return (
-      <div className="freelancer-profile-container">
+      <div className="freelancer-profile-page">
         <Navbar />
-        <div className="loading-container">
+        <div className="profile-loading">
           <div className="loading-spinner"></div>
           <p>Loading freelancer profile...</p>
         </div>
       </div>
     );
   }
-  
+
   if (error || !freelancer) {
     return (
-      <div className="freelancer-profile-container">
+      <div className="freelancer-profile-page">
         <Navbar />
-        <div className="error-container">
+        <div className="profile-error">
           <h2>Error</h2>
           <p>{error || 'Failed to load freelancer profile'}</p>
-          <button onClick={() => navigate(-1)}>Go Back</button>
+          <button onClick={() => navigate('/')} className="back-button">
+            Go to Homepage
+          </button>
         </div>
       </div>
     );
   }
-  
+
   return (
-    <div className="freelancer-profile-container">
+    <div className="freelancer-profile-page">
       <Navbar />
       
-      <div className="profile-content">
+      <div className="profile-container">
         <div className="profile-header">
           <div className="profile-image">
             <img 
               src={getImageUrl(freelancer.Image, DEFAULT_USER_IMAGE)} 
-              alt={freelancer.Name} 
+              alt={freelancer.Name}
+              onError={(e) => {
+                e.target.onerror = null;
+                e.target.src = DEFAULT_USER_IMAGE;
+              }}
             />
           </div>
           
           <div className="profile-info">
             <h1>{freelancer.Name}</h1>
             
+            {freelancer.Rating > 0 && (
+              <div className="rating-container">
+                {renderStarRating(freelancer.Rating)}
+                <span className="total-reviews">({freelancer.totalReviews || 0} reviews)</span>
+              </div>
+            )}
+            
             <div className="profile-meta">
               {freelancer.location && (
                 <div className="meta-item">
-                  <FaMapMarkerAlt />
-                  <span>{freelancer.location}</span>
+                  <FaMapMarkerAlt /> {freelancer.location}
                 </div>
               )}
               
               <div className="meta-item">
-                <FaStar />
-                <span>{freelancer.Rating ? freelancer.Rating.toFixed(1) : 'No ratings'}</span>
+                <FaCalendarAlt /> Member since {formatDate(freelancer.created_at || new Date())}
               </div>
               
               <div className="meta-item">
-                <FaBriefcase />
-                <span>{completedOrders.length} orders completed</span>
-              </div>
-              
-              <div className="meta-item">
-                <FaCalendarAlt />
-                <span>Member since {new Date(freelancer.created_at).toLocaleDateString()}</span>
+                <FaBriefcase /> {completedOrders.length} orders completed
               </div>
             </div>
             
-            {isOwner && (
+            {!isOwnProfile && (
               <div className="profile-actions">
-                <button 
-                  className="edit-profile-btn"
-                  onClick={() => navigate('/edit-profile')}
-                >
+                <button className="contact-btn" onClick={handleContactFreelancer}>
+                  Contact Me
+                </button>
+                <button className="view-gigs-btn" onClick={handleViewGigs}>
+                  View My Gigs
+                </button>
+              </div>
+            )}
+            
+            {isOwnProfile && (
+              <div className="profile-actions">
+                <button className="edit-profile-btn" onClick={() => navigate('/settings/profile')}>
                   Edit Profile
                 </button>
               </div>
@@ -182,121 +214,67 @@ const FreelancerProfile = () => {
           </div>
         </div>
         
-        <div className="profile-body">
-          <div className="profile-main">
-            <div className="profile-section">
-              <h2>About Me</h2>
-              <p className="bio">{freelancer.bio || 'No bio provided'}</p>
-            </div>
-            
-            {/* Work Experience Section */}
-            <WorkExperience 
-              freelancerId={id} 
-              isOwner={isOwner}
-            />
-            
-            {completedOrders.length > 0 && (
-              <div className="profile-section">
-                <h2>Completed Orders</h2>
-                <div className="completed-orders">
-                  {completedOrders.map(order => (
-                    <div key={order.Id} className="order-card">
-                      <div className="order-image">
-                        <img 
-                          src={getImageUrl(order.gig_image, 'https://placehold.co/100/e9ecef/495057?text=Gig')} 
-                          alt={order.gig_title} 
-                        />
-                      </div>
-                      
-                      <div className="order-content">
-                        <h3>{order.gig_title}</h3>
-                        <div className="order-meta">
-                          <div className="meta-item">
-                            <FaUser />
-                            <span>Client: {order.client_name}</span>
-                          </div>
-                          
-                          <div className="meta-item">
-                            <FaCalendarAlt />
-                            <span>Completed: {new Date(order.Completed_At).toLocaleDateString()}</span>
-                          </div>
-                          
-                          {order.Rating && (
-                            <div className="meta-item">
-                              <FaStar />
-                              <span>Rating: {order.Rating}</span>
-                            </div>
-                          )}
-                        </div>
-                        
-                        {order.feedback && (
-                          <div className="order-feedback">
-                            <p>"{order.feedback}"</p>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-          
-          <div className="profile-sidebar">
-            <div className="sidebar-section">
-              <h3>Skills</h3>
-              {freelancer.skills ? (
-                <div className="skills-list">
-                  {freelancer.skills.split(',').map((skill, index) => (
-                    <span key={index} className="skill-tag">{skill.trim()}</span>
-                  ))}
-                </div>
-              ) : (
-                <p className="no-data">No skills listed</p>
-              )}
-            </div>
-            
-            <div className="sidebar-section">
-              <h3>Languages</h3>
-              {freelancer.languages ? (
-                <div className="languages-list">
-                  {freelancer.languages.split(',').map((language, index) => (
-                    <div key={index} className="language-item">
-                      <FaCheckCircle />
-                      <span>{language.trim()}</span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="no-data">No languages listed</p>
-              )}
-            </div>
-            
-            <div className="sidebar-section">
-              <h3>Education</h3>
-              {freelancer.education ? (
-                <div className="education-list">
-                  {freelancer.education.split(',').map((edu, index) => (
-                    <div key={index} className="education-item">
-                      <p>{edu.trim()}</p>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="no-data">No education listed</p>
-              )}
-            </div>
-            
-            <div className="contact-section">
-              <button 
-                className="contact-btn"
-                onClick={() => navigate(`/messages?user=${id}`)}
-              >
-                Contact Freelancer
-              </button>
-            </div>
-          </div>
+        <div className="profile-bio">
+          <h2>About Me</h2>
+          <p>{freelancer.bio || 'This freelancer has not added a bio yet.'}</p>
         </div>
+        
+        {/* Work Experience Section */}
+        <WorkExperience 
+          freelancerId={freelancerId} 
+          isEditable={isOwnProfile}
+          limitToThree={true}
+        />
+        
+        {/* Completed Orders Section */}
+        {completedOrders.length > 0 && (
+          <div className="completed-orders-section">
+            <h2>Orders Completed on this Platform</h2>
+            <div className="orders-list">
+              {completedOrders.map(order => (
+                <div key={order.Id} className="order-item">
+                  <div className="order-image">
+                    {order.gigImage ? (
+                      <img 
+                        src={getImageUrl(order.gigImage)} 
+                        alt={order.gigTitle}
+                        onError={(e) => {
+                          e.target.onerror = null;
+                          e.target.src = "https://placehold.co/300x200/e9e9e9/5d5d5d?text=No+Image";
+                        }}
+                      />
+                    ) : (
+                      <div className="no-image-placeholder">No Image</div>
+                    )}
+                  </div>
+                  
+                  <div className="order-content">
+                    <h3>{order.gigTitle}</h3>
+                    <div className="order-meta">
+                      <span>Completed: {formatDate(order.Completed_At || order.Updated_At)}</span>
+                      {order.review && (
+                        <div className="order-rating">
+                          {Array(5).fill(0).map((_, i) => (
+                            <span key={i}>
+                              {i < order.review.Rating ? (
+                                <FaStar className="star filled" />
+                              ) : (
+                                <FaRegStar className="star empty" />
+                              )}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    {order.feedback && (
+                      <p className="order-feedback">{order.feedback}</p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

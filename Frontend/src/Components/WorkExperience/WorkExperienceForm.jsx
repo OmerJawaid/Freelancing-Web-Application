@@ -1,23 +1,36 @@
-import React, { useState, useRef } from 'react';
-import { FaCalendarAlt, FaUser, FaTools, FaTimes, FaImage, FaUpload } from 'react-icons/fa';
+import React, { useState, useEffect } from 'react';
+import { FaTimes, FaImage, FaUpload, FaSave, FaTrash } from 'react-icons/fa';
 import './WorkExperience.css';
 
-const WorkExperienceForm = ({ freelancerId, experience = null, onSubmit, onCancel }) => {
+const WorkExperienceForm = ({ freelancerId, experience, onSubmit, onCancel }) => {
   const [formData, setFormData] = useState({
-    freelancerId: freelancerId,
-    projectTitle: experience ? experience.Project_Title : '',
-    description: experience ? experience.Description || '' : '',
-    clientName: experience ? experience.Client_Name || '' : '',
-    completionDate: experience && experience.Completion_Date ? 
-      new Date(experience.Completion_Date).toISOString().split('T')[0] : '',
-    skillsUsed: experience ? experience.Skills_Used || '' : ''
+    projectTitle: '',
+    description: '',
+    clientName: '',
+    completionDate: '',
+    skillsUsed: '',
   });
-  
   const [images, setImages] = useState([]);
-  const [imagePreview, setImagePreview] = useState([]);
+  const [previewImages, setPreviewImages] = useState([]);
   const [errors, setErrors] = useState({});
-  const fileInputRef = useRef(null);
+  const [loading, setLoading] = useState(false);
 
+  // Initialize form with existing data if editing
+  useEffect(() => {
+    if (experience) {
+      setFormData({
+        projectTitle: experience.Project_Title || '',
+        description: experience.Description || '',
+        clientName: experience.Client_Name || '',
+        completionDate: experience.Completion_Date 
+          ? new Date(experience.Completion_Date).toISOString().split('T')[0] 
+          : '',
+        skillsUsed: experience.Skills_Used || '',
+      });
+    }
+  }, [experience]);
+
+  // Handle form input changes
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({
@@ -25,77 +38,45 @@ const WorkExperienceForm = ({ freelancerId, experience = null, onSubmit, onCance
       [name]: value
     }));
     
-    // Clear error for this field if it exists
+    // Clear error for this field
     if (errors[name]) {
-      setErrors(prev => ({
-        ...prev,
-        [name]: null
-      }));
+      setErrors(prev => ({ ...prev, [name]: null }));
     }
   };
 
-  const handleImageChange = (e) => {
-    const files = Array.from(e.target.files);
+  // Handle image selection
+  const handleImageSelect = (e) => {
+    const selectedFiles = Array.from(e.target.files);
     
-    // Validate file types and sizes
-    const validFiles = files.filter(file => {
-      const isValidType = ['image/jpeg', 'image/png', 'image/jpg', 'image/webp'].includes(file.type);
-      const isValidSize = file.size <= 5 * 1024 * 1024; // 5MB limit
-      
-      if (!isValidType) {
-        setErrors(prev => ({
-          ...prev,
-          images: 'Only JPEG, PNG, and WebP images are allowed'
-        }));
-      }
-      
-      if (!isValidSize) {
-        setErrors(prev => ({
-          ...prev,
-          images: 'Images must be less than 5MB'
-        }));
-      }
-      
-      return isValidType && isValidSize;
-    });
-    
-    if (validFiles.length === 0) return;
-    
-    // Check if adding these files would exceed the limit of 5 images
-    if (validFiles.length + images.length > 5) {
-      setErrors(prev => ({
-        ...prev,
-        images: 'Maximum 5 images allowed'
-      }));
+    // Limit to 5 images total
+    if (selectedFiles.length + images.length > 5) {
+      alert('You can upload a maximum of 5 images per work experience');
       return;
     }
     
-    setImages(prev => [...prev, ...validFiles]);
+    // Add to images array
+    setImages(prev => [...prev, ...selectedFiles]);
     
-    // Generate previews
-    const newPreviews = validFiles.map(file => ({
-      file,
-      url: URL.createObjectURL(file)
+    // Generate preview URLs
+    const newPreviewImages = selectedFiles.map(file => ({
+      url: URL.createObjectURL(file),
+      name: file.name,
+      file
     }));
     
-    setImagePreview(prev => [...prev, ...newPreviews]);
-    
-    // Clear the file input
-    e.target.value = null;
+    setPreviewImages(prev => [...prev, ...newPreviewImages]);
   };
 
-  const removeImage = (index) => {
+  // Remove an image from the selection
+  const handleRemoveImage = (index) => {
+    // Revoke object URL to prevent memory leaks
+    URL.revokeObjectURL(previewImages[index].url);
+    
+    setPreviewImages(prev => prev.filter((_, i) => i !== index));
     setImages(prev => prev.filter((_, i) => i !== index));
-    
-    // Revoke object URL to avoid memory leaks
-    URL.revokeObjectURL(imagePreview[index].url);
-    setImagePreview(prev => prev.filter((_, i) => i !== index));
   };
 
-  const triggerFileInput = () => {
-    fileInputRef.current.click();
-  };
-
+  // Validate form
   const validateForm = () => {
     const newErrors = {};
     
@@ -103,93 +84,92 @@ const WorkExperienceForm = ({ freelancerId, experience = null, onSubmit, onCance
       newErrors.projectTitle = 'Project title is required';
     }
     
-    if (formData.description.trim().length > 1000) {
-      newErrors.description = 'Description must be less than 1000 characters';
-    }
-    
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e) => {
+  // Handle form submission
+  const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!validateForm()) return;
+    if (!validateForm()) {
+      return;
+    }
     
-    // Prepare data for API
-    const apiData = {
-      freelancerId: formData.freelancerId,
-      projectTitle: formData.projectTitle,
-      description: formData.description,
-      clientName: formData.clientName,
-      completionDate: formData.completionDate || null,
-      skillsUsed: formData.skillsUsed
-    };
+    setLoading(true);
     
-    onSubmit(apiData, images);
+    try {
+      // Create a FormData object for file uploads
+      const data = new FormData();
+      data.append('freelancerId', freelancerId);
+      data.append('projectTitle', formData.projectTitle);
+      data.append('description', formData.description);
+      data.append('clientName', formData.clientName);
+      data.append('completionDate', formData.completionDate);
+      data.append('skillsUsed', formData.skillsUsed);
+      
+      // Add all selected images
+      images.forEach(image => {
+        data.append('images', image);
+      });
+      
+      // Call the onSubmit callback with the form data
+      await onSubmit(data);
+    } catch (error) {
+      console.error('Error submitting form:', error);
+      setErrors({ submit: 'Failed to save work experience. Please try again.' });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div className="work-experience-form-container">
-      <h3>{experience ? 'Edit Work Experience' : 'Add New Work Experience'}</h3>
+    <div className="work-experience-form">
+      <div className="form-header">
+        <h3>{experience ? 'Edit Project' : 'Add New Project'}</h3>
+        <button className="close-btn" onClick={onCancel} title="Close">
+          <FaTimes />
+        </button>
+      </div>
       
-      <form onSubmit={handleSubmit} className="work-experience-form">
+      <form onSubmit={handleSubmit}>
         <div className="form-group">
-          <label htmlFor="projectTitle">Project Title *</label>
+          <label htmlFor="projectTitle">Project Title*</label>
           <input
             type="text"
             id="projectTitle"
             name="projectTitle"
             value={formData.projectTitle}
             onChange={handleChange}
-            placeholder="Enter project title"
             className={errors.projectTitle ? 'error' : ''}
+            placeholder="E.g., Website Redesign, Mobile App Development"
+            required
           />
           {errors.projectTitle && <div className="error-message">{errors.projectTitle}</div>}
         </div>
         
         <div className="form-group">
           <label htmlFor="clientName">Client Name</label>
-          <div className="input-with-icon">
-            <FaUser className="input-icon" />
-            <input
-              type="text"
-              id="clientName"
-              name="clientName"
-              value={formData.clientName}
-              onChange={handleChange}
-              placeholder="Enter client name"
-            />
-          </div>
+          <input
+            type="text"
+            id="clientName"
+            name="clientName"
+            value={formData.clientName}
+            onChange={handleChange}
+            placeholder="E.g., ABC Company, John Smith"
+          />
         </div>
         
         <div className="form-group">
           <label htmlFor="completionDate">Completion Date</label>
-          <div className="input-with-icon">
-            <FaCalendarAlt className="input-icon" />
-            <input
-              type="date"
-              id="completionDate"
-              name="completionDate"
-              value={formData.completionDate}
-              onChange={handleChange}
-            />
-          </div>
-        </div>
-        
-        <div className="form-group">
-          <label htmlFor="skillsUsed">Skills Used</label>
-          <div className="input-with-icon">
-            <FaTools className="input-icon" />
-            <input
-              type="text"
-              id="skillsUsed"
-              name="skillsUsed"
-              value={formData.skillsUsed}
-              onChange={handleChange}
-              placeholder="e.g., JavaScript, React, Node.js"
-            />
-          </div>
+          <input
+            type="date"
+            id="completionDate"
+            name="completionDate"
+            value={formData.completionDate}
+            onChange={handleChange}
+            max={new Date().toISOString().split('T')[0]} // Prevent future dates
+          />
         </div>
         
         <div className="form-group">
@@ -199,88 +179,70 @@ const WorkExperienceForm = ({ freelancerId, experience = null, onSubmit, onCance
             name="description"
             value={formData.description}
             onChange={handleChange}
-            placeholder="Describe your project and your role in it"
-            rows={4}
-            className={errors.description ? 'error' : ''}
+            rows="4"
+            placeholder="Describe the project, your role, and the results achieved"
           />
-          {errors.description && <div className="error-message">{errors.description}</div>}
-          <div className="char-count">
-            {formData.description.length}/1000 characters
-          </div>
+        </div>
+        
+        <div className="form-group">
+          <label htmlFor="skillsUsed">Skills Used</label>
+          <input
+            type="text"
+            id="skillsUsed"
+            name="skillsUsed"
+            value={formData.skillsUsed}
+            onChange={handleChange}
+            placeholder="E.g., React, Node.js, UI/UX Design"
+          />
+          <small>Separate skills with commas</small>
         </div>
         
         <div className="form-group">
           <label>Project Images (Max 5)</label>
           <div className="image-upload-container">
+            <label htmlFor="images" className="image-upload-label">
+              <FaImage /> <span>Select Images</span>
+            </label>
             <input
               type="file"
-              ref={fileInputRef}
-              onChange={handleImageChange}
-              accept="image/jpeg,image/png,image/jpg,image/webp"
+              id="images"
+              name="images"
               multiple
+              accept="image/*"
+              onChange={handleImageSelect}
               style={{ display: 'none' }}
             />
-            
-            <button 
-              type="button" 
-              className="upload-btn"
-              onClick={triggerFileInput}
-              disabled={images.length >= 5}
-            >
-              <FaUpload /> Upload Images
-            </button>
-            
-            <div className="upload-info">
-              {images.length}/5 images • Max 5MB each • JPEG, PNG, WebP
-            </div>
-            
-            {errors.images && <div className="error-message">{errors.images}</div>}
+            <small>Upload screenshots or images related to your project</small>
           </div>
           
-          {imagePreview.length > 0 && (
-            <div className="image-preview-container">
-              {imagePreview.map((preview, index) => (
-                <div key={index} className="image-preview">
-                  <img src={preview.url} alt={`Preview ${index}`} />
+          {previewImages.length > 0 && (
+            <div className="image-previews">
+              {previewImages.map((image, index) => (
+                <div className="image-preview-item" key={`preview-${index}`}>
+                  <img src={image.url} alt={`Preview ${index}`} />
                   <button 
                     type="button" 
                     className="remove-image-btn"
-                    onClick={() => removeImage(index)}
+                    onClick={() => handleRemoveImage(index)}
+                    title="Remove image"
                   >
-                    <FaTimes />
+                    <FaTrash />
                   </button>
+                  <span className="image-name">{image.name}</span>
                 </div>
               ))}
             </div>
           )}
-          
-          {experience && experience.images && experience.images.length > 0 && (
-            <div className="existing-images">
-              <div className="existing-images-label">Current Images:</div>
-              <div className="image-preview-container">
-                {experience.images.map((img) => (
-                  <div key={img.id} className={`image-preview ${img.isPrimary ? 'primary' : ''}`}>
-                    <img 
-                      src={`https://freelancing-web-application-production.up.railway.app${img.imageUrl}`} 
-                      alt="Existing project image" 
-                    />
-                    {img.isPrimary && <div className="primary-badge">Primary</div>}
-                  </div>
-                ))}
-              </div>
-              <div className="image-note">
-                * To manage existing images (delete or set as primary), please save this form first, then use the edit options.
-              </div>
-            </div>
-          )}
         </div>
         
+        {errors.submit && <div className="error-message form-error">{errors.submit}</div>}
+        
         <div className="form-actions">
-          <button type="button" className="cancel-btn" onClick={onCancel}>
+          <button type="button" className="cancel-btn" onClick={onCancel} disabled={loading}>
             Cancel
           </button>
-          <button type="submit" className="submit-btn">
-            {experience ? 'Update Experience' : 'Add Experience'}
+          <button type="submit" className="save-btn" disabled={loading}>
+            {loading ? 'Saving...' : 'Save Project'} {!loading && <FaSave />}
           </button>
         </div>
       </form>

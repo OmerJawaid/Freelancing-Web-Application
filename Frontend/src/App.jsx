@@ -159,7 +159,7 @@ function App() {
     },
     // Freelancer Profile Page
     {
-      path: '/freelancer/:id',
+      path: '/freelancer-profile/:id',
       element: (
         <AuthRequiredRoute>
           <FreelancerProfile />

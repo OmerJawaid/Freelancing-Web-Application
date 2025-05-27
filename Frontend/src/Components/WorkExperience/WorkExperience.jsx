@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { FaCalendarAlt, FaUser, FaTools, FaTrash, FaPencilAlt, FaPlus } from 'react-icons/fa';
+import { FaPlus, FaEdit, FaTrash, FaCheck, FaStar } from 'react-icons/fa';
 import axios from 'axios';
 import './WorkExperience.css';
-import { toast } from 'react-toastify';
 import WorkExperienceForm from './WorkExperienceForm';
 
-const WorkExperience = ({ freelancerId, isOwner = false, maxDisplay = 3 }) => {
+const WorkExperience = ({ freelancerId, isEditable = false, limitToThree = true }) => {
   const [workExperiences, setWorkExperiences] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -13,107 +12,88 @@ const WorkExperience = ({ freelancerId, isOwner = false, maxDisplay = 3 }) => {
   const [editingExperience, setEditingExperience] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
 
-  const apiUrl = 'https://freelancing-web-application-production.up.railway.app';
-
+  // Fetch work experiences for the freelancer
   useEffect(() => {
+    const fetchWorkExperiences = async () => {
+      if (!freelancerId) return;
+      
+      setLoading(true);
+      try {
+        const response = await axios.get(
+          `https://freelancing-web-application-production.up.railway.app/work-experience/retrieve`,
+          {
+            params: { freelancerId },
+            withCredentials: true
+          }
+        );
+        
+        setWorkExperiences(response.data);
+        setError(null);
+      } catch (error) {
+        console.error('Error fetching work experiences:', error);
+        setError('Failed to load work experience data');
+      } finally {
+        setLoading(false);
+      }
+    };
+
     fetchWorkExperiences();
   }, [freelancerId]);
 
-  const fetchWorkExperiences = async () => {
-    setLoading(true);
-    try {
-      const response = await axios.get(
-        `${apiUrl}/work-experience/freelancer/${freelancerId}`,
-        { withCredentials: true }
-      );
-      
-      if (response.data.success) {
-        setWorkExperiences(response.data.workExperiences || []);
-      } else {
-        setError('Failed to load work experiences');
-      }
-    } catch (err) {
-      console.error('Error fetching work experiences:', err);
-      setError('An error occurred while loading work experiences');
-    } finally {
-      setLoading(false);
-    }
+  // Format date for display
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'long'
+    });
   };
 
-  const handleDelete = async (id) => {
-    if (confirmDelete !== id) {
-      setConfirmDelete(id);
-      return;
-    }
-
-    try {
-      const response = await axios.delete(
-        `${apiUrl}/work-experience/delete/${id}`,
-        { withCredentials: true }
-      );
-      
-      if (response.data.success) {
-        setWorkExperiences(prevExperiences => 
-          prevExperiences.filter(exp => exp.Id !== id)
-        );
-        toast.success('Work experience deleted successfully');
-      } else {
-        toast.error(response.data.message || 'Failed to delete work experience');
-      }
-    } catch (err) {
-      console.error('Error deleting work experience:', err);
-      toast.error('An error occurred while deleting the work experience');
-    } finally {
-      setConfirmDelete(null);
-    }
-  };
-
-  const handleEdit = (experience) => {
-    setEditingExperience(experience);
-    setShowForm(true);
-  };
-
+  // Handle adding new work experience
   const handleAddNew = () => {
     setEditingExperience(null);
     setShowForm(true);
   };
 
-  const handleFormSubmit = async (formData, images) => {
+  // Handle editing existing work experience
+  const handleEdit = (experience) => {
+    setEditingExperience(experience);
+    setShowForm(true);
+  };
+
+  // Handle deleting work experience
+  const handleDelete = async (id) => {
+    if (confirmDelete === id) {
+      try {
+        await axios.delete(
+          `https://freelancing-web-application-production.up.railway.app/work-experience/delete/${id}`,
+          { withCredentials: true }
+        );
+        
+        setWorkExperiences(prev => prev.filter(exp => exp.Id !== id));
+        setConfirmDelete(null);
+      } catch (error) {
+        console.error('Error deleting work experience:', error);
+        alert('Failed to delete work experience. Please try again.');
+      }
+    } else {
+      setConfirmDelete(id);
+      // Reset confirm state after 3 seconds
+      setTimeout(() => {
+        setConfirmDelete(null);
+      }, 3000);
+    }
+  };
+
+  // Handle form submission
+  const handleFormSubmit = async (formData) => {
     try {
-      let response;
-      
-      // Create or update the work experience
       if (editingExperience) {
-        response = await axios.put(
-          `${apiUrl}/work-experience/update/${editingExperience.Id}`,
+        // Update existing work experience
+        await axios.put(
+          `https://freelancing-web-application-production.up.railway.app/work-experience/update/${editingExperience.Id}`,
           formData,
-          { withCredentials: true }
-        );
-      } else {
-        response = await axios.post(
-          `${apiUrl}/work-experience/add`,
-          formData,
-          { withCredentials: true }
-        );
-      }
-      
-      if (!response.data.success) {
-        throw new Error(response.data.message || 'Failed to save work experience');
-      }
-      
-      // If we have images to upload and the operation was successful
-      if (images && images.length > 0) {
-        const workExperienceId = editingExperience ? 
-          editingExperience.Id : response.data.workExperienceId;
-        
-        const formDataImages = new FormData();
-        images.forEach(image => {
-          formDataImages.append('images', image);
-        });
-        
-        const imageResponse = await axios.post(
-          `${apiUrl}/work-experience/upload-images/${workExperienceId}`,
-          formDataImages,
           { 
             withCredentials: true,
             headers: {
@@ -122,58 +102,62 @@ const WorkExperience = ({ freelancerId, isOwner = false, maxDisplay = 3 }) => {
           }
         );
         
-        if (!imageResponse.data.success) {
-          toast.warning('Work experience saved but some images failed to upload');
-        }
+        // Refresh the list after update
+        const response = await axios.get(
+          `https://freelancing-web-application-production.up.railway.app/work-experience/retrieve`,
+          {
+            params: { freelancerId },
+            withCredentials: true
+          }
+        );
+        
+        setWorkExperiences(response.data);
+      } else {
+        // Create new work experience
+        const response = await axios.post(
+          `https://freelancing-web-application-production.up.railway.app/work-experience/create`,
+          formData,
+          { 
+            withCredentials: true,
+            headers: {
+              'Content-Type': 'multipart/form-data'
+            }
+          }
+        );
+        
+        // Refresh the list after creation
+        const updatedResponse = await axios.get(
+          `https://freelancing-web-application-production.up.railway.app/work-experience/retrieve`,
+          {
+            params: { freelancerId },
+            withCredentials: true
+          }
+        );
+        
+        setWorkExperiences(updatedResponse.data);
       }
       
-      // Refresh the list
-      fetchWorkExperiences();
       setShowForm(false);
       setEditingExperience(null);
-      
-      toast.success(editingExperience ? 
-        'Work experience updated successfully' : 
-        'Work experience added successfully'
-      );
-    } catch (err) {
-      console.error('Error saving work experience:', err);
-      toast.error(err.message || 'An error occurred while saving the work experience');
+    } catch (error) {
+      console.error('Error saving work experience:', error);
+      alert('Failed to save work experience. Please try again.');
     }
   };
 
-  const handleFormCancel = () => {
+  // Cancel form
+  const handleCancelForm = () => {
     setShowForm(false);
     setEditingExperience(null);
   };
 
-  // Get the primary image URL for a work experience
-  const getPrimaryImage = (experience) => {
-    if (!experience.images || experience.images.length === 0) {
-      return null;
-    }
-    
-    const primaryImage = experience.images.find(img => img.isPrimary);
-    return primaryImage ? 
-      `${apiUrl}${primaryImage.imageUrl}` : 
-      `${apiUrl}${experience.images[0].imageUrl}`;
-  };
-
-  // Format date for display
-  const formatDate = (dateString) => {
-    if (!dateString) return 'N/A';
-    
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) return 'N/A';
-    
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long'
-    });
-  };
+  // Filter to show only 3 experiences if limitToThree is true
+  const displayedExperiences = limitToThree 
+    ? workExperiences.slice(0, 3) 
+    : workExperiences;
 
   if (loading) {
-    return <div className="work-experience-loading">Loading work experiences...</div>;
+    return <div className="work-experience-loading">Loading work experience...</div>;
   }
 
   if (error) {
@@ -184,111 +168,108 @@ const WorkExperience = ({ freelancerId, isOwner = false, maxDisplay = 3 }) => {
     <div className="work-experience-container">
       <div className="work-experience-header">
         <h2>Work Experience</h2>
-        {isOwner && workExperiences.length < 3 && (
+        {isEditable && workExperiences.length < 3 && (
           <button 
-            className="add-experience-btn"
+            className="add-work-experience-btn" 
             onClick={handleAddNew}
+            title="Add work experience"
           >
-            <FaPlus /> Add Experience
+            <FaPlus /> Add Project
           </button>
         )}
       </div>
-
-      {showForm && (
-        <WorkExperienceForm 
-          freelancerId={freelancerId}
-          experience={editingExperience}
-          onSubmit={handleFormSubmit}
-          onCancel={handleFormCancel}
-        />
-      )}
-
-      {workExperiences.length === 0 ? (
-        <div className="no-experience">
-          {isOwner ? 
-            "You haven't added any work experience yet. Add your past projects to showcase your skills!" :
-            "This freelancer hasn't added any work experience yet."}
+      
+      {displayedExperiences.length === 0 ? (
+        <div className="no-work-experience">
+          {isEditable ? (
+            <p>You haven't added any work experience yet. Add your past projects to showcase your skills.</p>
+          ) : (
+            <p>This freelancer hasn't added any work experience yet.</p>
+          )}
         </div>
       ) : (
         <div className="work-experience-list">
-          {workExperiences.slice(0, maxDisplay).map(experience => (
-            <div key={experience.Id} className="work-experience-card">
+          {displayedExperiences.map((experience) => (
+            <div key={experience.Id} className="work-experience-item">
               <div className="work-experience-image">
-                {getPrimaryImage(experience) ? (
+                {experience.primaryImage ? (
                   <img 
-                    src={getPrimaryImage(experience)} 
-                    alt={experience.Project_Title} 
+                    src={`https://freelancing-web-application-production.up.railway.app${experience.primaryImage}`} 
+                    alt={experience.Project_Title}
+                    onError={(e) => {
+                      e.target.onerror = null;
+                      e.target.src = "https://placehold.co/300x200/e9e9e9/5d5d5d?text=No+Image";
+                    }}
                   />
                 ) : (
-                  <div className="no-image">No Image</div>
-                )}
-              </div>
-              
-              <div className="work-experience-content">
-                <h3>{experience.Project_Title}</h3>
-                
-                <div className="work-experience-details">
-                  {experience.Client_Name && (
-                    <div className="detail-item">
-                      <FaUser className="icon" />
-                      <span>Client: {experience.Client_Name}</span>
-                    </div>
-                  )}
-                  
-                  {experience.Completion_Date && (
-                    <div className="detail-item">
-                      <FaCalendarAlt className="icon" />
-                      <span>Completed: {formatDate(experience.Completion_Date)}</span>
-                    </div>
-                  )}
-                  
-                  {experience.Skills_Used && (
-                    <div className="detail-item">
-                      <FaTools className="icon" />
-                      <span>Skills: {experience.Skills_Used}</span>
-                    </div>
-                  )}
-                </div>
-                
-                <p className="description">{experience.Description}</p>
-                
-                {experience.images && experience.images.length > 1 && (
-                  <div className="image-thumbnails">
-                    {experience.images.slice(0, 4).map(img => (
-                      <img 
-                        key={img.id}
-                        src={`${apiUrl}${img.imageUrl}`}
-                        alt="Project thumbnail"
-                        className={img.isPrimary ? 'primary' : ''}
-                      />
-                    ))}
-                    {experience.images.length > 4 && (
-                      <div className="more-images">+{experience.images.length - 4}</div>
-                    )}
+                  <div className="no-image-placeholder">
+                    <span>No Image</span>
                   </div>
                 )}
               </div>
               
-              {isOwner && (
-                <div className="work-experience-actions">
-                  <button 
-                    className="edit-btn"
-                    onClick={() => handleEdit(experience)}
-                  >
-                    <FaPencilAlt />
-                  </button>
+              <div className="work-experience-content">
+                <div className="work-experience-header">
+                  <h3>{experience.Project_Title}</h3>
                   
-                  <button 
-                    className={`delete-btn ${confirmDelete === experience.Id ? 'confirm' : ''}`}
-                    onClick={() => handleDelete(experience.Id)}
-                  >
-                    <FaTrash />
-                    {confirmDelete === experience.Id && <span>Confirm</span>}
-                  </button>
+                  {isEditable && (
+                    <div className="work-experience-actions">
+                      <button 
+                        className="edit-btn"
+                        onClick={() => handleEdit(experience)}
+                        title="Edit"
+                      >
+                        <FaEdit />
+                      </button>
+                      <button 
+                        className={`delete-btn ${confirmDelete === experience.Id ? 'confirm' : ''}`}
+                        onClick={() => handleDelete(experience.Id)}
+                        title={confirmDelete === experience.Id ? "Click again to confirm" : "Delete"}
+                      >
+                        {confirmDelete === experience.Id ? <FaCheck /> : <FaTrash />}
+                      </button>
+                    </div>
+                  )}
                 </div>
-              )}
+                
+                <div className="work-experience-meta">
+                  {experience.Client_Name && (
+                    <span className="client-name">
+                      <strong>Client:</strong> {experience.Client_Name}
+                    </span>
+                  )}
+                  {experience.Completion_Date && (
+                    <span className="completion-date">
+                      <strong>Completed:</strong> {formatDate(experience.Completion_Date)}
+                    </span>
+                  )}
+                </div>
+                
+                {experience.Description && (
+                  <p className="work-experience-description">{experience.Description}</p>
+                )}
+                
+                {experience.Skills_Used && (
+                  <div className="work-experience-skills">
+                    <strong>Skills:</strong> {experience.Skills_Used}
+                  </div>
+                )}
+              </div>
             </div>
           ))}
+        </div>
+      )}
+      
+      {showForm && (
+        <div className="work-experience-form-overlay">
+          <div className="work-experience-form-container">
+            <WorkExperienceForm 
+              freelancerId={freelancerId}
+              experience={editingExperience}
+              onSubmit={handleFormSubmit}
+              onCancel={handleCancelForm}
+            />
+          </div>
         </div>
       )}
     </div>

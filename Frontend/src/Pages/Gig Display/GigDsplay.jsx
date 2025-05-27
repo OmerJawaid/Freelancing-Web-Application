@@ -2,11 +2,11 @@ import React, { useEffect, useState, useRef, useContext } from 'react'
 import './GigDisplay.css'
 import { useParams, useNavigate } from 'react-router-dom';
 import Navbar from '../../Components/Navbar Client/Navbar';
-import { FaStar, FaClock, FaCheck, FaUser, FaEnvelope, FaShoppingCart, FaHeart, FaShare, FaQuoteLeft, FaChevronDown, FaChevronUp, FaChevronRight } from 'react-icons/fa';
+import { FaStar, FaClock, FaCheck, FaUser, FaEnvelope, FaShoppingCart, FaHeart, FaShare, FaQuoteLeft, FaChevronDown, FaChevronUp, FaChevronRight, FaBriefcase } from 'react-icons/fa';
 import axios from 'axios';
 import Footer from '../../Components/Footer/Footer';
 import { AuthContext } from '../../context/Authcontext';
-import WorkExperienceSelector from '../../Components/WorkExperienceSelector/WorkExperienceSelector';
+import WorkExperience from '../../Components/WorkExperience/WorkExperience';
 
 // Default images for fallbacks - using more reliable sources
 const DEFAULT_GIG_IMAGE = "https://dummyimage.com/800x450/e9ecef/495057&text=Gig+Image";
@@ -29,10 +29,13 @@ const Gig = () => {
   const [showAllReviews, setShowAllReviews] = useState(false);
   const [showFullDescription, setShowFullDescription] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState(false);
+  const [workExperience, setWorkExperience] = useState([]);
+  const [loadingWorkExperience, setLoadingWorkExperience] = useState(true);
   const reviewsRef = useRef(null);
-  
+  const workExperienceRef = useRef(null);
+
   console.log("GigDisplay mounted with ID:", id);
-  
+
   // Add a direct call to fetch reviews (immediately after declaring reviewsRef)
   useEffect(() => {
     // Force fetch reviews for the specific gig ID we found in the database
@@ -50,6 +53,11 @@ const Gig = () => {
           
           console.log("Direct reviews API response:", response.data);
           setReviews(response.data || []);
+          
+          // Also fetch work experience if we have freelancer data
+          if (gig.Freelancer_Id) {
+            fetchFreelancerWorkExperience(gig.Freelancer_Id);
+          }
         } catch (error) {
           console.error("Direct fetch reviews error:", error);
         }
@@ -87,6 +95,32 @@ const Gig = () => {
 
     fetchKnownReviews();
   }, [loading, reviews.length]);
+
+  // Function to fetch freelancer's work experience
+  const fetchFreelancerWorkExperience = async (freelancerId) => {
+    setLoadingWorkExperience(true);
+    try {
+      const response = await axios.get(
+        `https://freelancing-web-application-production.up.railway.app/work-experience/profile/${freelancerId}`,
+        { withCredentials: true }
+      );
+      
+      console.log("Work experience response:", response.data);
+      setWorkExperience(response.data || []);
+    } catch (error) {
+      console.error("Error fetching work experience:", error);
+      setWorkExperience([]);
+    } finally {
+      setLoadingWorkExperience(false);
+    }
+  };
+
+  // Scroll to work experience section
+  const scrollToWorkExperience = () => {
+    if (workExperienceRef.current) {
+      workExperienceRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
 
   // Helper to get package name based on Type
   const getPackageNameByType = (type) => {
@@ -1059,16 +1093,137 @@ const Gig = () => {
             </div>
 
             {/* Work Experience Section */}
-            {freelancer && freelancer.Id && (
+            <div className="gig-work-experience" ref={workExperienceRef} style={{
+              marginTop: '40px',
+              width: '100%',
+              backgroundColor: '#fff',
+              position: 'relative',
+              zIndex: '1',
+              borderRadius: '8px',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+            }}>
               <div style={{
-                padding: "2.5rem",
-                borderBottom: "1px solid #eaeaea",
-                backgroundColor: "#fff"
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '20px',
+                width: '100%',
+                borderBottom: '1px solid #eaeaea',
+                paddingBottom: '15px'
               }}>
-                <WorkExperienceSelector freelancerId={freelancer.Id} maxDisplay={3} />
+                <h2 style={{ 
+                  margin: 0,
+                  fontSize: '24px',
+                  fontWeight: '600',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px'
+                }}>
+                  <FaBriefcase style={{ color: '#10b981' }} /> Work Experience
+                </h2>
+                {freelancer && (
+                  <a 
+                    href={`/freelancer-profile/${freelancer.Id}`}
+                    style={{
+                      textDecoration: 'none',
+                      color: '#10b981',
+                      fontSize: '14px',
+                      fontWeight: '500',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '5px',
+                      padding: '8px 12px',
+                      border: '1px solid #10b981',
+                      borderRadius: '4px',
+                      transition: 'all 0.2s ease'
+                    }}
+                    onMouseOver={(e) => {
+                      e.currentTarget.style.backgroundColor = '#f0fffa';
+                    }}
+                    onMouseOut={(e) => {
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                    }}
+                  >
+                    View Full Profile <FaChevronRight style={{ fontSize: '10px' }} />
+                  </a>
+                )}
               </div>
-            )}
+              
+              {loadingWorkExperience ? (
+                <div className="loading-work-experience">
+                  <div className="loader" style={{ width: '40px', height: '40px' }}></div>
+                </div>
+              ) : workExperience.length > 0 ? (
+                <div className="work-experience-container">
+                  {workExperience.slice(0, 3).map((experience) => (
+                    <div key={experience.Id} className="work-experience-item">
+                      <div className="work-experience-header">
+                        <div>
+                          <h3 className="work-experience-title">{experience.Project_Title}</h3>
+                          <p className="work-experience-date">
+                            {new Date(experience.Start_Date).toLocaleDateString('en-US', { 
+                              year: 'numeric', 
+                              month: 'long'
+                            })}
+                            {experience.End_Date && ` - ${new Date(experience.End_Date).toLocaleDateString('en-US', { 
+                              year: 'numeric', 
+                              month: 'long'
+                            })}`}
+                          </p>
+                        </div>
+                      </div>
+                      
+                      <p className="work-experience-description">{experience.Description}</p>
+                      
+                      {experience.images && experience.images.length > 0 && (
+                        <div className="work-experience-images">
+                          {experience.images.map((image, index) => (
+                            <img 
+                              key={index}
+                              src={`https://freelancing-web-application-production.up.railway.app${image.Image_Path}`}
+                              alt={`${experience.Project_Title} - Image ${index + 1}`}
+                              className="work-experience-image"
+                              onClick={() => {
+                                // If you want to add image viewer functionality later
+                              }}
+                              onError={(e) => {
+                                e.target.onerror = null;
+                                e.target.src = "https://placehold.co/300x200/e9e9e9/5d5d5d?text=No+Image";
+                              }}
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                  
+                  {workExperience.length > 3 && (
+                    <div className="work-experience-footer">
+                      <a 
+                        href={`/freelancer-profile/${freelancer.Id}`}
+                        className="view-all-btn"
+                      >
+                        View All Work <FaChevronRight />
+                      </a>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="no-work-experience">
+                  <p>This freelancer hasn't added any work experience yet.</p>
+                  {freelancer && (
+                    <a 
+                      href={`/freelancer-profile/${freelancer.Id}`}
+                      className="view-profile-btn"
+                    >
+                      View Full Profile
+                    </a>
+                  )}
+                </div>
+              )}
+            </div>
 
+            {/* Reviews Section */}
             <div className="reviews-section" ref={reviewsRef} style={{
               marginTop: '40px',
               padding: '30px 20px',
@@ -1323,6 +1478,93 @@ const Gig = () => {
                     </small>
                     <small style={{ color: '#666', display: 'block' }}>
                       Gig ID: {gig.Id || '(unknown)'} | Reviews state: {reviews ? reviews.length : 'undefined'} reviews
+                    </small>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Work Experience Section */}
+            <div className="work-experience-section" ref={workExperienceRef} style={{
+              marginTop: '40px',
+              padding: '30px 20px',
+              borderTop: '1px solid #eaeaea',
+              width: '100%',
+              backgroundColor: '#f9f9f9',
+              position: 'relative',
+              zIndex: '1'
+            }}>
+              {console.log("Current work experience state:", workExperience)}
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '20px',
+                width: '100%',
+                padding: '0 10px'
+              }}>
+                <h2 style={{ 
+                  margin: 0,
+                  fontSize: '24px',
+                  fontWeight: '600'
+                }}>
+                  Freelancer's Work Experience
+                  {workExperience.length > 0 && (
+                    <span style={{
+                      marginLeft: '10px',
+                      fontSize: '18px',
+                      color: '#666',
+                      fontWeight: 'normal'
+                    }}>({workExperience.length})</span>
+                  )}
+                </h2>
+              </div>
+              
+              {loadingWorkExperience ? (
+                <div className="loading-work-experience" style={{
+                  padding: '30px',
+                  textAlign: 'center',
+                  backgroundColor: '#fff',
+                  borderRadius: '8px',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+                }}>
+                  <p>Loading work history...</p>
+                </div>
+              ) : workExperience.length > 0 ? (
+                <div className="work-experience-container" style={{
+                  maxHeight: '750px',
+                  overflowY: 'hidden',
+                  transition: 'max-height 0.5s ease-in-out',
+                  width: '100%',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0',
+                  backgroundColor: '#fff',
+                  padding: '0',
+                  borderRadius: '8px',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+                }}>
+                  <WorkExperience 
+                    freelancerId={gig.Freelancer_Id}
+                    isEditable={false}
+                    limitToThree={true}
+                  />
+                </div>
+              ) : (
+                <div className="no-work-experience-message" style={{
+                  padding: '30px',
+                  textAlign: 'center',
+                  backgroundColor: '#fff',
+                  borderRadius: '8px',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+                }}>
+                  <p style={{ marginBottom: '10px' }}>No work experience yet for this freelancer.</p>
+                  <div>
+                    <small style={{ color: '#666', display: 'block', marginBottom: '5px' }}>
+                      Work experience will appear here after the freelancer adds it.
+                    </small>
+                    <small style={{ color: '#666', display: 'block' }}>
+                      Freelancer ID: {gig.Freelancer_Id || '(unknown)'} | Work experience state: {workExperience ? workExperience.length : 'undefined'} experiences
                     </small>
                   </div>
                 </div>
