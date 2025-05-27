@@ -19,7 +19,7 @@ const ClientDashboard = () => {
   useEffect(() => {
     const fetchGigs = async () => {
       try {
-        const result = await axios.get("http://localhost:8081/gigs/retrieveAllGigs");
+        const result = await axios.get("https://freelancing-web-application-production.up.railway.app/gigs/retrieveAllGigs");
         setgigs(result.data);
       } catch (err) {
         console.error(err);
@@ -35,7 +35,7 @@ const ClientDashboard = () => {
       try {
         if (!user || !user.id) return;
 
-        const response = await axios.get("http://localhost:8081/orders/client", {
+        const response = await axios.get("https://freelancing-web-application-production.up.railway.app/orders/client", {
           params: { User_Id: user.id },
           withCredentials: true
         });
@@ -77,7 +77,7 @@ const ClientDashboard = () => {
     if (!imagePath) return defaultFreelancerImage;
     // Remove the /public prefix if it exists
     const cleanPath = imagePath.replace(/^\/public/, '');
-    return `http://localhost:8081${cleanPath}`;
+    return `https://freelancing-web-application-production.up.railway.app${cleanPath}`;
   };
 
   return (

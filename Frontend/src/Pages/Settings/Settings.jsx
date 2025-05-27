@@ -101,7 +101,7 @@ const Settings = () => {
       formData.append('Id', user.id);
 
       const response = await axios.put(
-        'http://localhost:8081/profile/updateProfile',
+        'https://freelancing-web-application-production.up.railway.app/profile/updateProfile',
         formData,
         {
           headers: {
@@ -151,7 +151,7 @@ const Settings = () => {
 
     try {
       const response = await axios.put(
-        'http://localhost:8081/profile/updatePassword',
+        'https://freelancing-web-application-production.up.railway.app/profile/updatePassword',
         {
           currentPassword: passwordForm.currentPassword,
           newPassword: passwordForm.newPassword,
@@ -230,7 +230,7 @@ const Settings = () => {
                       <img 
                         src={user.Image.startsWith('http') 
                           ? user.Image 
-                          : `http://localhost:8081${user.Image.startsWith('/') ? '' : '/'}${user.Image}`} 
+                          : `https://freelancing-web-application-production.up.railway.app${user.Image.startsWith('/') ? '' : '/'}${user.Image}`} 
                         alt="Current Profile" 
                         className="profile-preview"
                         onError={(e) => { e.target.src = "https://dummyimage.com/100/e9ecef/495057&text=User" }}

@@ -47,7 +47,7 @@ const NotificationComponent = () => {
     
     try {
       console.log(`Fetching notifications for user ${user.id}`);
-      const url = `http://localhost:8081/notifications/user/${user.id}`;
+      const url = `https://freelancing-web-application-production.up.railway.app/notifications/user/${user.id}`;
       console.log(`Request URL: ${url}`);
       
       const response = await axios.get(url, {
@@ -93,7 +93,7 @@ const NotificationComponent = () => {
     
     try {
       console.log(`Fetching unread count for user ${user.id}`);
-      const url = `http://localhost:8081/notifications/unread/${user.id}`;
+      const url = `https://freelancing-web-application-production.up.railway.app/notifications/unread/${user.id}`;
       console.log(`Request URL: ${url}`);
       
       const response = await axios.get(url, {
@@ -111,7 +111,7 @@ const NotificationComponent = () => {
   // Function to mark a notification as read
   const markAsRead = async (notificationId) => {
     try {
-      await axios.put(`http://localhost:8081/notifications/read/${notificationId}`, {}, {
+      await axios.put(`https://freelancing-web-application-production.up.railway.app/notifications/read/${notificationId}`, {}, {
         withCredentials: true
       });
       
@@ -147,7 +147,7 @@ const NotificationComponent = () => {
     if (!user || !user.id) return;
     
     try {
-      await axios.put(`http://localhost:8081/notifications/read-all/${user.id}`, {}, {
+      await axios.put(`https://freelancing-web-application-production.up.railway.app/notifications/read-all/${user.id}`, {}, {
         withCredentials: true
       });
       
@@ -226,7 +226,7 @@ const NotificationComponent = () => {
     
     // Set up socket connection
     try {
-      socket.current = io('http://localhost:8081', {
+      socket.current = io('https://freelancing-web-application-production.up.railway.app', {
         withCredentials: true,
         transports: ['websocket', 'polling']
       });

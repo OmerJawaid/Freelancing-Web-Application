@@ -136,16 +136,16 @@ const Navbar = () => {
       imageUrl = `${window.location.origin}${Image.replace('/src', '')}`;
     } else if (Image.startsWith('/public/')) {
       // Backend public directory
-      imageUrl = `http://localhost:8081${Image}`;
+      imageUrl = `https://freelancing-web-application-production.up.railway.app${Image}`;
     } else if (Image.startsWith('/profileImages/')) {
       // Legacy format
-      imageUrl = `http://localhost:8081/public${Image}`;
+      imageUrl = `https://freelancing-web-application-production.up.railway.app/public${Image}`;
     } else if (Image.startsWith('/assets/')) {
       // Frontend assets
       imageUrl = `${window.location.origin}${Image}`;
     } else {
       // Fallback to backend path
-      imageUrl = `http://localhost:8081${Image.startsWith('/') ? '' : '/'}${Image}`;
+      imageUrl = `https://freelancing-web-application-production.up.railway.app${Image.startsWith('/') ? '' : '/'}${Image}`;
     }
     
     setDebugInfo(`User ID: ${user.id}, Image path: ${Image}, Resolved URL: ${imageUrl}`);

@@ -25,7 +25,7 @@ const FreelancerOrders = () => {
           return;
         }
 
-        const response = await axios.get("http://localhost:8081/orders/freelancer", {
+        const response = await axios.get("https://freelancing-web-application-production.up.railway.app/orders/freelancer", {
           params: { Freelancer_Id: user.id },
           withCredentials: true
         });
@@ -55,7 +55,7 @@ const FreelancerOrders = () => {
   const handleStatusUpdate = async (orderId, newStatus) => {
     try {
       setUpdateLoading(orderId);
-      const response = await axios.put(`http://localhost:8081/orders/status/${orderId}`, {
+      const response = await axios.put(`https://freelancing-web-application-production.up.railway.app/orders/status/${orderId}`, {
         Status: newStatus
       }, { withCredentials: true });
 
@@ -97,7 +97,7 @@ const FreelancerOrders = () => {
       document.body.appendChild(uploadMessage);
 
       const response = await axios.post(
-        `http://localhost:8081/orders/upload/${orderId}`,
+        `https://freelancing-web-application-production.up.railway.app/orders/upload/${orderId}`,
         formData,
         {
           headers: {

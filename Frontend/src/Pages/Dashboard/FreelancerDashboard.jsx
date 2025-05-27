@@ -28,13 +28,13 @@ const FreelancerDashboard = () => {
         if (!user || !user.id) return;
 
         // Fetch orders
-        const ordersResponse = await axios.get("http://localhost:8081/orders/freelancer", {
+        const ordersResponse = await axios.get("https://freelancing-web-application-production.up.railway.app/orders/freelancer", {
           params: { Freelancer_Id: user.id },
           withCredentials: true
         });
 
         // Fetch all gigs for this freelancer
-        const gigsResponse = await axios.get('http://localhost:8081/gigs/retrieveGigForFreelancer', {
+        const gigsResponse = await axios.get('https://freelancing-web-application-production.up.railway.app/gigs/retrieveGigForFreelancer', {
           params: { freelancer_Id: user.id }
         });
 
@@ -66,7 +66,7 @@ const FreelancerDashboard = () => {
           for (const gigId of gigIds) {
             try {
               const reviewsResponse = await axios.get(
-                `http://localhost:8081/reviews/retrieve`,
+                `https://freelancing-web-application-production.up.railway.app/reviews/retrieve`,
                 { 
                   params: { Gig_Id: gigId },
                   withCredentials: true 
@@ -113,7 +113,7 @@ const FreelancerDashboard = () => {
         
         console.log("Fetching gigs for freelancer ID:", user.id);
         
-        const result = await axios.get('http://localhost:8081/gigs/retrieveGigForFreelancer', {
+        const result = await axios.get('https://freelancing-web-application-production.up.railway.app/gigs/retrieveGigForFreelancer', {
           params: { freelancer_Id: user.id }
         });
         if(!result.data){
@@ -189,7 +189,7 @@ const FreelancerDashboard = () => {
     setAnimatingGigId(gigId);
     
     try {
-      const response = await axios.put(`http://localhost:8081/gigs/toggleState/${gigId}`, {
+      const response = await axios.put(`https://freelancing-web-application-production.up.railway.app/gigs/toggleState/${gigId}`, {
         state: newState
       });
       

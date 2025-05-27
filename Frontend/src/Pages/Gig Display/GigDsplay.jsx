@@ -40,7 +40,7 @@ const Gig = () => {
         console.log("Directly fetching reviews for gig ID:", gig.Id);
         try {
           const response = await axios.get(
-            `http://localhost:8081/reviews/retrieve`,
+            `https://freelancing-web-application-production.up.railway.app/reviews/retrieve`,
             { 
               params: { Gig_Id: gig.Id },
               withCredentials: true 
@@ -66,7 +66,7 @@ const Gig = () => {
         console.log("Last resort: Fetching known reviews for gig ID 4");
         try {
           const response = await axios.get(
-            `http://localhost:8081/reviews/retrieve`,
+            `https://freelancing-web-application-production.up.railway.app/reviews/retrieve`,
             { 
               params: { Gig_Id: 4 },
               withCredentials: true 
@@ -101,7 +101,7 @@ const Gig = () => {
   const fetchPackagesForGig = async (gigId) => {
     try {
       const response = await axios.get(
-        `http://localhost:8081/packages/retrieve`,
+        `https://freelancing-web-application-production.up.railway.app/packages/retrieve`,
         { 
           params: { Gig_Id: gigId },
           withCredentials: true 
@@ -132,7 +132,7 @@ const Gig = () => {
       }
 
       const response = await axios.post(
-        "http://localhost:8081/create-conversation",
+        "https://freelancing-web-application-production.up.railway.app/create-conversation",
         {
           User_one_id: currentUser.id,
           User_two_id: gig.Freelancer_Id,
@@ -188,7 +188,7 @@ const Gig = () => {
       
       // Fetch actual reviews from the database
       const response = await axios.get(
-        `http://localhost:8081/reviews/retrieve`,
+        `https://freelancing-web-application-production.up.railway.app/reviews/retrieve`,
         { 
           params: { Gig_Id: gigId },
           withCredentials: true 
@@ -252,7 +252,7 @@ const Gig = () => {
   // Function to update gig views
   const updateGigViews = async (gigId) => {
     try {
-      await axios.put(`http://localhost:8081/gigs/updateViews/${gigId}`);
+      await axios.put(`https://freelancing-web-application-production.up.railway.app/gigs/updateViews/${gigId}`);
       console.log(`Views updated for gig ${gigId}`);
     } catch (error) {
       console.error(`Error updating views for gig ${gigId}:`, error);
@@ -264,7 +264,7 @@ const Gig = () => {
     if (!imagePath) return defaultImage;
     // Remove the /public prefix if it exists
     const cleanPath = imagePath.replace(/^\/public/, '');
-    return `http://localhost:8081${cleanPath}`;
+    return `https://freelancing-web-application-production.up.railway.app${cleanPath}`;
   };
 
   // Main data fetching function
@@ -276,7 +276,7 @@ const Gig = () => {
         
         // Check backend connectivity
         try {
-          await fetch("http://localhost:8081/health-check");
+          await fetch("https://freelancing-web-application-production.up.railway.app/health-check");
           setBackendStatus("online");
         } catch (err) {
           setBackendStatus("offline");
@@ -288,7 +288,7 @@ const Gig = () => {
         // Try to fetch gig by its ID
         try {
           const gigResponse = await axios.get(
-            `http://localhost:8081/gigs/retrieveGigByGigId`,
+            `https://freelancing-web-application-production.up.railway.app/gigs/retrieveGigByGigId`,
             { 
               params: { Gig_Id: id },
               withCredentials: true 
@@ -344,7 +344,7 @@ const Gig = () => {
           // If direct fetch fails for other reasons, try fetch by freelancer ID
           try {
             const gigsFromFreelancer = await axios.get(
-              `http://localhost:8081/gigs/retrieveGigForGigDisplay`,
+              `https://freelancing-web-application-production.up.railway.app/gigs/retrieveGigForGigDisplay`,
               { 
                 params: { Freelancer_Id: id },
                 withCredentials: true 
@@ -436,7 +436,7 @@ const Gig = () => {
       }
 
       const response = await axios.post(
-        "http://localhost:8081/orders/create",
+        "https://freelancing-web-application-production.up.railway.app/orders/create",
         {
           User_Id: user.id,
           Freelancer_Id: gig.Freelancer_Id,
@@ -467,7 +467,7 @@ const Gig = () => {
         {backendStatus === "offline" && (
           <div style={{ marginTop: "10px", color: "red" }}>
             <p>Unable to connect to backend server.</p>
-            <p>Please ensure the server is running at http://localhost:8081</p>
+            <p>Please ensure the server is running at https://freelancing-web-application-production.up.railway.app</p>
           </div>
         )}
       </div>
@@ -499,7 +499,7 @@ const Gig = () => {
             try {
               setLoading(true);
               const gigResponse = await axios.get(
-                `http://localhost:8081/gigs/retrieveGigByGigId`,
+                `https://freelancing-web-application-production.up.railway.app/gigs/retrieveGigByGigId`,
                 { 
                   params: { Gig_Id: 1 },
                   withCredentials: true 
@@ -595,7 +595,7 @@ const Gig = () => {
               try {
                 setLoading(true);
                 const gigResponse = await axios.get(
-                  `http://localhost:8081/gigs/retrieveGigByGigId`,
+                  `https://freelancing-web-application-production.up.railway.app/gigs/retrieveGigByGigId`,
                   { 
                     params: { Gig_Id: 1 },
                     withCredentials: true 

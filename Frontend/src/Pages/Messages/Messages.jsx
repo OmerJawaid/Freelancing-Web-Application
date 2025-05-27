@@ -11,7 +11,7 @@ import { getImageUrl, DEFAULT_USER_IMAGE } from '../../utils/imageUtils';
 const DEFAULT_AVATAR = "https://placehold.co/100/e9ecef/495057?text=User";
 
 // Create socket outside component to prevent multiple connections
-const socket = io('http://localhost:8081', { 
+const socket = io('https://freelancing-web-application-production.up.railway.app', { 
   reconnection: true,
   reconnectionAttempts: 5,
   reconnectionDelay: 1000
@@ -223,7 +223,7 @@ const Messages = () => {
     const retriving_conversations = async () => {
       try {
         const response = await axios.get(
-          "http://localhost:8081/conversations/retrieve",
+          "https://freelancing-web-application-production.up.railway.app/conversations/retrieve",
           {
             params: { User_Id: currentUser.current.id },
             withCredentials: true
@@ -506,7 +506,7 @@ const Messages = () => {
       
       // Submit to API
       const response = await axios.post(
-        "http://localhost:8081/messages/upload",
+        "https://freelancing-web-application-production.up.railway.app/messages/upload",
         formData,
         { 
           withCredentials: true,
@@ -627,7 +627,7 @@ const Messages = () => {
       try {
         // console.log("Fetching messages for conversation:", selectedConversationId);
         const response = await axios.get(
-          "http://localhost:8081/messages/retrieve",
+          "https://freelancing-web-application-production.up.railway.app/messages/retrieve",
           {
             params: { conversation_id: selectedConversationId },
             withCredentials: true
@@ -672,7 +672,7 @@ const Messages = () => {
       formData.append('sender_id', messageData.sender_id);
       formData.append('receiver_id', messageData.receiver_id);
 
-      const response = await axios.post('http://localhost:8081/messages/send-with-attachment', 
+      const response = await axios.post('https://freelancing-web-application-production.up.railway.app/messages/send-with-attachment', 
         formData,
         {
           headers: {
@@ -863,13 +863,13 @@ const Messages = () => {
                             <img 
                               src={message.attachmentUrl.startsWith('data:') 
                                 ? message.attachmentUrl  // Local preview URL
-                                : `http://localhost:8081${message.attachmentUrl}`} // Server URL
+                                : `https://freelancing-web-application-production.up.railway.app${message.attachmentUrl}`} // Server URL
                               alt="Image attachment" 
                               className="message-image" 
                               onClick={() => window.open(
                                 message.attachmentUrl.startsWith('data:') 
                                   ? message.attachmentUrl 
-                                  : `http://localhost:8081${message.attachmentUrl}`, 
+                                  : `https://freelancing-web-application-production.up.railway.app${message.attachmentUrl}`, 
                                 '_blank'
                               )}
                             />
@@ -884,7 +884,7 @@ const Messages = () => {
                               {message.fileName || message.attachmentUrl.split('/').pop()}
                             </span>
                             <a 
-                              href={`http://localhost:8081${message.attachmentUrl}`} 
+                              href={`https://freelancing-web-application-production.up.railway.app${message.attachmentUrl}`} 
                               target="_blank" 
                               rel="noopener noreferrer"
                               download
