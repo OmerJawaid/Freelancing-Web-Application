@@ -1,5 +1,6 @@
 // sockets.js - WebSocket configuration for real-time messaging
 import { Server } from 'socket.io';
+import { messageEvents, MESSAGE_EVENTS } from '../events/MessageEvents.js';
 
 // Store active user connections and online status
 const userConnections = {};
@@ -98,7 +99,7 @@ function registerUserEvents(socket, io) {
  * @param {Object} io - Socket.IO server instance
  */
 function registerMessageEvents(socket, io) {
-  // User sends a message
+  // User sends a message - using Observer pattern
   socket.on('send_message', (data) => {
     const { senderId, receiverId, message, conversationId, timestamp, status, type, attachmentUrl } = data;
     
@@ -109,9 +110,6 @@ function registerMessageEvents(socket, io) {
     
     console.log(`Message from ${senderId} to ${receiverId} in conversation ${conversationId}`);
     
-    // Get receiver's socket ID if they're online
-    const receiverSocketId = userConnections[receiverId];
-
     // Create message payload with all necessary data
     const messagePayload = {
       senderId,
@@ -122,38 +120,54 @@ function registerMessageEvents(socket, io) {
       status: status || 'sent',
       type: type || 'text',
       attachmentUrl,
-      lastMessagePreview: message
+      lastMessagePreview: message,
+      socketId: socket.id
     };
     
-    // Send to receiver using multiple delivery methods for reliability
-    if (receiverSocketId) {
-      console.log(`Sending message to receiver socket ${receiverSocketId}`);
-      
-      // Method 1: Direct to socket ID
-      io.to(receiverSocketId).emit('receive_message', messagePayload);
-      
-      // Method 2: To user's room
-      io.to(`user_${receiverId}`).emit('receive_message', messagePayload);
-      
-      // Log delivery attempt
-      console.log(`Message delivered to ${receiverId} via socket ${receiverSocketId}`);
-    } else {
-      console.log(`Receiver ${receiverId} is not currently connected`);
-    }
+    // Using the Observer pattern - emit an event that other components can listen to
+    messageEvents.emit(MESSAGE_EVENTS.NEW_MESSAGE, messagePayload, io);
     
-    // Also send back to sender for confirmation and multi-device sync
-    socket.emit('receive_message', {
-      ...messagePayload,
-      status: 'delivered'
-    });
-    
-    // Broadcast to conversation room if it exists
+    // Join the conversation room if not already joined
     const conversationRoom = `conversation_${conversationId}`;
-    if (io.sockets.adapter.rooms.has(conversationRoom)) {
-      io.to(conversationRoom).emit('receive_message', messagePayload);
-      console.log(`Message broadcast to conversation room: ${conversationRoom}`);
+    if (!socket.rooms.has(conversationRoom)) {
+      socket.join(conversationRoom);
     }
   });
+  
+  // Add a listener for message delivery
+  socket.on('message_delivered', (data) => {
+    messageEvents.emit(MESSAGE_EVENTS.MESSAGE_DELIVERED, {
+      ...data,
+      socketId: socket.id
+    }, io);
+  });
+  
+  // Add a listener for message read status
+  socket.on('message_read', (data) => {
+    messageEvents.emit(MESSAGE_EVENTS.MESSAGE_READ, {
+      ...data,
+      socketId: socket.id
+    }, io);
+  });
+  
+  // Add a listener for typing indicator
+  socket.on('typing', (data) => {
+    messageEvents.emit(MESSAGE_EVENTS.USER_TYPING, {
+      ...data,
+      socketId: socket.id
+    }, io);
+  });
+  
+  // Add a listener for stopped typing
+  socket.on('stop_typing', (data) => {
+    messageEvents.emit(MESSAGE_EVENTS.USER_STOP_TYPING, {
+      ...data,
+      socketId: socket.id
+    }, io);
+  });
+  
+  // Setup message event handlers using the Observer pattern
+  setupMessageEventHandlers(io);
 }
 
 /**
@@ -206,6 +220,94 @@ function findUserBySocketId(socketId) {
     }
   }
   return null;
+}
+
+/**
+ * Setup message event handlers using the Observer pattern
+ * @param {Object} io - Socket.IO server instance
+ */
+function setupMessageEventHandlers(io) {
+  // Handle new messages
+  messageEvents.on(MESSAGE_EVENTS.NEW_MESSAGE, (messagePayload, io) => {
+    const { senderId, receiverId, conversationId } = messagePayload;
+    
+    // Get receiver's socket ID if they're online
+    const receiverSocketId = userConnections[receiverId];
+    
+    // Send to receiver using multiple delivery methods for reliability
+    if (receiverSocketId) {
+      console.log(`Sending message to receiver socket ${receiverSocketId}`);
+      
+      // Method 1: Direct to socket ID
+      io.to(receiverSocketId).emit('receive_message', messagePayload);
+      
+      // Method 2: To user's room
+      io.to(`user_${receiverId}`).emit('receive_message', messagePayload);
+      
+      // Log delivery attempt
+      console.log(`Message delivered to ${receiverId} via socket ${receiverSocketId}`);
+    } else {
+      console.log(`Receiver ${receiverId} is not currently connected`);
+    }
+    
+    // Also send back to sender for confirmation and multi-device sync
+    io.to(messagePayload.socketId).emit('receive_message', {
+      ...messagePayload,
+      status: 'delivered'
+    });
+    
+    // Broadcast to conversation room
+    const conversationRoom = `conversation_${conversationId}`;
+    io.to(conversationRoom).emit('receive_message', messagePayload);
+  });
+  
+  // Handle message delivery status
+  messageEvents.on(MESSAGE_EVENTS.MESSAGE_DELIVERED, (data, io) => {
+    const { messageId, conversationId, receiverId } = data;
+    
+    // Notify the sender that the message was delivered
+    io.to(`user_${receiverId}`).emit('message_status_update', {
+      messageId,
+      conversationId,
+      status: 'delivered'
+    });
+  });
+  
+  // Handle message read status
+  messageEvents.on(MESSAGE_EVENTS.MESSAGE_READ, (data, io) => {
+    const { messageId, conversationId, senderId, receiverId } = data;
+    
+    // Notify the sender that the message was read
+    io.to(`user_${senderId}`).emit('message_status_update', {
+      messageId,
+      conversationId,
+      status: 'read'
+    });
+  });
+  
+  // Handle typing indicator
+  messageEvents.on(MESSAGE_EVENTS.USER_TYPING, (data, io) => {
+    const { userId, conversationId } = data;
+    
+    // Broadcast typing status to the conversation room
+    io.to(`conversation_${conversationId}`).emit('typing_indicator', {
+      userId,
+      conversationId,
+      isTyping: true
+    });
+  });
+  
+  // Handle stopped typing
+  messageEvents.on(MESSAGE_EVENTS.USER_STOP_TYPING, (data, io) => {
+    const { userId, conversationId } = data;
+    
+    // Broadcast typing status to the conversation room
+    io.to(`conversation_${conversationId}`).emit('typing_indicator', {
+      userId,
+      conversationId,
+      isTyping: false
+    });
+  });
 }
 
 export default configureSocket;

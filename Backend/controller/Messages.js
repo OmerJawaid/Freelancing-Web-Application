@@ -1,8 +1,9 @@
 //Messages
 import dotenv from 'dotenv';
 dotenv.config();
-import { database_pool } from '../config/dbconnection.js';
 import { createNotification } from './Notification.js';
+import { Message } from '../models/Message.js';
+import { Conversation } from '../models/Conversation.js';
 
 /**
  * Upload a new message and attachment to the database
@@ -21,38 +22,30 @@ const uploadMessages = async (req, res) => {
         // Process message data
         const messageData = processMessageData(req);
         
-        // Insert message into database
-        const query = `
-            INSERT INTO messages 
-            (Conversation_Id, Sender_Id, Content, Attachment_url, Type, Status)
-            VALUES (?, ?, ?, ?, ?, ?);
-        `;
-        
-        const result = await database_pool.query(query, [
-            Conversation_Id, 
-            Sender_Id, 
-            messageData.content, 
-            messageData.attachmentUrl, 
-            messageData.type, 
-            Status || 'sent'
-        ]);
+        // Insert message into database using Message model
+        const result = await Message.create({
+            conversationId: Conversation_Id, 
+            senderId: Sender_Id, 
+            content: messageData.content, 
+            attachmentUrl: messageData.attachmentUrl, 
+            type: messageData.type, 
+            status: Status || 'sent'
+        });
 
         if (!result || result.affectedRows === 0) {
             return res.status(500).json({ success: false, message: "Failed to send message" });
         }
 
-        // Update conversation with last message info
-        await updateConversationLastMessage(Conversation_Id, messageData.lastMessagePreview);
+        // Update conversation with last message info using Conversation model
+        await Conversation.updateLastMessage(Conversation_Id, messageData.lastMessagePreview);
 
-
-            const [conversation] = await database_pool.query(
-            `SELECT * FROM conversations WHERE Id = ?`,
-            [Conversation_Id]
-        );
+        // Get conversation details to identify recipient
+        const conversation = await Conversation.findById(Conversation_Id);
         
-        if (conversation && conversation.length > 0) {
-            const conv = conversation[0];
-            const receiverId = conv.User_one_id === parseInt(Sender_Id) ? conv.User_two_id : conv.User_one_id;
+        if (conversation) {
+            const receiverId = conversation.User_one_id === parseInt(Sender_Id) 
+                ? conversation.User_two_id 
+                : conversation.User_one_id;
             
             // Create notification
             await createNotification(
@@ -62,6 +55,9 @@ const uploadMessages = async (req, res) => {
                 messageData.lastMessagePreview,
                 Conversation_Id
             );
+            
+            // Increment unread count for recipient
+            await Conversation.updateUnreadCount(Conversation_Id, receiverId);
         }
         
         // Return success response
@@ -122,15 +118,11 @@ function processMessageData(req) {
  * @param {string} conversationId - Conversation ID
  * @param {string} lastMessage - Preview of the last message
  */
+// This function is no longer needed as it's moved to the Conversation model
+// Keeping a reference to the model implementation for clarity
 async function updateConversationLastMessage(conversationId, lastMessage) {
-    const query = `
-        UPDATE conversations 
-        SET Last_message = ?, 
-            Last_message_time = NOW() 
-        WHERE Id = ?
-    `;
-    
-    await database_pool.query(query, [lastMessage, conversationId]);
+    // This functionality is now implemented in Conversation.updateLastMessage()
+    await Conversation.updateLastMessage(conversationId, lastMessage);
 }
 
 /**
@@ -140,7 +132,7 @@ async function updateConversationLastMessage(conversationId, lastMessage) {
  */
 const retrieveMessages = async (req, res) => {
     try {
-        const { conversation_id } = req.query;
+        const { conversation_id, user_id } = req.query;
         
         // Validate conversation ID
         if (!conversation_id) {
@@ -150,13 +142,16 @@ const retrieveMessages = async (req, res) => {
             });
         }
 
-        // Fetch messages from database
-        const [messages] = await database_pool.query(
-            `SELECT * FROM messages 
-             WHERE Conversation_Id = ? 
-             ORDER BY Created_at ASC;`,
-            [conversation_id]
-        );
+        // Fetch messages using the Message model
+        const messages = await Message.getByConversationId(conversation_id);
+        
+        // If user_id is provided, mark messages as read for this user
+        if (user_id) {
+            await Message.markAsRead(conversation_id, user_id);
+            
+            // Also reset unread count for this user
+            await Conversation.resetUnreadCount(conversation_id, user_id);
+        }
         
         console.log(`Retrieved ${messages.length} messages for conversation ${conversation_id}`);
         return res.status(200).json(messages);
