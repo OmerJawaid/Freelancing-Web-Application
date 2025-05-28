@@ -424,41 +424,87 @@ const CreateGig = () => {
         console.log(key, typeof value === 'object' ? 'File or Object data' : value);
       }
       
-      // Get authentication token
-      const storedUser = localStorage.getItem('user');
-      const token = storedUser ? JSON.parse(storedUser).token : null;
-      const sessionToken = sessionStorage.getItem('authToken');
-      
-      // Log auth info for debugging
-      console.log('Auth tokens available:', { 
-        userToken: !!token, 
-        sessionToken: !!sessionToken,
-        user: user
-      });
-      
-      // Make the API call with proper headers including token
-      const response = await axios.post(
-        'https://freelancing-web-application-production.up.railway.app/gigs/createGig', 
-        data, 
-        {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-            // Explicitly add Authorization header with token if available
-            ...(token && { 'Authorization': `Bearer ${token}` }),
-            ...(sessionToken && !token && { 'Authorization': `Bearer ${sessionToken}` })
-          },
-          withCredentials: true  // Important to send cookies for auth
+      // Force a fresh authentication check with the server before proceeding
+      let response;
+      try {
+        // First ensure we're authenticated by making a lightweight auth check call
+        const authCheckResponse = await axios.get(
+          'https://freelancing-web-application-production.up.railway.app/authentication/checkAuthentication',
+          { withCredentials: true }
+        );
+        
+        console.log('Auth check response:', authCheckResponse.data);
+        
+        // If not authenticated, throw an error
+        if (!authCheckResponse.data.authenticated) {
+          throw new Error('Authentication check failed');
         }
-      );
-      
-      if (response.status === 201) {
-        toast.success('Gig created successfully!', {
-          autoClose: 3000
+        
+        // Get authentication token for the request
+        const storedUser = localStorage.getItem('user');
+        let parsedUser = null;
+        let token = null;
+        
+        try {
+          // Try to get user and token from localStorage
+          if (storedUser) {
+            parsedUser = JSON.parse(storedUser);
+            token = parsedUser.token;
+          }
+        } catch (parseError) {
+          console.error('Error parsing stored user:', parseError);
+        }
+        
+        // Fall back to sessionStorage if needed
+        const sessionToken = sessionStorage.getItem('authToken');
+        
+        console.log('Auth info for request:', { 
+          hasUserInStorage: !!parsedUser,
+          hasTokenInUser: !!token,
+          hasSessionToken: !!sessionToken,
+          currentUserInContext: user?.id
         });
-        navigate('/freelancer-dashboard');
-      } else {
-        throw new Error(response.data?.message || 'Unknown error');
+        
+        // Create request headers with authentication
+        const headers = {
+          'Content-Type': 'multipart/form-data',
+        };
+        
+        // Add token to Authorization header if available
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        } else if (sessionToken) {
+          headers['Authorization'] = `Bearer ${sessionToken}`;
+        }
+        
+        // Make the API call with proper headers
+        response = await axios.post(
+          'https://freelancing-web-application-production.up.railway.app/gigs/createGig', 
+          data, 
+          {
+            headers,
+            withCredentials: true  // Important to send cookies for auth
+          }
+        );
+        
+        if (response.status === 201) {
+          toast.success('Gig created successfully!', {
+            autoClose: 3000
+          });
+          navigate('/freelancer-dashboard');
+          return; // Exit early after successful navigation
+        }
+      } catch (authError) {
+        console.error('Authentication error:', authError);
+        toast.error('Authentication error. Please log in again.', { autoClose: 5000 });
+        navigate('/login');
+        setIsSubmitting(false);
+        return;
       }
+      
+      // If we reach here, something went wrong but didn't throw an error
+      toast.error('Unexpected response from server', { autoClose: 3000 });
+      setIsSubmitting(false);
       
     } catch (error) {
       console.error('Error creating gig:', error);
