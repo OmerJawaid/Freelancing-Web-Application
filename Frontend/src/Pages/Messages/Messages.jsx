@@ -9,12 +9,9 @@ import { useNavigate } from 'react-router-dom';
 // Default avatar image
 const DEFAULT_AVATAR = "https://placehold.co/100/e9ecef/495057?text=User";
 
-// Create socket outside component to prevent multiple connections
-const socket = io('http://localhost:8081', { 
-  reconnection: true,
-  reconnectionAttempts: 5,
-  reconnectionDelay: 1000
-});
+// Create socket reference to be initialized inside the component
+// This ensures proper cleanup and prevents memory leaks
+let socket = null;
 
 // Utility function to format timestamps
 const formatMessageTime = (timestamp) => {
@@ -65,6 +62,7 @@ const Messages = () => {
   const fileInputRef = useRef(null);
   const [debugInfo, setDebugInfo] = useState('');
   const [receivedMessages, setReceivedMessages] = useState({});
+  const socketRef = useRef(null); // Reference to maintain socket instance
 
   // Track user activity
   useEffect(() => {
@@ -92,10 +90,14 @@ const Messages = () => {
         if (Date.now() - lastActivityRef.current > 300000) { // 5 minutes of inactivity
           setUserStatus('away');
           setIsActive(false);
-          socket.emit('set_user_status', { 
-            userId: currentUser.current?.id, 
-            status: 'away' 
-          });
+          
+          // Use socketRef to ensure we're using the current socket instance
+          if (socketRef.current) {
+            socketRef.current.emit('set_user_status', { 
+              userId: currentUser.current?.id, 
+              status: 'away' 
+            });
+          }
         }
       }, 300000); // Check after 5 minutes
     };
@@ -119,7 +121,7 @@ const Messages = () => {
     };
   }, [userStatus]); // Only depend on userStatus, not lastActivity
 
-  // Authentication check
+  // Authentication check and socket setup
   useEffect(() => {
     // Get the logged-in user from localStorage
     const storedUser = localStorage.getItem('user');
@@ -141,17 +143,28 @@ const Messages = () => {
       return;
     }
 
-    // Setup socket connection
-    // console.log("Setting up socket connection for user:", currentUser.current.id);
+    // Initialize socket connection
+    console.log("Setting up socket connection for user:", currentUser.current.id);
     
-    socket.connect();
-    socket.emit('join', { userId: currentUser.current.id });
+    // Create new socket instance
+    socketRef.current = io('http://localhost:8081', { 
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
+      transports: ['websocket', 'polling'],
+      withCredentials: true,
+      forceNew: true
+    });
     
-    // Request list of online users
-    socket.emit('get_online_users');
+    const socket = socketRef.current;
     
+    // Handle connection events
     socket.on('connect', () => {
-      // console.log("Socket connected, ID:", socket.id);
+      console.log("Socket connected, ID:", socket.id);
+      
+      // Join user room and request online users after successful connection
+      socket.emit('join', { userId: currentUser.current.id });
+      socket.emit('get_online_users');
     });
     
     socket.on('connect_error', (error) => {
@@ -160,7 +173,7 @@ const Messages = () => {
     
     // Listen for online users list
     socket.on('online_users', (users) => {
-      // console.log("Received online users:", users);
+      console.log("Received online users:", users);
       setOnlineUsers(new Set(users));
     });
     
@@ -212,8 +225,11 @@ const Messages = () => {
 
     // Clean up socket connection on component unmount
     return () => {
-      // console.log("Disconnecting socket");
-      socket.disconnect();
+      console.log("Disconnecting socket");
+      if (socket) {
+        socket.disconnect();
+        socketRef.current = null;
+      }
     };
   }, [navigate]);
 
@@ -286,16 +302,45 @@ const Messages = () => {
 
   // Listen for new messages
   useEffect(() => {
-    // Socket listener for receiving messages
+    if (!socketRef.current) {
+      console.error('Socket not initialized');
+      return;
+    }
+    
+    const socket = socketRef.current;
+    console.log('Setting up message listener on socket:', socket.id);
+    
+    // Socket listener for receiving messages - COMPLETELY REVISED
     const handleReceiveMessage = (data) => {
-      // console.log("Received message via socket:", data);
+      console.log("🔴 Received message via socket:", data);
       
       if (!data || !data.conversationId) {
         console.error("Invalid message data received:", data);
         return;
       }
       
-      // Store received message by conversation ID
+      // Create a standardized message object
+      const msgTimestamp = data.timestamp || new Date().toISOString();
+      const newMessage = {
+        senderId: data.senderId,
+        message: data.message || '',
+        timestamp: msgTimestamp,
+        formattedTime: formatMessageTime(msgTimestamp),
+        status: data.status || 'delivered',
+        type: data.type || 'text',
+        attachmentUrl: data.attachmentUrl,
+        fileName: data.fileName || (data.attachmentUrl ? data.attachmentUrl.split('/').pop() : null)
+      };
+      
+      // CRITICAL FIX: Directly update chat if this is the currently selected conversation
+      const isCurrentConversation = selectedConversation && 
+                                   selectedConversation.id && 
+                                   selectedConversation.id.toString() === data.conversationId.toString();
+      
+      console.log(`Message for conversation ${data.conversationId}, current conversation: ${selectedConversation.id}`);
+      console.log(`Is current conversation: ${isCurrentConversation}`);
+      
+      // Store received message by conversation ID - this happens regardless of which conversation is active
       setReceivedMessages(prev => {
         const conversationMessages = prev[data.conversationId] || [];
         
@@ -303,26 +348,15 @@ const Messages = () => {
         const messageExists = conversationMessages.some(msg => 
           msg.message === data.message && 
           msg.senderId === data.senderId &&
-          msg.type === data.type &&
-          Math.abs(new Date(msg.timestamp) - new Date(data.timestamp || new Date())) < 1000
+          Math.abs(new Date(msg.timestamp || new Date()) - new Date(data.timestamp || new Date())) < 1000
         );
         
         if (messageExists) {
+          console.log('Message already exists in received messages, not adding duplicate');
           return prev;
         }
         
-        const msgTimestamp = data.timestamp || new Date().toISOString();
-        const newMessage = {
-          senderId: data.senderId,
-          message: data.message || '',
-          timestamp: msgTimestamp,
-          formattedTime: formatMessageTime(msgTimestamp),
-          status: data.status || 'delivered',
-          type: data.type || 'text',
-          attachmentUrl: data.attachmentUrl,
-          fileName: data.fileName || (data.attachmentUrl ? data.attachmentUrl.split('/').pop() : null)
-        };
-        
+        console.log('Adding message to receivedMessages for conversation:', data.conversationId);
         return {
           ...prev,
           [data.conversationId]: [...conversationMessages, newMessage]
@@ -332,34 +366,110 @@ const Messages = () => {
       // Update conversations list with latest message
       setConversations(prevConversations => {
         return prevConversations.map(conv => {
-          if (conv.id === data.conversationId) {
-            const msgTimestamp = data.timestamp || new Date().toISOString();
+          if (conv.id.toString() === data.conversationId.toString()) {
+            console.log('Updating conversation list item with latest message');
             return {
               ...conv,
               lastMessage: data.lastMessagePreview || data.message || 'New message',
               timestamp: msgTimestamp,
               formattedTime: formatMessageTime(msgTimestamp),
-              unread: conv.user.id === data.senderId ? conv.unread + 1 : conv.unread
+              unread: conv.user.id.toString() === data.senderId.toString() ? conv.unread : conv.unread + 1
             };
           }
           return conv;
         });
       });
+      
+      // If this message is for the currently selected conversation, update the chat immediately
+      if (isCurrentConversation) {
+        console.log('🟢 UPDATING ACTIVE CHAT with new message');
+        
+        // Force update the chat state with the new message
+        setChat(prevChat => {
+          // Check if message already exists in chat
+          const messageExists = prevChat.some(msg => 
+            msg.message === newMessage.message && 
+            msg.senderId === newMessage.senderId &&
+            Math.abs(new Date(msg.timestamp || new Date()) - new Date(newMessage.timestamp || new Date())) < 1000
+          );
+          
+          if (messageExists) {
+            console.log('Message already exists in chat, not adding duplicate');
+            return prevChat;
+          }
+          
+          console.log('Adding new message to chat:', newMessage);
+          
+          // Add new message and sort by timestamp
+          const updatedChat = [...prevChat, newMessage];
+          const sortedChat = updatedChat.sort((a, b) => new Date(a.timestamp || 0) - new Date(b.timestamp || 0));
+          
+          return sortedChat;
+        });
+        
+        // Force scroll to bottom after a short delay to ensure the DOM has updated
+        setTimeout(() => {
+          if (chatEndRef.current) {
+            chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
+          }
+        }, 100);
+      } else {
+        console.log('Message not for current conversation');
+      }
     };
     
+    // CRITICAL FIX: Remove all existing listeners before adding new ones
+    socket.removeAllListeners('receive_message');
+    
+    // Add the new listener
     socket.on('receive_message', handleReceiveMessage);
+    console.log('Registered receive_message event handler');
+    
+    // Debug listener to track socket events
+    const handleDebugEvent = (event) => {
+      console.log(`Socket event '${event}' received`);
+    };
+    
+    // Listen for socket reconnection events
+    socket.on('reconnect', () => {
+      console.log('Socket reconnected, re-joining rooms');
+      // Re-join user room on reconnect
+      if (currentUser.current?.id) {
+        socket.emit('join', { userId: currentUser.current.id });
+      }
+    });
+    
+    socket.on('reconnect_attempt', handleDebugEvent.bind(null, 'reconnect_attempt'));
+    socket.on('reconnect_error', handleDebugEvent.bind(null, 'reconnect_error'));
+    socket.on('reconnect_failed', handleDebugEvent.bind(null, 'reconnect_failed'));
+    
+    // Test the socket connection
+    socket.emit('ping', { timestamp: new Date().toISOString() });
     
     return () => {
-      socket.off('receive_message', handleReceiveMessage);
+      console.log('Cleaning up socket event listeners');
+      if (socket) {
+        socket.off('receive_message', handleReceiveMessage);
+        socket.off('reconnect');
+        socket.off('reconnect_attempt');
+        socket.off('reconnect_error');
+        socket.off('reconnect_failed');
+      }
     };
-  }, []);
+  }, [selectedConversation.id]);
 
   // Update chat when selectedConversation or receivedMessages changes
   useEffect(() => {
     if (!selectedConversation.id) return;
     
+    console.log('Selected conversation changed or received messages updated');
+    console.log('Selected conversation ID:', selectedConversation.id);
+    console.log('Available received messages:', Object.keys(receivedMessages));
+    
     // Add received messages for this conversation to the chat
     const conversationMessages = receivedMessages[selectedConversation.id] || [];
+    console.log('Messages for this conversation:', conversationMessages.length);
+    
     if (conversationMessages.length > 0) {
       setChat(prevChat => {
         // Filter out messages that are already in the chat
@@ -367,13 +477,28 @@ const Messages = () => {
           !prevChat.some(existingMsg => 
             existingMsg.senderId === newMsg.senderId &&
             existingMsg.message === newMsg.message &&
-            existingMsg.timestamp === newMsg.timestamp
+            Math.abs(new Date(existingMsg.timestamp) - new Date(newMsg.timestamp)) < 1000
           )
         );
         
+        console.log('New messages to add:', newMessages.length);
+        
         if (newMessages.length === 0) return prevChat;
-        return [...prevChat, ...newMessages];
+        
+        // Sort messages by timestamp to ensure proper order
+        const updatedChat = [...prevChat, ...newMessages];
+        const sortedChat = updatedChat.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+        
+        console.log('Updated chat with new messages, total:', sortedChat.length);
+        return sortedChat;
       });
+      
+      // Force scroll to bottom after messages are added
+      setTimeout(() => {
+        if (chatEndRef.current) {
+          chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
+        }
+      }, 100);
     }
   }, [selectedConversation.id, receivedMessages]);
 
@@ -385,7 +510,7 @@ const Messages = () => {
     if (chatEndRef.current) {
       chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [chat]);
+  }, [chat.length]);
 
   // Function to handle file attachment
   /**
@@ -529,7 +654,23 @@ const Messages = () => {
       };
       
       // Emit via socket for real-time updates
-      socket.emit('send_message', newMessage);
+      console.log('Sending message via socket:', newMessage);
+      if (socketRef.current) {
+        // Add the message to our own chat immediately for instant feedback
+        addMessageToChat({
+          senderId: currentUser.current.id,
+          message: messageInput,
+          timestamp: msgTimestamp,
+          attachmentUrl: temporaryAttachmentUrl,
+          type: messageType,
+          fileName: attachment?.name
+        });
+        
+        // Then send via socket
+        socketRef.current.emit('send_message', newMessage);
+      } else {
+        console.error('Socket connection not available');
+      }
       
       // Update conversation list with latest message
       updateConversationList(
@@ -619,9 +760,10 @@ const Messages = () => {
   useEffect(() => {
     if (!selectedConversationId) return;
     
+    console.log('🔄 Fetching messages for conversation:', selectedConversationId);
+    
     const fetchMessages = async () => {
       try {
-        // console.log("Fetching messages for conversation:", selectedConversationId);
         const response = await axios.get(
           "http://localhost:8081/messages/retrieve",
           {
@@ -630,21 +772,55 @@ const Messages = () => {
           }
         );
         
-        // console.log("Messages API response:", response.data);
+        console.log("Messages API response received, count:", response.data?.length || 0);
         
         if (Array.isArray(response.data)) {
-          setChat(
-            response.data.map(msg => ({
-              senderId: msg.Sender_Id,
-              message: msg.Content,
-              timestamp: msg.Created_at,
-              formattedTime: formatMessageTime(msg.Created_at),
-              status: msg.Status,
-              type: msg.Type || 'text',
-              attachmentUrl: msg.Attachment_url,
-              fileName: msg.Attachment_url ? msg.Attachment_url.split('/').pop() : null
-            }))
+          // Process messages from the API
+          const apiMessages = response.data.map(msg => ({
+            senderId: msg.Sender_Id,
+            message: msg.Content,
+            timestamp: msg.Created_at,
+            formattedTime: formatMessageTime(msg.Created_at),
+            status: msg.Status,
+            type: msg.Type || 'text',
+            attachmentUrl: msg.Attachment_url,
+            fileName: msg.Attachment_url ? msg.Attachment_url.split('/').pop() : null
+          }));
+          
+          // Get any recent messages from the receivedMessages state
+          const recentMessages = receivedMessages[selectedConversationId] || [];
+          
+          // Combine both sources and remove duplicates
+          const allMessages = [...apiMessages];
+          
+          // Add recent messages that aren't already in the API response
+          recentMessages.forEach(recentMsg => {
+            const isDuplicate = apiMessages.some(apiMsg => 
+              apiMsg.message === recentMsg.message && 
+              apiMsg.senderId === recentMsg.senderId &&
+              Math.abs(new Date(apiMsg.timestamp || 0) - new Date(recentMsg.timestamp || 0)) < 1000
+            );
+            
+            if (!isDuplicate) {
+              console.log('Adding recent message not found in API response:', recentMsg);
+              allMessages.push(recentMsg);
+            }
+          });
+          
+          // Sort all messages by timestamp
+          const sortedMessages = allMessages.sort((a, b) => 
+            new Date(a.timestamp || 0) - new Date(b.timestamp || 0)
           );
+          
+          console.log('Setting chat with combined messages, total:', sortedMessages.length);
+          setChat(sortedMessages);
+          
+          // Scroll to bottom after messages are loaded
+          setTimeout(() => {
+            if (chatEndRef.current) {
+              chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
+            }
+          }, 100);
         } else {
           console.error("Unexpected response format:", response.data);
           setChat([]);
@@ -656,7 +832,7 @@ const Messages = () => {
     };
     
     fetchMessages();
-  }, [selectedConversationId]);
+  }, [selectedConversationId, receivedMessages]);
 
   if (loading) {
     return (
