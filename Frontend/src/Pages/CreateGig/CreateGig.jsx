@@ -446,6 +446,10 @@ const CreateGig = () => {
         data.append('image', formData.image);
       }
       
+      // CRITICAL FIX: Explicitly include the authentication token in the form data
+      // This is necessary because multipart/form-data can't include headers properly in some environments
+      data.append('token', finalToken);
+      
       console.log("FormData being sent:");
       for (let [key, value] of data.entries()) {
         console.log(key, typeof value === 'object' ? 'File or Object data' : value);

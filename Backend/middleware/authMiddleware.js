@@ -39,9 +39,19 @@ export const verifyToken = (req, res, next) => {
   // Debug request info
   debugToken(req);
   
+  // CRITICAL: Handle formData submissions specially
+  // Check for Content-Type header to detect multipart/form-data
+  const contentType = req.headers['content-type'] || '';
+  if (contentType.includes('multipart/form-data')) {
+    console.log('⚠️ MULTIPART FORM DETECTED - Special token handling required');
+    
+    // For multipart/form-data, token may be in a special location
+    // Check all possible places for a token (this is critical for form uploads)
+  }
+  
   // First check if user is in session (most reliable source)
   if (req.session && req.session.user) {
-    console.log('User found in session, using session authentication');
+    console.log('✅ User found in session, using session authentication');
     req.user = req.session.user;
     return next();
   }
@@ -51,56 +61,64 @@ export const verifyToken = (req, res, next) => {
   
   // 1. Check Authorization header (most common for API requests)
   if (req.headers.authorization) {
-    const parts = req.headers.authorization.split(' ');
-    // Handle both 'Bearer TOKEN' format and raw token
-    if (parts.length === 2 && parts[0] === 'Bearer') {
-      token = parts[1];
-      console.log('Token extracted from Authorization Bearer header');
-    } else if (parts.length === 1) {
-      token = parts[0];
-      console.log('Token extracted from Authorization header (no Bearer prefix)');
+    const authHeader = req.headers.authorization;
+    console.log('Found Authorization header:', authHeader.substring(0, 20) + '...');
+    
+    // Handle various authorization header formats
+    if (authHeader.startsWith('Bearer ')) {
+      token = authHeader.substring(7); // Remove 'Bearer ' prefix
+      console.log('✅ Token extracted from Authorization Bearer header');
+    } else {
+      token = authHeader; // Use the raw value
+      console.log('✅ Token extracted from Authorization header (no Bearer prefix)');
     }
   }
   
   // 2. Check cookies if no token in header
   if (!token && req.cookies && req.cookies.token) {
     token = req.cookies.token;
-    console.log('Token extracted from cookies');
+    console.log('✅ Token extracted from cookies');
   }
   
   // 3. Check query parameters as last resort
   if (!token && req.query && req.query.token) {
     token = req.query.token;
-    console.log('Token extracted from query parameters');
+    console.log('✅ Token extracted from query parameters');
+  }
+  
+  // 4. For multipart/form-data, also check req.body.token
+  if (!token && req.body && req.body.token) {
+    token = req.body.token;
+    console.log('✅ Token extracted from form data body');
   }
   
   if (!token) {
-    console.log('No token or session found in request');
+    console.log('❌ No token or session found in request');
     return res.status(401).json({ message: 'Authentication required' });
   }
   
   try {
     // Verify the token
     const decoded = jwt.verify(token, JWT_SECRET);
-    console.log('Token verified successfully');
+    console.log('✅ Token verified successfully');
     
     // Handle different token payload formats
     if (decoded.user) {
       // Token format: { user: { id, User_Type, etc. } }
       req.user = decoded.user;
-      console.log('User info extracted from token.user property');
+      console.log('✅ User info extracted from token.user property');
     } else if (decoded.id) {
       // Token format: { id, User_Type, etc. }
       req.user = decoded;
-      console.log('User info extracted directly from token');
+      console.log('✅ User info extracted directly from token');
     } else {
       // Unexpected token format
-      console.error('Token has unexpected format:', Object.keys(decoded));
+      console.error('❌ Token has unexpected format:', Object.keys(decoded));
       return res.status(401).json({ message: 'Invalid token format' });
     }
     
     // Log the extracted user info for debugging
-    console.log('User from token:', {
+    console.log('✅ User from token:', {
       id: req.user.id,
       userType: req.user.User_Type || req.user.user_type
     });
@@ -108,13 +126,13 @@ export const verifyToken = (req, res, next) => {
     // Store user in session for future requests
     if (req.session) {
       req.session.user = req.user;
-      console.log('User stored in session for future requests');
+      console.log('✅ User stored in session for future requests');
     }
     
     // Continue to next middleware/controller
     next();
   } catch (error) {
-    console.error('Token verification failed:', error);
+    console.error('❌ Token verification failed:', error);
     return res.status(401).json({ 
       message: 'Invalid or expired token', 
       details: error.message 

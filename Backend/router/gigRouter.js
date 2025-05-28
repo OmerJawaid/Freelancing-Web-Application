@@ -10,7 +10,10 @@ gigRouter.get('/retrieveGigByGigId',fetchGigByGigId)
 gigRouter.get('/retrieveGigForFreelancer',fetchGigForFreelancer)
 gigRouter.put('/updateViews/:gigId', updateGigViews);
 gigRouter.put('/toggleState/:gigId', toggleGigState);
-gigRouter.post('/createGig', verifyToken, isFreelancer, uploadGigImages.single('image'), createGig);
+// CRITICAL FIX: Put multer (uploadGigImages) BEFORE authentication middleware
+// This ensures the form is parsed first, making form fields (including the token) available
+// to the authentication middleware before verification
+gigRouter.post('/createGig', uploadGigImages.single('image'), verifyToken, isFreelancer, createGig);
 gigRouter.put('/updateGig/:gigId', verifyToken, isFreelancer, uploadGigImages.single('image'), updateGig);
 
 export  {gigRouter};
