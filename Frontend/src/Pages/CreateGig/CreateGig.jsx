@@ -389,7 +389,7 @@ const CreateGig = () => {
     
     try {
       // Basic validation before sending
-      if (!formData.title || !formData.description || !formData.category || !formData.image || formData.packages.length === 0) {
+      if (!formData.title || !formData.description || !formData.category || formData.packages.length === 0) {
         toast.error('Please fill all required fields', {
           autoClose: 3000
         });
@@ -412,14 +412,11 @@ const CreateGig = () => {
 
       // Format packages to match database schema exactly
       const formattedPackages = formData.packages.map(pkg => ({
-        // These must match the database column names exactly
         Type: Number(pkg.Type),
         Package_Name: pkg.Package_Name,
         Price: Number(pkg.Price),
         Delivery_Time: Number(pkg.Delivery_Time),
-        Package_Details: pkg.Package_Details,
-        // Include any other required fields
-        Gig_Id: null // This will be filled by the backend
+        Package_Details: pkg.Package_Details
       }));
       
       // Create FormData that matches the exact DB column names
@@ -430,17 +427,10 @@ const CreateGig = () => {
       data.append('Description', formData.description.trim());
       data.append('Category', formData.category);
       
-      // Explicitly include the Freelancer_Id from context
-      data.append('Freelancer_Id', user.id);
-      console.log("Including Freelancer_Id:", user.id);
-      
-      // Add State with default value 1 (or whatever the default active state is)
-      data.append('State', 1);
-      
       // Add packages as a string - make sure column name matches
       data.append('packages', JSON.stringify(formattedPackages));
       
-      // Add image file
+      // Add image file if provided
       if (formData.image) {
         data.append('image', formData.image);
       }
@@ -451,79 +441,47 @@ const CreateGig = () => {
       }
       
       // Make the API call with proper headers
-      try {
-        const response = await axios.post('https://freelancing-web-application-production.up.railway.app/gigs/createGig', data, {
+      const response = await axios.post(
+        'https://freelancing-web-application-production.up.railway.app/gigs/createGig', 
+        data, 
+        {
           headers: {
             'Content-Type': 'multipart/form-data',
           },
           withCredentials: true  // Important to send cookies for auth
+        }
+      );
+      
+      if (response.status === 201) {
+        toast.success('Gig created successfully!', {
+          autoClose: 3000
         });
-        
-        if (response.status === 201) {
-          toast.success('Gig created successfully!', {
-            autoClose: 3000
-          });
-          navigate('/freelancer');
-        } else {
-          toast.error(`Creation failed: ${response.data?.message || 'Unknown error'}`, {
-            autoClose: 3000
-          });
-        }
-      } catch (error) {
-        console.error('API Error:', error);
-        
-        if (error.response) {
-          // Get specific error message from server if available
-          const errorMsg = error.response.data?.message || 'Server error';
-          toast.error(errorMsg, {
-            autoClose: 3000
-          });
-          
-          // If it's a 400 error, try alternative approach with exactly matched DB columns
-          if (error.response.status === 400) {
-            console.log("Trying alternative approach with exact DB column names...");
-            
-            try {
-              // Create a JSON object exactly matching DB schema
-              const jsonData = {
-                Title: formData.title.trim(),
-                Description: formData.description.trim(),
-                Category: formData.category,
-                State: 1,
-                Freelancer_Id: user.id, // Explicitly include Freelancer_Id from context
-                packages: formattedPackages
-              };
-              
-              // Try without the image first to see if that's the issue
-              const jsonResponse = await axios.post(
-                'https://freelancing-web-application-production.up.railway.app/gigs/createGig', 
-                jsonData,
-                { 
-                  withCredentials: true 
-                }
-              );
-              
-              if (jsonResponse.status === 201) {
-                toast.success('Gig created successfully!', {
-                  autoClose: 3000
-                });
-                navigate('/freelancer');
-              }
-            } catch (altError) {
-              console.error("Alternative approach also failed:", altError);
-            }
-          }
-        } else {
-          toast.error('Network error - Please try again', {
-            autoClose: 3000
-          });
-        }
+        navigate('/freelancer-dashboard');
+      } else {
+        throw new Error(response.data?.message || 'Unknown error');
       }
+      
     } catch (error) {
-      console.error('Error:', error);
-      toast.error('Something went wrong', {
-        autoClose: 3000
+      console.error('Error creating gig:', error);
+      
+      let errorMessage = 'Failed to create gig. ';
+      
+      if (error.response) {
+        // Get specific error message from server if available
+        errorMessage += error.response.data?.message || error.response.data?.error || error.message;
+        console.error('Server error details:', error.response.data);
+      } else if (error.request) {
+        // Network error
+        errorMessage += 'Network error - Please check your connection and try again.';
+      } else {
+        // Other errors
+        errorMessage += error.message;
+      }
+      
+      toast.error(errorMessage, {
+        autoClose: 5000
       });
+      
     } finally {
       setIsSubmitting(false);
     }
