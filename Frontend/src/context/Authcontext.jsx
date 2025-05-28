@@ -32,6 +32,33 @@ export const AuthProvider = ({ children }) => {
 
   // Configure axios for CORS credentials
   axios.defaults.withCredentials = true;
+  
+  // Add an interceptor to include the token in Authorization header for all requests
+  useEffect(() => {
+    const interceptor = axios.interceptors.request.use(config => {
+      // Get token from localStorage if user exists
+      const storedUser = localStorage.getItem('user');
+      if (storedUser) {
+        try {
+          const userData = JSON.parse(storedUser);
+          if (userData.token) {
+            // Add token to Authorization header
+            config.headers.Authorization = `Bearer ${userData.token}`;
+          }
+        } catch (error) {
+          console.error('Error parsing stored user for token:', error);
+        }
+      }
+      return config;
+    }, error => {
+      return Promise.reject(error);
+    });
+    
+    // Clean up interceptor on unmount
+    return () => {
+      axios.interceptors.request.eject(interceptor);
+    };
+  }, []);
 
   /**
    * Initialize authentication and socket connection
@@ -190,6 +217,11 @@ export const AuthProvider = ({ children }) => {
         // Ensure Image property is never null
         if (!userData.Image) {
           userData.Image = DEFAULT_USER_IMAGE;
+        }
+        
+        // Add token to user data for authorization
+        if (response.data.token) {
+          userData.token = response.data.token;
         }
         
         // Store user data for persistence
