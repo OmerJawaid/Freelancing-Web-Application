@@ -5,197 +5,180 @@ import Footer from '../../Components/Footer/Footer';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { AuthContext } from '../../context/Authcontext';
+import { AuthContext } from '../../context/Authcontext.jsx';
 
 // Basic preview component
 const GigPreview = ({ gigData }) => {
-  if (!gigData) {
-    return <div className="gig-preview">No gig data available</div>;
-  }
-
-  // Safe access to image
-  const imageUrl = gigData.image ? URL.createObjectURL(gigData.image) : null;
-
   return (
     <div className="gig-preview">
-      <h3>Gig Preview</h3>
+      <div className="preview-header">
+        <h3>Gig Preview</h3>
+      </div>
       
-      {imageUrl ? (
-        <img src={imageUrl} alt="Gig Preview" className="preview-image" />
-      ) : (
-        <div className="preview-image-placeholder">No image available</div>
-      )}
-      
-      <h4>{gigData.title || 'Add a title for your gig'}</h4>
-      
-      <p>{gigData.description || 'Add a description to tell buyers what you offer'}</p>
-      
-      <h5>Category: {gigData.category || 'Select a category'}</h5>
-      
-      <h5>Packages:</h5>
-      <ul>
-        {gigData.packages && gigData.packages.length > 0 ? (
-          gigData.packages.map((pkg, index) => (
-            <li key={index}>
-              <strong>{pkg.Package_Name || `Package ${index + 1}`}:</strong> 
-              ${pkg.Price || '0'} - 
-              {pkg.Delivery_Time || '0'} Days - 
-              {pkg.Package_Details || 'No details provided'}
-            </li>
-          ))
-        ) : (
-          <li>No packages added yet.</li>
-        )}
-      </ul>
+      <div className="preview-content">
+        <div className="preview-image">
+          {gigData.image ? (
+            <img 
+              src={URL.createObjectURL(gigData.image)} 
+              alt="Gig preview" 
+            />
+          ) : (
+            <div className="no-image">No image provided</div>
+          )}
+        </div>
+        
+        <div className="preview-details">
+          <h4>{gigData.title}</h4>
+          <p className="preview-category">Category: {gigData.category}</p>
+          <div className="preview-description">
+            <h5>Description:</h5>
+            <p>{gigData.description}</p>
+          </div>
+        </div>
+        
+        <div className="preview-packages">
+          <h5>Packages:</h5>
+          {gigData.packages.map((pkg, index) => (
+            <div key={index} className="preview-package">
+              <h6>{pkg.Package_Name} Package - ${pkg.Price}</h6>
+              <p>Delivery in {pkg.Delivery_Time} days</p>
+              <p>{pkg.Package_Details}</p>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 };
 
+// Package component
 const PackageItem = ({ pkg, index, handlePackageInputChange, handleRemovePackage, expandedPackage, setExpandedPackage }) => {
+  // Determine package type name for display
+  const getPackageTypeName = (type) => {
+    switch(Number(type)) {
+      case 1: return "Basic";
+      case 2: return "Standard";
+      case 3: return "Premium";
+      default: return "Package";
+    }
+  };
+  
   const isExpanded = expandedPackage === index;
   
   return (
-    <div className={`package-group ${isExpanded ? 'expanded' : 'collapsed'}`}>
-      <div 
-        className="package-header" 
-        onClick={() => setExpandedPackage(isExpanded ? null : index)}
-      >
-        <h4>{pkg.Package_Name || `Package ${index + 1}`}</h4>
+    <div className={`package-item ${isExpanded ? 'expanded' : ''}`}>
+      <div className="package-header" onClick={() => setExpandedPackage(isExpanded ? null : index)}>
+        <h4>{getPackageTypeName(pkg.Type)} Package</h4>
         <div className="package-controls">
           <button 
             type="button" 
-            className="remove-package-button" 
+            className="remove-package" 
             onClick={(e) => {
               e.stopPropagation();
               handleRemovePackage(index);
             }}
+            title="Remove package"
           >
-            Remove
+            &times;
           </button>
-          <span className={`expand-icon ${isExpanded ? 'expanded' : ''}`}>
-            {isExpanded ? '▼' : '▶'}
-          </span>
+          <span className="expand-icon">{isExpanded ? '▼' : '▶'}</span>
         </div>
       </div>
       
-      <div className={`package-content ${isExpanded ? 'visible' : 'hidden'}`}>
-        <div className="form-group">
-          <label htmlFor={`price-${index}`}>Price ($)</label>
-          <input 
-            type="number" 
-            id={`price-${index}`} 
-            name="Price" 
-            value={pkg.Price} 
-            onChange={(e) => handlePackageInputChange(index, e)} 
-            placeholder="Enter price"
-            required 
-            min="1"
-            onInvalid={(e) => {
-              e.preventDefault();
-              toast.error("Price must be a positive number", {
-                autoClose: 3000
-              });
-            }}
-          />
+      {isExpanded && (
+        <div className="package-details">
+          <div className="package-field">
+            <label>Package Name</label>
+            <input
+              type="text"
+              name="Package_Name"
+              value={pkg.Package_Name}
+              onChange={(e) => handlePackageInputChange(index, e)}
+              placeholder={`${getPackageTypeName(pkg.Type)} Package`}
+              required
+            />
+          </div>
+          
+          <div className="package-field">
+            <label>Price (USD)</label>
+            <input
+              type="number"
+              name="Price"
+              value={pkg.Price}
+              onChange={(e) => handlePackageInputChange(index, e)}
+              min="5"
+              step="5"
+              required
+            />
+          </div>
+          
+          <div className="package-field">
+            <label>Delivery Time (days)</label>
+            <input
+              type="number"
+              name="Delivery_Time"
+              value={pkg.Delivery_Time}
+              onChange={(e) => handlePackageInputChange(index, e)}
+              min="1"
+              max="90"
+              required
+            />
+          </div>
+          
+          <div className="package-field">
+            <label>Package Details</label>
+            <textarea
+              name="Package_Details"
+              value={pkg.Package_Details}
+              onChange={(e) => handlePackageInputChange(index, e)}
+              placeholder="What's included in this package..."
+              required
+            />
+          </div>
         </div>
-        
-        <div className="form-group">
-          <label htmlFor={`delivery-${index}`}>Delivery Time (Days)</label>
-          <input 
-            type="number" 
-            id={`delivery-${index}`} 
-            name="Delivery_Time" 
-            value={pkg.Delivery_Time} 
-            onChange={(e) => handlePackageInputChange(index, e)} 
-            placeholder="Number of days"
-            required 
-            min="1"
-            onInvalid={(e) => {
-              e.preventDefault();
-              toast.error("Delivery time must be at least 1 day", {
-                autoClose: 3000
-              });
-            }}
-          />
-        </div>
-        
-        <div className="form-group">
-          <label htmlFor={`details-${index}`}>Details</label>
-          <textarea 
-            id={`details-${index}`} 
-            name="Package_Details" 
-            value={pkg.Package_Details} 
-            onChange={(e) => handlePackageInputChange(index, e)} 
-            placeholder="What's included in this package?"
-            required 
-            minLength="10"
-            onInvalid={(e) => {
-              e.preventDefault();
-              toast.error("Please provide more details about this package", {
-                autoClose: 3000
-              });
-            }}
-          />
-        </div>
-      </div>
+      )}
     </div>
   );
 };
 
 const CreateGig = () => {
+  const navigate = useNavigate();
+  const { user, isAuthenticated } = useContext(AuthContext);
+  
   const [formData, setFormData] = useState({
     title: '',
     description: '',
     category: '',
     image: null,
-    packages: []
+    packages: [
+      {
+        Type: 1,
+        Package_Name: 'Basic Package',
+        Price: 50,
+        Delivery_Time: 3,
+        Package_Details: 'Basic service with essential deliverables'
+      }
+    ]
   });
   
-  const [expandedPackage, setExpandedPackage] = useState(0);
   const [showReview, setShowReview] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const navigate = useNavigate();
+  const [expandedPackage, setExpandedPackage] = useState(0);
   
-  // Get authentication data from context
-  const { user, isAuthenticated } = useContext(AuthContext);
-
-  // Check if user is authenticated and is a freelancer
   useEffect(() => {
-    if (!isAuthenticated) {
-      toast.error("Please log in to create a gig", {
+    if (!isAuthenticated || !user) {
+      toast.error("You must be logged in to create a gig", {
         autoClose: 3000
       });
       navigate('/login');
-      return;
-    }
-
-    if (!user || user.User_Type !== 'freelancer') {
+    } else if (user.User_Type !== 'freelancer') {
       toast.error("Only freelancers can create gigs", {
         autoClose: 3000
       });
       navigate('/');
-      return;
     }
-
-    console.log("User authenticated from context:", user);
   }, [isAuthenticated, user, navigate]);
-
-  // Add Basic package by default when component mounts
-  useEffect(() => {
-    if (formData.packages.length === 0) {
-      setFormData({
-        ...formData,
-        packages: [{ 
-          Type: 1, 
-          Package_Name: 'Basic',
-          Price: '', 
-          Delivery_Time: '', 
-          Package_Details: '' 
-        }]
-      });
-    }
-  }, []);
-
+  
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData({
@@ -203,54 +186,62 @@ const CreateGig = () => {
       [name]: value
     });
   };
-
+  
   const handlePackageInputChange = (index, e) => {
     const { name, value } = e.target;
     const newPackages = [...formData.packages];
-    newPackages[index][name] = value;
+    newPackages[index] = {
+      ...newPackages[index],
+      [name]: value
+    };
+    
     setFormData({
       ...formData,
       packages: newPackages
     });
   };
-
+  
   const handleAddPackage = () => {
     if (formData.packages.length < 3) {
-      const packageType = formData.packages.length + 1;
-      const packageName = packageType === 1 ? 'Basic' : (packageType === 2 ? 'Standard' : 'Premium');
+      const newType = formData.packages.length + 1;
+      const packageName = newType === 2 ? 'Standard Package' : 'Premium Package';
       
-      // Create package with fields matching database columns exactly
+      const newPackages = [
+        ...formData.packages,
+        {
+          Type: newType,
+          Package_Name: packageName,
+          Price: formData.packages[formData.packages.length - 1].Price + 50,
+          Delivery_Time: formData.packages[formData.packages.length - 1].Delivery_Time,
+          Package_Details: `${packageName} with additional features`
+        }
+      ];
+      
       setFormData({
         ...formData,
-        packages: [...formData.packages, { 
-          Type: packageType, 
-          Package_Name: packageName, 
-          Price: '', 
-          Delivery_Time: '', 
-          Package_Details: '' 
-        }]
+        packages: newPackages
       });
       
       // Auto-expand the newly added package
       setExpandedPackage(formData.packages.length);
       
-          toast.success(`${packageName} package added`, {
-      autoClose: 3000
-    });
-  } else {
-    toast.warning('You can add a maximum of 3 packages.', {
-      autoClose: 3000
-    });
+      toast.success(`${packageName} package added`, {
+        autoClose: 3000
+      });
+    } else {
+      toast.warning('You can add a maximum of 3 packages.', {
+        autoClose: 3000
+      });
     }
   };
 
   const handleRemovePackage = (index) => {
-      if (formData.packages.length <= 1) {
-    toast.error("You need at least one package for your gig", {
-      autoClose: 3000
-    });
-    return;
-  }
+    if (formData.packages.length <= 1) {
+      toast.error("You need at least one package for your gig", {
+        autoClose: 3000
+      });
+      return;
+    }
     
     const packageName = formData.packages[index].Package_Name;
     const newPackages = [...formData.packages];
@@ -267,8 +258,8 @@ const CreateGig = () => {
     });
     
     toast.info(`${packageName} package removed`, {
-    autoClose: 3000
-  });
+      autoClose: 3000
+    });
   };
 
   const handleFileChange = (e) => {
@@ -433,13 +424,28 @@ const CreateGig = () => {
         console.log(key, typeof value === 'object' ? 'File or Object data' : value);
       }
       
-      // Make the API call with proper headers
+      // Get authentication token
+      const storedUser = localStorage.getItem('user');
+      const token = storedUser ? JSON.parse(storedUser).token : null;
+      const sessionToken = sessionStorage.getItem('authToken');
+      
+      // Log auth info for debugging
+      console.log('Auth tokens available:', { 
+        userToken: !!token, 
+        sessionToken: !!sessionToken,
+        user: user
+      });
+      
+      // Make the API call with proper headers including token
       const response = await axios.post(
         'https://freelancing-web-application-production.up.railway.app/gigs/createGig', 
         data, 
         {
           headers: {
             'Content-Type': 'multipart/form-data',
+            // Explicitly add Authorization header with token if available
+            ...(token && { 'Authorization': `Bearer ${token}` }),
+            ...(sessionToken && !token && { 'Authorization': `Bearer ${sessionToken}` })
           },
           withCredentials: true  // Important to send cookies for auth
         }
@@ -626,4 +632,4 @@ const CreateGig = () => {
   );
 };
 
-export default CreateGig; 
+export default CreateGig;

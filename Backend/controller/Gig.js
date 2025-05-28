@@ -187,13 +187,23 @@ const createGig = async (req, res) => {
             user: req.user // From verifyToken middleware
         });
 
+        // Log the entire request object for debugging
+        console.log('Create Gig Auth Debug:', {
+            userObject: req.user,
+            userType: req.user ? req.user.User_Type : 'No user',
+            cookies: req.cookies,
+            headers: req.headers.authorization
+        });
+        
         // Check if user is authenticated (using verifyToken middleware)
         if (!req.user) {
             return res.status(401).json({ message: "You must be logged in to create a gig" });
         }
 
         // Verify the user is a freelancer
-        if (req.user.User_Type !== 'freelancer') {
+        // Accept either User_Type or user_type (case insensitive) for robustness
+        const userType = req.user.User_Type || req.user.user_type;
+        if (!userType || userType.toLowerCase() !== 'freelancer') {
             return res.status(403).json({ message: "Only freelancers can create gigs" });
         }
 

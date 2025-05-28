@@ -41,12 +41,21 @@ export const AuthProvider = ({ children }) => {
       if (storedUser) {
         try {
           const userData = JSON.parse(storedUser);
+          
+          // Try to get token from userData directly
           if (userData.token) {
-            // Add token to Authorization header
             config.headers.Authorization = `Bearer ${userData.token}`;
+            console.log('Setting Authorization header with token from user data');
+          } else {
+            // If no token in userData, check sessionStorage as fallback
+            const token = sessionStorage.getItem('authToken');
+            if (token) {
+              config.headers.Authorization = `Bearer ${token}`;
+              console.log('Setting Authorization header with token from sessionStorage');
+            }
           }
         } catch (error) {
-          console.error('Error parsing stored user for token:', error);
+          console.error('Error setting auth headers:', error);
         }
       }
       return config;
@@ -219,13 +228,19 @@ export const AuthProvider = ({ children }) => {
           userData.Image = DEFAULT_USER_IMAGE;
         }
         
-        // Add token to user data for authorization
+        // Store the token separately in sessionStorage for API calls
         if (response.data.token) {
+          // Store token in sessionStorage for API calls
+          sessionStorage.setItem('authToken', response.data.token);
+          console.log('Token stored in sessionStorage');
+          
+          // Also add to user data for backward compatibility
           userData.token = response.data.token;
         }
         
         // Store user data for persistence
         localStorage.setItem('user', JSON.stringify(userData));
+        console.log('User data stored in localStorage');
         
         // Update authentication state
         setUser(userData);

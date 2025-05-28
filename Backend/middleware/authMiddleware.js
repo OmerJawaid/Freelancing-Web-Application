@@ -18,9 +18,12 @@ export const verifyToken = (req, res, next) => {
     (req.headers.authorization && req.headers.authorization.split(' ')[1]) ||
     req.query.token;
   
-  // Log debugging information
-  console.log('Auth headers:', req.headers.authorization);
-  console.log('Cookies:', req.cookies);
+  // Log debugging information in detail
+  console.log('Auth debugging info:', {
+    authorization: req.headers.authorization,
+    cookies: req.cookies,
+    'user in session': req.session && req.session.user ? 'present' : 'not present'
+  });
   
   if (!token) {
     console.log('No token found in request');
@@ -32,8 +35,13 @@ export const verifyToken = (req, res, next) => {
     const decoded = jwt.verify(token, JWT_SECRET);
     
     // Set user information in request object
-    req.user = decoded;
-    console.log('Token verified, user:', decoded);
+    // The token contains user info in the 'user' property based on how it's generated in Authentication.js
+    if (decoded.user) {
+      req.user = decoded.user;
+    } else {
+      req.user = decoded;
+    }
+    console.log('Token verified, user:', req.user);
     
     // Continue to the next middleware/controller
     next();
