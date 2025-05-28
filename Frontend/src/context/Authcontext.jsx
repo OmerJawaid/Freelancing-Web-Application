@@ -30,42 +30,76 @@ export const AuthProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const socketRef = useRef(null);
 
-  // Configure axios for CORS credentials
   axios.defaults.withCredentials = true;
   
-  // Add an interceptor to include the token in Authorization header for all requests
+  // CRITICAL FIX: Properly configure axios for all requests
   useEffect(() => {
+    // Set a default Authorization header on axios itself
+    // This ensures ALL axios requests will include this header without requiring interceptors
+    axios.defaults.withCredentials = true;
+    
+    // Setup global request interceptor for all axios requests
     const interceptor = axios.interceptors.request.use(config => {
-      // Get token from localStorage if user exists
-      const storedUser = localStorage.getItem('user');
-      if (storedUser) {
+      // Get authentication token from all possible sources
+      let token = null;
+      
+      // Try sessionStorage first
+      const sessionToken = sessionStorage.getItem('authToken');
+      if (sessionToken) {
+        token = sessionToken;
+      } else {
+        // If not in sessionStorage, check localStorage
         try {
-          const userData = JSON.parse(storedUser);
-          
-          // Try to get token from userData directly
-          if (userData.token) {
-            config.headers.Authorization = `Bearer ${userData.token}`;
-            console.log('Setting Authorization header with token from user data');
-          } else {
-            // If no token in userData, check sessionStorage as fallback
-            const token = sessionStorage.getItem('authToken');
-            if (token) {
-              config.headers.Authorization = `Bearer ${token}`;
-              console.log('Setting Authorization header with token from sessionStorage');
+          const storedUser = localStorage.getItem('user');
+          if (storedUser) {
+            const userData = JSON.parse(storedUser);
+            if (userData && userData.token) {
+              token = userData.token;
+              // Update sessionStorage for future requests
+              sessionStorage.setItem('authToken', token);
             }
           }
         } catch (error) {
-          console.error('Error setting auth headers:', error);
+          console.error('Error parsing stored user data', error);
         }
       }
+      
+      // ALWAYS log the entire request for debugging
+      console.log(`[REQUEST] ${config.method?.toUpperCase()} ${config.url}`, {
+        hasToken: !!token,
+        contentType: config.headers['Content-Type'] || config.headers.get?.('Content-Type') || 'not set',
+        hasData: !!config.data
+      });
+      
+      // Set Authorization header if we have a token
+      if (token) {
+        // Use this format for setting headers - more reliable
+        config.headers = config.headers || {};
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+      
       return config;
     }, error => {
+      console.error('Request interceptor error:', error);
       return Promise.reject(error);
     });
-    
-    // Clean up interceptor on unmount
+
+    // Response interceptor to handle authentication errors
+    const responseInterceptor = axios.interceptors.response.use(
+      response => response,
+      error => {
+        // Check for authentication errors
+        if (error.response && error.response.status === 401) {
+          console.error('Authentication failed:', error.response.data);
+        }
+        return Promise.reject(error);
+      }
+    );
+
+    // Cleanup interceptors on unmount
     return () => {
       axios.interceptors.request.eject(interceptor);
+      axios.interceptors.response.eject(responseInterceptor);
     };
   }, []);
 
