@@ -180,18 +180,25 @@ const toggleGigState = async (req, res) => {
 
 const createGig = async (req, res) => {
     try {
-        // Check if user is authenticated and is a freelancer
-        if (!req.session || !req.session.user) {
+        console.log("Create Gig Request:", {
+            session: req.session,
+            body: req.body,
+            file: req.file,
+            user: req.user // From verifyToken middleware
+        });
+
+        // Check if user is authenticated (using verifyToken middleware)
+        if (!req.user) {
             return res.status(401).json({ message: "You must be logged in to create a gig" });
         }
 
         // Verify the user is a freelancer
-        if (req.session.user.User_Type !== 'freelancer') {
+        if (req.user.User_Type !== 'freelancer') {
             return res.status(403).json({ message: "Only freelancers can create gigs" });
         }
 
-        // Get the freelancer ID from the session
-        const freelancerId = req.session.user.id;
+        // Get the freelancer ID from the verified token
+        const freelancerId = req.user.id;
         console.log("Creating gig for freelancer ID:", freelancerId);
         
         // Get the form data
@@ -201,23 +208,31 @@ const createGig = async (req, res) => {
         let packages;
         
         try {
-            packages = JSON.parse(req.body.packages);
+            packages = typeof req.body.packages === 'string' 
+                ? JSON.parse(req.body.packages)
+                : req.body.packages;
+                
+            console.log("Parsed packages:", packages);
         } catch (err) {
             console.error("Error parsing packages:", err);
-            return res.status(400).json({ message: "Invalid package data format" });
+            return res.status(400).json({ 
+                message: "Invalid package data format",
+                error: err.message,
+                receivedData: req.body.packages
+            });
         }
         
         // Get the uploaded image
         const imageFile = req.file;
+        console.log("Received image file:", imageFile);
 
         // Validate required fields
-        if (!freelancerId || !title || !description || !category || !imageFile || !packages || !Array.isArray(packages) || packages.length === 0) {
+        if (!freelancerId || !title || !description || !category || !packages || !Array.isArray(packages) || packages.length === 0) {
             console.error("Missing required fields:", { 
                 freelancerId: !!freelancerId, 
                 title: !!title, 
                 description: !!description, 
                 category: !!category, 
-                imageFile: !!imageFile,
                 packages: !!packages,
                 isArray: packages ? Array.isArray(packages) : false,
                 packagesLength: packages ? packages.length : 0
@@ -225,8 +240,10 @@ const createGig = async (req, res) => {
             return res.status(400).json({ message: "Missing required gig information" });
         }
 
-        // Construct the image path to be stored in the database (relative to the frontend public directory)
-        const dbImagePath = `/assets/gigImages/${imageFile.filename}`;
+        // If image is provided, construct the path, otherwise use a default image
+        const dbImagePath = imageFile 
+            ? `/assets/gigImages/${imageFile.filename}`
+            : '/assets/gigImages/default-gig.jpg';
 
         // Start a database transaction for atomicity
         const connection = await database_pool.getConnection();
@@ -240,13 +257,17 @@ const createGig = async (req, res) => {
             );
 
             const newGigId = gigResult.insertId;
+            console.log("Created gig with ID:", newGigId);
 
             // Insert package data
             for (const pkg of packages) {
+                console.log("Processing package:", pkg);
+                
                 // Ensure package data is valid before inserting
                 if (!pkg.Type || pkg.Price === undefined || pkg.Delivery_Time === undefined || pkg.Package_Details === undefined) {
-                    throw new Error('Invalid package data provided.');
+                    throw new Error('Invalid package data provided: ' + JSON.stringify(pkg));
                 }
+                
                 await connection.query(
                     'INSERT INTO packages (Gig_Id, Price, Delivery_Time, Package_Details, Type) VALUES (?, ?, ?, ?, ?)',
                     [newGigId, pkg.Price, pkg.Delivery_Time, pkg.Package_Details, pkg.Type]
@@ -257,10 +278,15 @@ const createGig = async (req, res) => {
             await connection.commit();
             connection.release();
 
-            return res.status(201).json({ message: "Gig created successfully!", gigId: newGigId });
+            return res.status(201).json({ 
+                message: "Gig created successfully!", 
+                gigId: newGigId,
+                imagePath: dbImagePath
+            });
 
         } catch (dbError) {
             // Rollback the transaction in case of any database error
+            console.error("Database error during gig creation:", dbError);
             await connection.rollback();
             connection.release();
             throw dbError; // Re-throw the error to be caught by the outer catch block
@@ -268,7 +294,11 @@ const createGig = async (req, res) => {
 
     } catch (err) {
         console.error("Error creating gig:", err);
-        return res.status(500).json({ message: "Error creating gig", error: err.message });
+        return res.status(500).json({ 
+            message: "Error creating gig", 
+            error: err.message,
+            stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
+        });
     }
 };
 
