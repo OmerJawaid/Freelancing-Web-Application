@@ -452,7 +452,7 @@ const CreateGig = () => {
       
       // Make the API call with proper headers
       try {
-        const response = await axios.post('http://localhost:8081/gigs/createGig', data, {
+        const response = await axios.post('https://freelancing-web-application-production.up.railway.app/gigs/createGig', data, {
           headers: {
             'Content-Type': 'multipart/form-data',
           },
@@ -496,7 +496,7 @@ const CreateGig = () => {
               
               // Try without the image first to see if that's the issue
               const jsonResponse = await axios.post(
-                'http://localhost:8081/gigs/createGig', 
+                'https://freelancing-web-application-production.up.railway.app/gigs/createGig', 
                 jsonData,
                 { 
                   withCredentials: true 

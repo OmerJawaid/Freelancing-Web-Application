@@ -38,15 +38,34 @@ export const AuthProvider = ({ children }) => {
    */
   useEffect(() => {
     const initializeAuth = async () => {
+      // First try to restore from localStorage if available
+      const storedUser = localStorage.getItem('user');
+      if (storedUser) {
+        try {
+          const parsedUser = JSON.parse(storedUser);
+          setUser(parsedUser);
+          setIsAuthenticated(true);
+          
+          // Set up socket with stored user data
+          if (!socketRef.current) {
+            socketRef.current = io('https://freelancing-web-application-production.up.railway.app');
+            socketRef.current.emit('register', parsedUser.id);
+          }
+        } catch (error) {
+          console.error('Error parsing stored user:', error);
+          localStorage.removeItem('user');
+        }
+      }
+      
+      // Then verify with the server
       const userData = await checkAuthStatus();
       
-      // Set up socket connection if user is authenticated
+      // Set up socket connection if user is authenticated from server
       if (userData) {
         if (!socketRef.current) {
-          socketRef.current = io('http://localhost:8081');
+          socketRef.current = io('https://freelancing-web-application-production.up.railway.app');
+          socketRef.current.emit('register', userData.id);
         }
-        socketRef.current.emit('register', userData.id);
-        // console.log("Socket registered for user:", userData.id);
       }
     };
 
@@ -55,7 +74,10 @@ export const AuthProvider = ({ children }) => {
     
     // Set up periodic auth checks (every 2 minutes)
     const interval = setInterval(() => {
-      checkAuthStatus();
+      // Don't log out the user if the server is temporarily unavailable
+      checkAuthStatus().catch(error => {
+        console.error('Auth check failed, maintaining current session:', error);
+      });
     }, 2 * 60 * 1000);
     
     // Cleanup on unmount
@@ -78,7 +100,7 @@ export const AuthProvider = ({ children }) => {
     let userData = null;
 
     try {
-      const response = await axios.get('http://localhost:8081/authentication/checkAuthentication');
+      const response = await axios.get('https://freelancing-web-application-production.up.railway.app/authentication/checkAuthentication');
       
       if (response.data.authenticated && response.data.user) {
         userData = response.data.user;
@@ -91,15 +113,55 @@ export const AuthProvider = ({ children }) => {
         // Update authentication state
         setUser(userData);
         setIsAuthenticated(true);
+        
+        // Store the latest user data in localStorage for persistence
+        localStorage.setItem('user', JSON.stringify(userData));
       } else {
-        // Clear authentication state
+        // Check if we have a stored user before clearing authentication
+        const storedUser = localStorage.getItem('user');
+        
+        if (storedUser) {
+          // If server session is lost but we have local storage data,
+          // try to maintain the user experience instead of logging them out
+          console.log('Server session expired but using stored credentials');
+          try {
+            const parsedUser = JSON.parse(storedUser);
+            setUser(parsedUser);
+            setIsAuthenticated(true);
+            userData = parsedUser;
+            return userData; // Return early to maintain session
+          } catch (parseError) {
+            console.error('Error parsing stored user:', parseError);
+          }
+        }
+        
+        // If no stored user or parsing failed, clear authentication state
         setUser(null);
         setIsAuthenticated(false);
+        localStorage.removeItem('user');
       }
     } catch (error) {
       console.error('Authentication check error:', error);
-      setUser(null);
-      setIsAuthenticated(false);
+      
+      // On network errors, check localStorage before logging out
+      const storedUser = localStorage.getItem('user');
+      if (storedUser) {
+        try {
+          const parsedUser = JSON.parse(storedUser);
+          setUser(parsedUser);
+          setIsAuthenticated(true);
+          userData = parsedUser;
+          console.log('Network error, using stored credentials');
+        } catch (parseError) {
+          console.error('Error parsing stored user:', parseError);
+          setUser(null);
+          setIsAuthenticated(false);
+          localStorage.removeItem('user');
+        }
+      } else {
+        setUser(null);
+        setIsAuthenticated(false);
+      }
     } finally {
       setLoading(false);
     }
@@ -115,7 +177,7 @@ export const AuthProvider = ({ children }) => {
    */
   const login = async (email, password) => {
     try {
-      const response = await axios.post('http://localhost:8081/authentication/login', {
+      const response = await axios.post('https://freelancing-web-application-production.up.railway.app/authentication/login', {
         Email: email,
         Password: password
       }, {
@@ -161,7 +223,7 @@ export const AuthProvider = ({ children }) => {
    */
   const logout = async () => {
     try {
-      await axios.post('http://localhost:8081/authentication/logout');
+      await axios.post('https://freelancing-web-application-production.up.railway.app/authentication/logout');
       
       // Clear authentication state
       setUser(null);

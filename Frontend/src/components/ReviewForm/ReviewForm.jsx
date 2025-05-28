@@ -21,7 +21,7 @@ const ReviewForm = ({ orderId, onReviewSubmitted }) => {
     const checkOrderForReview = async () => {
       try {
         setLoading(true);
-        const response = await axios.get('http://localhost:8081/reviews/check-order', {
+        const response = await axios.get('https://freelancing-web-application-production.up.railway.app/reviews/check-order', {
           params: { Order_Id: orderId },
           withCredentials: true
         });
@@ -53,7 +53,7 @@ const ReviewForm = ({ orderId, onReviewSubmitted }) => {
     try {
       setSubmitting(true);
       
-      const response = await axios.post('http://localhost:8081/reviews/create', {
+      const response = await axios.post('https://freelancing-web-application-production.up.railway.app/reviews/create', {
         Order_Id: orderId,
         Rating: rating,
         Title: title,

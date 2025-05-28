@@ -47,26 +47,50 @@ const NotificationComponent = () => {
     
     try {
       console.log(`Fetching notifications for user ${user.id}`);
-      const url = `http://localhost:8081/notifications/user/${user.id}`;
+      const url = `https://freelancing-web-application-production.up.railway.app/notifications/user/${user.id}`;
       console.log(`Request URL: ${url}`);
       
+      // Add a timeout to the axios request to prevent long loading times
       const response = await axios.get(url, {
-        withCredentials: true
+        withCredentials: true,
+        timeout: 5000 // 5 second timeout
       });
       
       console.log('Notifications response:', response.data);
       
       if (Array.isArray(response.data)) {
-        setNotifications(response.data);
+        // Sort notifications: unread first, then by date
+        const sortedNotifications = response.data.sort((a, b) => {
+          if (a.Is_Read !== b.Is_Read) {
+            return a.Is_Read ? 1 : -1; // Unread first
+          }
+          return new Date(b.Created_At) - new Date(a.Created_At);
+        });
+        
+        setNotifications(sortedNotifications);
         // Count unread notifications
         const unread = response.data.filter(notification => !notification.Is_Read).length;
         setUnreadCount(unread);
       } else {
-        throw new Error('Invalid response format');
+        // Handle non-array response gracefully
+        console.log('Received non-array response:', response.data);
+        setNotifications([]);
+        setUnreadCount(0);
       }
     } catch (error) {
       console.error('Error fetching notifications:', error);
-      setError('Failed to load notifications. Please try again later.');
+      
+      // Check for specific database error
+      if (error.response && 
+          error.response.data && 
+          error.response.data.error && 
+          error.response.data.error.includes("Table 'railway.notifications' doesn't exist")) {
+        console.log('Notifications table does not exist on the server');
+        setError('Notifications feature is currently unavailable.');
+      } else {
+        setError('Failed to load notifications. Please try again later.');
+      }
+      
       setNotifications([]);
       setUnreadCount(0);
       
@@ -85,25 +109,35 @@ const NotificationComponent = () => {
     
     try {
       console.log(`Fetching unread count for user ${user.id}`);
-      const url = `http://localhost:8081/notifications/unread/${user.id}`;
+      const url = `https://freelancing-web-application-production.up.railway.app/notifications/unread/${user.id}`;
       console.log(`Request URL: ${url}`);
       
       const response = await axios.get(url, {
-        withCredentials: true
+        withCredentials: true,
+        timeout: 3000 // 3 second timeout
       });
       
       console.log('Unread count response:', response.data);
       setUnreadCount(response.data.count);
     } catch (error) {
       console.error('Error fetching unread count:', error);
-      // Keep the current unread count
+      // Check for specific database error
+      if (error.response && 
+          error.response.data && 
+          error.response.data.error && 
+          error.response.data.error.includes("Table 'railway.notifications' doesn't exist")) {
+        console.log('Notifications table does not exist on the server');
+        // Set unread count to 0 silently
+        setUnreadCount(0);
+      }
+      // For other errors, keep the current unread count
     }
   };
 
   // Function to mark a notification as read
   const markAsRead = async (notificationId) => {
     try {
-      await axios.put(`http://localhost:8081/notifications/read/${notificationId}`, {}, {
+      await axios.put(`https://freelancing-web-application-production.up.railway.app/notifications/read/${notificationId}`, {}, {
         withCredentials: true
       });
       
@@ -139,7 +173,7 @@ const NotificationComponent = () => {
     if (!user || !user.id) return;
     
     try {
-      await axios.put(`http://localhost:8081/notifications/read-all/${user.id}`, {}, {
+      await axios.put(`https://freelancing-web-application-production.up.railway.app/notifications/read-all/${user.id}`, {}, {
         withCredentials: true
       });
       
@@ -218,17 +252,20 @@ const NotificationComponent = () => {
     
     // Set up socket connection
     try {
-      socket.current = io('http://localhost:8081');
+      socket.current = io('https://freelancing-web-application-production.up.railway.app', {
+        withCredentials: true,
+        transports: ['websocket', 'polling']
+      });
       
-      // Join user's room for personalized notifications
-      socket.current.emit('join', { userId: user.id });
+      // Subscribe to notifications
+      socket.current.emit('subscribe_to_notifications', user.id);
       
       // Listen for new notifications
       socket.current.on('new_notification', (data) => {
         console.log('New notification received:', data);
         
-        // Add the new notification to the state
-        setNotifications(prev => [{
+        // Create notification object
+        const newNotification = {
           Id: Date.now(), // Temporary ID until refresh
           User_Id: user.id,
           Type: data.type,
@@ -237,21 +274,65 @@ const NotificationComponent = () => {
           Related_Id: data.relatedId,
           Is_Read: false,
           Created_At: new Date().toISOString()
-        }, ...prev]);
+        };
+
+        // Add to notifications state
+        setNotifications(prev => {
+          const updatedNotifications = [newNotification, ...prev];
+          return updatedNotifications.sort((a, b) => {
+            if (a.Is_Read !== b.Is_Read) {
+              return a.Is_Read ? 1 : -1;
+            }
+            return new Date(b.Created_At) - new Date(a.Created_At);
+          });
+        });
         
         // Increment unread count
         setUnreadCount(prev => prev + 1);
         
-        // Play notification sound
+        // Acknowledge receipt
+        socket.current.emit('notification_received', {
+          userId: user.id,
+          notificationId: newNotification.Id
+        });
+        
+        // Play notification sound and show browser notification
         try {
+          // Play sound
           const audio = new Audio('/notification-sound.mp3');
           audio.play().catch(err => console.error('Error playing notification sound:', err));
+          
+          // Show browser notification if permission granted
+          if (Notification.permission === 'granted') {
+            new Notification(data.title, {
+              body: data.message,
+              icon: '/notification-icon.png'
+            });
+          }
         } catch (err) {
-          console.error('Error with notification sound:', err);
+          console.error('Error with notification feedback:', err);
         }
       });
+
+      // Handle socket connection errors
+      socket.current.on('connect_error', (error) => {
+        console.error('Socket connection error:', error);
+        setError('Unable to connect to notification service');
+      });
+
+      // Handle socket disconnection
+      socket.current.on('disconnect', () => {
+        console.log('Socket disconnected, attempting to reconnect...');
+      });
+
     } catch (err) {
       console.error('Error setting up socket connection:', err);
+      setError('Failed to initialize notification service');
+    }
+    
+    // Request notification permission
+    if (Notification.permission === 'default') {
+      Notification.requestPermission();
     }
     
     // Clean up socket connection on unmount
@@ -262,13 +343,28 @@ const NotificationComponent = () => {
     };
   }, [user]);
 
-  // Periodically refresh unread count
+  // Refresh notifications periodically and after window focus
   useEffect(() => {
+    if (!user || !user.id) return;
+
+    // Refresh when window gains focus
+    const handleFocus = () => {
+      fetchNotifications();
+    };
+
+    window.addEventListener('focus', handleFocus);
+
+    // Periodic refresh every 30 seconds when window is active
     const intervalId = setInterval(() => {
-      fetchUnreadCount();
-    }, 60000); // Every minute
-    
-    return () => clearInterval(intervalId);
+      if (!document.hidden) {
+        fetchUnreadCount();
+      }
+    }, 30000);
+
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      clearInterval(intervalId);
+    };
   }, [user]);
 
   if (!user) return null;
