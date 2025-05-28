@@ -1,31 +1,56 @@
 import React, { useEffect, useState, useContext } from 'react';
-import './Dashboard.css';
-import Navbar from '../../Components/Navbar Client/Navbar';
 import axios from 'axios';
-import Footer from '../../Components/Footer/Footer';
-import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../../context/Authcontext';
+import Navbar from '../../Components/Navbar Client/Navbar';
+import Footer from '../../Components/Footer/Footer';
+import { FaChartLine, FaStar, FaClipboardList, FaMoneyBillWave, FaSpinner, FaCheckCircle, FaClock } from 'react-icons/fa';
+import { Line } from 'react-chartjs-2';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+} from 'chart.js';
+import './Dashboard.css';
+import { getImageUrl, DEFAULT_USER_IMAGE } from '../../utils/imageUtils';
+
+// Register ChartJS components
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend
+);
 
 const FreelancerDashboard = () => {
-  const[gigs, changegig]=useState([]);
-  const [animatingGigId, setAnimatingGigId] = useState(null);
-  const navigate = useNavigate();
   const { user } = useContext(AuthContext);
-  const [filterType, setFilterType] = useState('all');
-  const [isFiltering, setIsFiltering] = useState(false);
   const [stats, setStats] = useState({
-    totalEarnings: 0,
+    totalOrders: 0,
+    completedOrders: 0,
     activeOrders: 0,
-    completionRate: 0,
-    avgRating: 0,
-    totalReviews: 0
+    totalEarnings: 0,
+    averageRating: 0,
   });
+  const [recentOrders, setRecentOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Fetch orders, reviews and calculate statistics
+  // Fetch dashboard data
   useEffect(() => {
-    const fetchStats = async () => {
+    const fetchDashboardData = async () => {
       try {
-        if (!user || !user.id) return;
+        if (!user || !user.id) {
+          setError("You must be logged in to view the dashboard");
+          setLoading(false);
+          return;
+        }
 
         // Fetch orders
         const ordersResponse = await axios.get("https://freelancing-web-application-production.up.railway.app/orders/freelancer", {
@@ -33,343 +58,211 @@ const FreelancerDashboard = () => {
           withCredentials: true
         });
 
-        // Fetch all gigs for this freelancer
-        const gigsResponse = await axios.get('https://freelancing-web-application-production.up.railway.app/gigs/retrieveGigForFreelancer', {
-          params: { freelancer_Id: user.id }
+        const orders = ordersResponse.data;
+        
+        // Calculate statistics
+        const completed = orders.filter(order => order.Status === 'completed').length;
+        const active = orders.filter(order => order.Status === 'in_progress').length;
+        const earnings = orders
+          .filter(order => order.Status === 'completed')
+          .reduce((total, order) => total + (order.Price || 0), 0);
+        
+        // Set statistics
+        setStats({
+          totalOrders: orders.length,
+          completedOrders: completed,
+          activeOrders: active,
+          totalEarnings: earnings,
+          averageRating: user.Rating || 0,
         });
 
-        if (Array.isArray(ordersResponse.data)) {
-          // Calculate total earnings
-          const totalEarnings = ordersResponse.data.reduce((total, order) => {
-            return total + (parseFloat(order.Price) || 0);
-          }, 0);
-
-          // Count active orders
-          const activeOrders = ordersResponse.data.filter(
-            order => order.Status === 'in_progress'
-          ).length;
-
-          // Calculate completion rate
-          const completedOrders = ordersResponse.data.filter(
-            order => order.Status === 'completed'
-          ).length;
-          const totalOrders = ordersResponse.data.length;
-          const completionRate = totalOrders > 0 
-            ? ((completedOrders / totalOrders) * 100).toFixed(1)
-            : 0;
-
-          // Get all gig IDs
-          const gigIds = gigsResponse.data.map(gig => gig.Id);
-
-          // Fetch reviews for all gigs
-          let allReviews = [];
-          for (const gigId of gigIds) {
-            try {
-              const reviewsResponse = await axios.get(
-                `https://freelancing-web-application-production.up.railway.app/reviews/retrieve`,
-                { 
-                  params: { Gig_Id: gigId },
-                  withCredentials: true 
-                }
-              );
-              if (Array.isArray(reviewsResponse.data)) {
-                allReviews = [...allReviews, ...reviewsResponse.data];
-              }
-            } catch (error) {
-              console.error(`Error fetching reviews for gig ${gigId}:`, error);
-            }
-          }
-
-          // Calculate average rating from reviews
-          const totalReviews = allReviews.length;
-          const avgRating = totalReviews > 0
-            ? (allReviews.reduce((sum, review) => sum + (review.Rating || 0), 0) / totalReviews).toFixed(1)
-            : 0;
-
-          setStats({
-            totalEarnings: totalEarnings.toFixed(2),
-            activeOrders,
-            completionRate,
-            avgRating,
-            totalReviews
-          });
-        }
+        // Set recent orders (last 5)
+        setRecentOrders(orders.slice(0, 5));
+        setLoading(false);
       } catch (err) {
-        console.error("Error fetching statistics:", err);
+        console.error("Error fetching dashboard data:", err);
+        setError("Failed to load dashboard data. Please try again later.");
+        setLoading(false);
       }
     };
 
-    fetchStats();
+    fetchDashboardData();
   }, [user]);
 
-  useEffect(()=>{
-    async function Gig_Retrival(){
-      try {
-        // Ensure user exists and has an ID before fetching
-        if (!user || !user.id) {
-          console.log("User not authenticated or missing ID");
-          return;
-        }
-        
-        console.log("Fetching gigs for freelancer ID:", user.id);
-        
-        const result = await axios.get('https://freelancing-web-application-production.up.railway.app/gigs/retrieveGigForFreelancer', {
-          params: { freelancer_Id: user.id }
-        });
-        if(!result.data){
-          console.log("Error in getting gigs data")
-        }
-        console.log(result.data);
-        changegig(result.data);
-      } catch (error) {
-        console.error("Error fetching gigs:", error);
-      }
-    }
-    Gig_Retrival();
-  }, [user]); // Add user as dependency to re-fetch when user changes
-
-  // Filter gigs based on the selected filter type
-  const filteredGigs = () => {
-    // If we're in "all" mode, show all gigs including the one being animated
-    if (filterType === 'all') {
-      return gigs;
-    } 
-    
-    // For active/paused filters, include the gig being animated even if it wouldn't match the filter
-    return gigs.filter(gig => {
-      if (animatingGigId === gig.Id) {
-        return true; // Always include the animating gig
-      }
-      
-      return filterType === 'active' ? gig.State === 1 : gig.State === 0;
-    });
+  // Chart data
+  const chartData = {
+    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+    datasets: [
+      {
+        label: 'Monthly Earnings',
+        data: [650, 590, 800, 810, 960, 1000],
+        fill: false,
+        borderColor: 'rgb(75, 192, 192)',
+        tension: 0.1,
+      },
+    ],
   };
 
-  // Handle filter button click with transition
-  const handleFilterChange = (newFilter) => {
-    if (newFilter === filterType) return;
-    
-    setIsFiltering(true);
-    setFilterType(newFilter);
-    
-    // Remove filtering flag after animation completes
-    setTimeout(() => {
-      setIsFiltering(false);
-    }, 400); // Match the duration of filterTransition animation
-  };
-
-  const [myGigs, setMyGigs] = useState([
-    {
-      id: 1,
-      title: "Professional Web Development",
-      description: "Full-stack web development using modern technologies",
-      price: 500,
-      status: "active",
-      orders: 5,
-      views: 120,
-      image: "https://dummyimage.com/300x200/e9ecef/495057&text=Gig+Preview"
+  const chartOptions = {
+    responsive: true,
+    plugins: {
+      legend: {
+        position: 'top',
+      },
+      title: {
+        display: true,
+        text: 'Monthly Earnings Overview',
+      },
     },
-    {
-      id: 2,
-      title: "Mobile App Development",
-      description: "Native iOS and Android app development",
-      price: 800,
-      status: "paused",
-      orders: 3,
-      views: 85,
-      image: "https://dummyimage.com/300x200/e9ecef/495057&text=Gig+Preview"
-    }
-  ]);
-
-  // Function to toggle gig state with transition
-  const toggleGigState = async (gigId, currentState) => {
-    const newState = currentState === 1 ? 0 : 1;
-    
-    // Set this gig as animating
-    setAnimatingGigId(gigId);
-    
-    try {
-      const response = await axios.put(`https://freelancing-web-application-production.up.railway.app/gigs/toggleState/${gigId}`, {
-        state: newState
-      });
-      
-      if (response.data.message === "Gig state updated successfully") {
-        // First update the UI to show the state change
-        changegig(gigs.map(gig => 
-          gig.Id === gigId ? { ...gig, State: newState } : gig
-        ));
-        
-        // Allow animation to complete before clearing the animating state
-        setTimeout(() => {
-          setAnimatingGigId(null);
-        }, 600); // Match the duration of stateTransition animation
-      } else {
-        console.error("Failed to update gig state:", response.data.message);
-        setAnimatingGigId(null);
+    scales: {
+      y: {
+        beginAtZero: true,
+        ticks: {
+          callback: function(value) {
+            return '$' + value;
+          }
+        }
       }
-    } catch (error) {
-      console.error(`Error toggling state for gig ${gigId}:`, error);
-      setAnimatingGigId(null);
     }
   };
+
+  // Format currency
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD'
+    }).format(amount);
+  };
+
+  // Format date
+  const formatDate = (dateString) => {
+    const options = { year: 'numeric', month: 'short', day: 'numeric' };
+    return new Date(dateString).toLocaleDateString(undefined, options);
+  };
+
+  if (loading) {
+    return (
+      <div className="dashboard-page">
+        <Navbar />
+        <div className="loading">
+          <FaSpinner className="spinner" /> Loading dashboard...
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="dashboard-page">
+        <Navbar />
+        <div className="error-message">{error}</div>
+        <Footer />
+      </div>
+    );
+  }
 
   return (
-    <div className="dashboard">
-      {/* Navigation Bar */}
-      <Navbar/>
+    <div className="dashboard-page">
+      <Navbar />
+      <div className="dashboard-container">
+        <div className="dashboard-header">
+          <div className="profile-summary">
+            <img 
+              src={getImageUrl(user.Image, DEFAULT_USER_IMAGE)} 
+              alt={user.Name}
+              className="profile-image"
+            />
+            <div className="profile-info">
+              <h1>Welcome back, {user.Name}!</h1>
+              <p className="rating">
+                <FaStar className="star-icon" /> {stats.averageRating.toFixed(1)} Rating
+              </p>
+            </div>
+          </div>
+        </div>
 
-      <div className="dashboard-content">
-        {/* Sidebar */}
-        <aside className="sidebar">
-          <div className="stats-section">
-            <h3>Overview</h3>
-            <div className="stats-grid">
-              <div className="stat-card">
-                <span className="stat-label">Total Earnings</span>
-                <span className="stat-value">${stats.totalEarnings}</span>
-              </div>
-              <div className="stat-card">
-                <span className="stat-label">Active Orders</span>
-                <span className="stat-value">{stats.activeOrders}</span>
-              </div>
-              <div className="stat-card">
-                <span className="stat-label">Completion Rate</span>
-                <span className="stat-value">{stats.completionRate}%</span>
-              </div>
-              <div className="stat-card">
-                <span className="stat-label">Average Rating</span>
-                <span className="stat-value">
-                  {stats.totalReviews > 0 ? (
-                    <>⭐ {stats.avgRating} ({stats.totalReviews} reviews)</>
-                  ) : (
-                    'No reviews yet'
-                  )}
-                </span>
-              </div>
+        <div className="stats-grid">
+          <div className="stat-card">
+            <div className="stat-icon">
+              <FaClipboardList />
+            </div>
+            <div className="stat-details">
+              <h3>Total Orders</h3>
+              <p className="stat-value">{stats.totalOrders}</p>
             </div>
           </div>
 
-          <div className="action-section">
-            <button className="create-gig-button" onClick={() => navigate('/create-gig')}>Create New Gig</button>
-          </div>
-        </aside>
-
-        {/* Main Content */}
-        <main className="main-content">
-          <div className="section-header">
-            <h2>My Gigs</h2>
-            <div className="gig-filters">
-              <button 
-                className={`filter-button ${filterType === 'all' ? 'active' : ''}`}
-                onClick={() => handleFilterChange('all')}
-              >
-                All
-              </button>
-              <button 
-                className={`filter-button ${filterType === 'active' ? 'active' : ''}`}
-                onClick={() => handleFilterChange('active')}
-              >
-                Active
-              </button>
-              <button 
-                className={`filter-button ${filterType === 'paused' ? 'active' : ''}`}
-                onClick={() => handleFilterChange('paused')}
-              >
-                Paused
-              </button>
+          <div className="stat-card">
+            <div className="stat-icon">
+              <FaCheckCircle />
+            </div>
+            <div className="stat-details">
+              <h3>Completed</h3>
+              <p className="stat-value">{stats.completedOrders}</p>
             </div>
           </div>
 
-          {filteredGigs().length === 0 ? (
-            <div className="no-gigs-message">
-              {filterType === 'all' ? (
-                <>
-                  <h3>You don't have any gigs yet</h3>
-                  <p>Create your first gig to start offering your services to clients</p>
-                  <button 
-                    className="create-gig-button"
-                    onClick={() => navigate('/create-gig')}
-                  >
-                    Create New Gig
-                  </button>
-                </>
+          <div className="stat-card">
+            <div className="stat-icon">
+              <FaClock />
+            </div>
+            <div className="stat-details">
+              <h3>Active Orders</h3>
+              <p className="stat-value">{stats.activeOrders}</p>
+            </div>
+          </div>
+
+          <div className="stat-card">
+            <div className="stat-icon">
+              <FaMoneyBillWave />
+            </div>
+            <div className="stat-details">
+              <h3>Total Earnings</h3>
+              <p className="stat-value">{formatCurrency(stats.totalEarnings)}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="dashboard-content">
+          <div className="chart-section">
+            <div className="chart-container">
+              <Line data={chartData} options={chartOptions} />
+            </div>
+          </div>
+
+          <div className="recent-orders-section">
+            <h2>Recent Orders</h2>
+            <div className="recent-orders-list">
+              {recentOrders.length === 0 ? (
+                <p className="no-orders">No orders yet</p>
               ) : (
-                <>
-                  <h3>No {filterType} gigs found</h3>
-                  <p>You don't have any {filterType} gigs at the moment.</p>
-                  <button 
-                    className="filter-button"
-                    onClick={() => handleFilterChange('all')}
-                  >
-                    View All Gigs
-                  </button>
-                </>
+                recentOrders.map((order) => (
+                  <div key={order.Id} className="recent-order-card">
+                    <img 
+                      src={getImageUrl(order.ClientImage, DEFAULT_USER_IMAGE)}
+                      alt={order.ClientName}
+                      className="client-avatar"
+                    />
+                    <div className="order-info">
+                      <h4>{order.Title}</h4>
+                      <p className="client-name">Client: {order.ClientName}</p>
+                      <p className="order-date">Ordered: {formatDate(order.Created_At)}</p>
+                    </div>
+                    <div className="order-price">
+                      {formatCurrency(order.Price || 0)}
+                    </div>
+                    <div className={`order-status ${order.Status.toLowerCase()}`}>
+                      {order.Status}
+                    </div>
+                  </div>
+                ))
               )}
             </div>
-          ) : (
-            <div 
-              className="gigs-grid" 
-              key={`gigs-grid-${filterType}`}
-              data-filtering={isFiltering}
-            >
-              {filteredGigs().map((gig) => (
-                <div 
-                  key={`${gig.Id}-${filterType}`} 
-                  className={`gig-card freelancer-gig ${
-                    animatingGigId === gig.Id ? 'state-transition' : ''
-                  }`}
-                >
-                  <div className="gig-image">
-                    <img src={gig.Image} alt={gig.Title} />
-                    <div className={`status-badge ${gig.State === 1 ? 'active' : 'paused'}`}>
-                      {gig.State === 1 ? 'Active' : 'Paused'}
-                    </div>
-                  </div>
-                  <div className="gig-details">
-                    <h3 className="gig-title" style={{color:'black',fontSize:'1.2rem',fontWeight:'bold'}} title={gig.Title}>{gig.Title}</h3>
-                    <p className="gig-description" style={{padding:'0%'}} title={gig.Description}>
-                      {gig.Description ? 
-                        (gig.Description.length > 100 
-                          ? gig.Description.substring(0, 100).trim() + '...' 
-                          : gig.Description)
-                        : "No description available"}
-                    </p>
-                    <div className="gig-stats">
-                      <div className="stat">
-                        <span className="stat-label">Orders</span>
-                        <span className="stat-value">{gig.orders}</span>
-                      </div>
-                      <div className="stat">
-                        <span className="stat-label">Views</span>
-                        <span className="stat-value">{gig.Views}</span>
-                      </div>
-                      <div className="stat">
-                        <span className="stat-label">Price</span>
-                        <span className="stat-value">${gig.BasicPrice ? gig.BasicPrice : 'N/A'}</span>
-                      </div>
-                    </div>
-                    <div className="gig-actions">
-                      <button 
-                        className="edit-button"
-                        onClick={() => navigate(`/edit-gig/${gig.Id}`)}
-                      >
-                        Edit
-                      </button>
-                      <button 
-                        className={gig.State === 1 ? 'pause-button' : 'activate-button'}
-                        onClick={() => toggleGigState(gig.Id, gig.State)}
-                      >
-                        {gig.State === 1 ? 'Pause' : 'Activate'}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </main>
+          </div>
+        </div>
       </div>
-      <Footer/>
+      <Footer />
     </div>
   );
 };

@@ -6,14 +6,36 @@ import { useNavigate } from 'react-router-dom';
 import Footer from '../../Components/Footer/Footer';
 import defaultFreelancerImage from '../../assets/react.svg';
 import { AuthContext } from '../../context/Authcontext';
+import { FaShoppingBag, FaSpinner, FaCheckCircle, FaClock, FaMoneyBillWave, FaStar } from 'react-icons/fa';
+import { Doughnut } from 'react-chartjs-2';
+import {
+  Chart as ChartJS,
+  ArcElement,
+  Tooltip,
+  Legend
+} from 'chart.js';
+import { getImageUrl, DEFAULT_USER_IMAGE } from '../../utils/imageUtils';
+
+// Register ChartJS components
+ChartJS.register(
+  ArcElement,
+  Tooltip,
+  Legend
+);
 
 const ClientDashboard = () => {
   const { user } = useContext(AuthContext);
   const [gigs, setgigs] = useState([]);
   const [stats, setStats] = useState({
-    totalEarnings: 0,
-    activeOrders: 0
+    totalOrders: 0,
+    completedOrders: 0,
+    activeOrders: 0,
+    totalSpent: 0,
+    reviewsGiven: 0
   });
+  const [recentOrders, setRecentOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -29,45 +51,101 @@ const ClientDashboard = () => {
     fetchGigs();
   }, []);
 
-  // Fetch orders and calculate statistics
+  // Fetch dashboard data
   useEffect(() => {
-    const fetchOrderStats = async () => {
+    const fetchDashboardData = async () => {
       try {
-        if (!user || !user.id) return;
+        if (!user || !user.id) {
+          setError("You must be logged in to view the dashboard");
+          setLoading(false);
+          return;
+        }
 
-        const response = await axios.get("https://freelancing-web-application-production.up.railway.app/orders/client", {
+        // Fetch orders
+        const ordersResponse = await axios.get("https://freelancing-web-application-production.up.railway.app/orders/client", {
           params: { User_Id: user.id },
           withCredentials: true
         });
 
-        if (Array.isArray(response.data)) {
-          // Calculate total spending (earnings for freelancers)
-          const totalSpent = response.data.reduce((total, order) => {
-            return total + (parseFloat(order.Price) || 0);
-          }, 0);
+        const orders = ordersResponse.data;
+        
+        // Calculate statistics
+        const completed = orders.filter(order => order.Status === 'completed').length;
+        const active = orders.filter(order => order.Status === 'in_progress').length;
+        const spent = orders
+          .filter(order => order.Status === 'completed')
+          .reduce((total, order) => total + (order.Price || 0), 0);
+        const reviewsGiven = orders.filter(order => order.Reviewed).length;
+        
+        // Set statistics
+        setStats({
+          totalOrders: orders.length,
+          completedOrders: completed,
+          activeOrders: active,
+          totalSpent: spent,
+          reviewsGiven: reviewsGiven
+        });
 
-          // Count active orders (in_progress status)
-          const activeOrdersCount = response.data.filter(
-            order => order.Status === 'in_progress'
-          ).length;
-
-          setStats({
-            totalEarnings: totalSpent.toFixed(2),
-            activeOrders: activeOrdersCount
-          });
-        }
+        // Set recent orders (last 5)
+        setRecentOrders(orders.slice(0, 5));
+        setLoading(false);
       } catch (err) {
-        console.error("Error fetching order statistics:", err);
+        console.error("Error fetching dashboard data:", err);
+        setError("Failed to load dashboard data. Please try again later.");
+        setLoading(false);
       }
     };
 
-    fetchOrderStats();
+    fetchDashboardData();
   }, [user]);
 
-  const categories = ["All", "Web Development", "Design", "Mobile Development", "Writing", "Marketing"];
-  const [selectedCategory, setSelectedCategory] = useState("All");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [priceRange, setPriceRange] = useState({ min: "", max: "" });
+  // Chart data for order status distribution
+  const chartData = {
+    labels: ['Completed', 'In Progress', 'Pending'],
+    datasets: [
+      {
+        data: [
+          stats.completedOrders,
+          stats.activeOrders,
+          stats.totalOrders - (stats.completedOrders + stats.activeOrders)
+        ],
+        backgroundColor: [
+          '#4caf50',
+          '#2196f3',
+          '#ffa726'
+        ],
+        borderWidth: 0
+      }
+    ]
+  };
+
+  const chartOptions = {
+    responsive: true,
+    plugins: {
+      legend: {
+        position: 'bottom',
+      },
+      title: {
+        display: true,
+        text: 'Order Status Distribution'
+      }
+    },
+    cutout: '70%'
+  };
+
+  // Format currency
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD'
+    }).format(amount);
+  };
+
+  // Format date
+  const formatDate = (dateString) => {
+    const options = { year: 'numeric', month: 'short', day: 'numeric' };
+    return new Date(dateString).toLocaleDateString(undefined, options);
+  };
 
   const OpenGig=(id)=>{
     navigate(`/client/${id}`);
@@ -80,201 +158,134 @@ const ClientDashboard = () => {
     return `https://freelancing-web-application-production.up.railway.app${cleanPath}`;
   };
 
+  if (loading) {
+    return (
+      <div className="dashboard-page">
+        <Navbar />
+        <div className="loading">
+          <FaSpinner className="spinner" /> Loading dashboard...
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="dashboard-page">
+        <Navbar />
+        <div className="error-message">{error}</div>
+        <Footer />
+      </div>
+    );
+  }
+
   return (
-    <div className="dashboard">
-      <Navbar/>
-      <div className="dashboard-content">
-        
-        {/* Sidebar with Stats and Filters */}
-        <aside className="sidebar">
-          {/* Stats Section */}
-          <div className="stats-section">
-            <h3>Overview</h3>
-            <div className="stats-grid">
-              <div className="stat-card">
-                <span className="stat-label">Total Spent</span>
-                <span className="stat-value">${stats.totalEarnings}</span>
-              </div>
-              <div className="stat-card">
-                <span className="stat-label">Active Orders</span>
-                <span className="stat-value">{stats.activeOrders}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Existing Filter Sections */}
-          <div className="filter-section">
-            <h3>Categories</h3>
-            {categories.map((category) => (
-              <button
-                key={category}
-                className={`category-button ${selectedCategory === category ? 'active' : ''}`}
-                onClick={() => setSelectedCategory(category)}
-              >
-                {category}
-              </button>
-            ))}
-          </div>
-
-          <div className="filter-section">
-            <h3>Price Range</h3>
-            <div className="price-filter">
-              <input
-                type="number"
-                placeholder="Min Price"
-                value={priceRange.min}
-                onChange={(e) => setPriceRange({ ...priceRange, min: e.target.value })}
-                className="price-input"
-              />
-              <input
-                type="number"
-                placeholder="Max Price"
-                value={priceRange.max}
-                onChange={(e) => setPriceRange({ ...priceRange, max: e.target.value })}
-                className="price-input"
-              />
-            </div>
-          </div>
-        </aside>
-
-        {/* Main Content Area */}
-        <main className="main-content">
-
-          {/* Search Bar */}
-          <div className="search-bar">
-            <input
-              type="text"
-              placeholder="Search for services..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="search-input"
-              onKeyPress={(e) => {
-                if (e.key === 'Enter') {
-                  // Prevent form submission if inside a form
-                  e.preventDefault();
-                  // Apply search (already handled by filter)
-                }
-              }}
+    <div className="dashboard-page">
+      <Navbar />
+      <div className="dashboard-container">
+        <div className="dashboard-header">
+          <div className="profile-summary">
+            <img 
+              src={getImageUrl(user.Image, DEFAULT_USER_IMAGE)} 
+              alt={user.Name}
+              className="profile-image"
             />
-            <button 
-              className="search-button"
-              onClick={() => {
-                // Search is applied automatically through the filter
-                console.log("Search applied:", searchQuery);
-              }}
-            >
-              Search
-            </button>
+            <div className="profile-info">
+              <h1>Welcome back, {user.Name}!</h1>
+              <p className="subtitle">Here's your order summary</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="stats-grid">
+          <div className="stat-card">
+            <div className="stat-icon">
+              <FaShoppingBag />
+            </div>
+            <div className="stat-details">
+              <h3>Total Orders</h3>
+              <p className="stat-value">{stats.totalOrders}</p>
+            </div>
           </div>
 
-          {/* Gigs Grid */}
-          <div className="gigs-grid">
-            {
-              (() => {
-                const filteredGigs = gigs.filter((gig) => {
-                  // Category filter
-                  const categoryMatch = selectedCategory === 'All' || gig.Category === selectedCategory;
-                  
-                  // Price filter - properly parse the price value and handle empty inputs
-                  const minPrice = priceRange.min ? parseFloat(priceRange.min) : null;
-                  const maxPrice = priceRange.max ? parseFloat(priceRange.max) : null;
-                  const gigPrice = gig.BasicPrice ? parseFloat(gig.BasicPrice) : 0;
-                  
-                  const priceMatch = (minPrice === null || gigPrice >= minPrice) &&
-                                     (maxPrice === null || gigPrice <= maxPrice);
-                  
-                  // Search filter
-                  const searchMatch = !searchQuery || 
-                    gig.Title.toLowerCase().includes(searchQuery.toLowerCase());
-                  
-                  return categoryMatch && priceMatch && searchMatch;
-                });
+          <div className="stat-card">
+            <div className="stat-icon">
+              <FaCheckCircle />
+            </div>
+            <div className="stat-details">
+              <h3>Completed</h3>
+              <p className="stat-value">{stats.completedOrders}</p>
+            </div>
+          </div>
 
-                if (filteredGigs.length === 0) {
-                  return (
-                    <div className="no-results">
-                      <h3>No Gigs Found</h3>
-                      <p>Try adjusting your filters or search query.</p>
-                      {(priceRange.min || priceRange.max) && (
-                        <p>Current price range: {priceRange.min || '0'} - {priceRange.max || 'any'}</p>
-                      )}
-                      <button 
-                        className="reset-filters-button" 
-                        onClick={() => {
-                          setPriceRange({ min: "", max: "" });
-                          setSearchQuery("");
-                          setSelectedCategory("All");
-                        }}
-                      >
-                        Reset Filters
-                      </button>
-                    </div>
-                  );
-                }
+          <div className="stat-card">
+            <div className="stat-icon">
+              <FaClock />
+            </div>
+            <div className="stat-details">
+              <h3>Active Orders</h3>
+              <p className="stat-value">{stats.activeOrders}</p>
+            </div>
+          </div>
 
-                return filteredGigs.map((gig) => (
-                  <div key={gig.Id} className="gig-card">
-                    <div className="gig-image">
-                      <img 
-                        src={gig.Image || defaultGigImage} 
-                        alt={gig.Title} 
-                        onError={(e) => {
-                          e.target.onerror = null;
-                          e.target.src = defaultGigImage;
-                        }}
-                      />
+          <div className="stat-card">
+            <div className="stat-icon">
+              <FaMoneyBillWave />
+            </div>
+            <div className="stat-details">
+              <h3>Total Spent</h3>
+              <p className="stat-value">{formatCurrency(stats.totalSpent)}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="dashboard-content">
+          <div className="recent-orders-section">
+            <h2>Recent Orders</h2>
+            <div className="recent-orders-list">
+              {recentOrders.length === 0 ? (
+                <p className="no-orders">No orders yet</p>
+              ) : (
+                recentOrders.map((order) => (
+                  <div key={order.Id} className="recent-order-card">
+                    <img 
+                      src={getImageUrl(order.FreelancerImage, DEFAULT_USER_IMAGE)}
+                      alt={order.FreelancerName}
+                      className="client-avatar"
+                    />
+                    <div className="order-info">
+                      <h4>{order.Title}</h4>
+                      <p className="freelancer-name">Freelancer: {order.FreelancerName}</p>
+                      <p className="order-date">Ordered: {formatDate(order.Created_At)}</p>
                     </div>
-                    <div className="gig-details">
-                      <h4 className="gig-title" style={{fontSize: '1.1rem', color: '#1f2937', marginBottom: '1rem', overflow: 'visible', whiteSpace: 'normal', textOverflow: 'unset', maxWidth: '100%', fontWeight: '600', lineHeight: '1.4', minHeight: '2.8em', display: '-webkit-box', WebkitLineClamp: '2', WebkitBoxOrient: 'vertical'}}>{gig.Title}</h4>
-                      <div className="freelancer-info">
-                        <img
-                          src={getFreelancerImageUrl(gig.freelancerimage)}
-                          alt={gig.Name}
-                          className="freelancer-image"
-                          onError={(e) => {
-                            e.target.onerror = null;
-                            e.target.src = defaultFreelancerImage;
-                          }}
-                        />
-                        <div className="freelancer-details">
-                          <span className="freelancer-name">{gig.Name}</span>
-                          <div className="rating">
-                            {gig.Rating ? (
-                              <>
-                                <span className="stars">{'⭐'.repeat(Math.floor(gig.Rating))}</span>
-                                <span className="rating-number">({gig.Rating})</span>
-                              </>
-                            ) : (
-                              <span className="rating-number">No reviews</span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="gig-footer">
-                        <span className="price">
-                          {gig.BasicPrice ? (
-                            <>
-                              ${gig.BasicPrice}
-                              <span className="price-label">Starting at</span>
-                            </>
-                          ) : (
-                            <>
-                              ${gig.Price || 0}
-                              {gig.Price && <span className="price-label">Fixed price</span>}
-                            </>
-                          )}
-                        </span>
-                        <button className="view-details-button" onClick={() => {OpenGig(gig.Id)}}>View Details</button>
-                      </div>
+                    <div className="order-price">
+                      {formatCurrency(order.Price || 0)}
+                    </div>
+                    <div className={`order-status ${order.Status.toLowerCase()}`}>
+                      {order.Status}
                     </div>
                   </div>
-                ));
-              })()
-            }
+                ))
+              )}
+            </div>
           </div>
-        </main>
+
+          <div className="chart-section">
+            <div className="chart-container" style={{ height: '300px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+              <Doughnut data={chartData} options={chartOptions} />
+            </div>
+            <div className="reviews-summary">
+              <h3>Reviews Given</h3>
+              <div className="reviews-stats">
+                <FaStar className="star-icon" />
+                <span>{stats.reviewsGiven} reviews</span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
-      <Footer/>
+      <Footer />
     </div>
   );
 };

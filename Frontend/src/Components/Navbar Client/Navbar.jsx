@@ -63,6 +63,13 @@ const Navbar = () => {
     }
   };
 
+  const handleGigsClick = () => {
+    if(isAuthenticated && user?.User_Type){
+      const path = user.User_Type === 'freelancer' ? '/freelancer-gigs' : '/client-gigs';
+      navigate(path);
+    }
+  };
+
   /**
    * Navigate to the appropriate orders page based on user type
    */
@@ -243,6 +250,9 @@ const Navbar = () => {
             <>
               <button className="nav-button dashboard-button" onClick={handleDashboardClick}>
                 <FaHome className="nav-icon" /> {user.User_Type === 'client' ? 'Home' : 'Dashboard'}
+              </button>
+              <button className="nav-button" onClick={handleGigsClick}>
+              <FaEnvelope className="nav-icon" />{user.User_Type === 'freelancer' ? 'My Gigs' : 'Browse Gigs'}
               </button>
               <button className="nav-button" onClick={() => navigate('/messages')}>
                 <FaEnvelope className="nav-icon" /> Messages
