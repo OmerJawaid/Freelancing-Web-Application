@@ -321,13 +321,6 @@ const CreateGig = () => {
       return false;
     }
     
-    if (!formData.image) {
-      toast.error('Please upload an image for your gig', {
-        autoClose: 3000
-      });
-      return false;
-    }
-    
     if (formData.packages.length === 0) {
       toast.error('Please add at least one package', {
         autoClose: 3000
@@ -544,21 +537,17 @@ const CreateGig = () => {
                 </div>
                 
                 <div className="form-group">
-                  <label htmlFor="image">Gig Image</label>
+                  <label htmlFor="image">Gig Image (Optional)</label>
                   <input 
                     type="file" 
                     id="image" 
                     name="image" 
                     accept="image/*" 
                     onChange={handleFileChange} 
-                    required 
-                    onInvalid={(e) => {
-                      e.preventDefault();
-                      toast.error("Please upload an image for your gig", {
-                        autoClose: 3000
-                      });
-                    }}
                   />
+                  <small className="form-text text-muted">
+                    Maximum file size: 5MB. Supported formats: JPEG, JPG, PNG, GIF
+                  </small>
                 </div>
                 
                 <div className="form-group description-group">
