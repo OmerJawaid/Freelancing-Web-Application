@@ -19,7 +19,8 @@ import {
 } from 'react-icons/fa';
 
 // Default image to use when user profile image is not available
-const DEFAULT_USER_IMAGE = "https://dummyimage.com/100/e9ecef/495057&text=User";
+//const DEFAULT_USER_IMAGE = "https://dummyimage.com/100/e9ecef/495057&text=User";
+const DEFAULT_USER_IMAGE = "/profileImages/default-user.png";
 
 /**
  * Navbar component that adapts based on authentication state
