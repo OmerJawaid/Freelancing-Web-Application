@@ -99,7 +99,7 @@ const Signup = () => {
         formData.append('profileImage', profileImage);
       }
 
-      const result = await axios.post("http://localhost:8081/authentication/signup", formData, {
+      const result = await axios.post("https://freelancing-web-application-production.up.railway.app/authentication/signup", formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }

@@ -210,7 +210,7 @@ const EditGig = () => {
         
         // Fetch gig details
         const gigResponse = await axios.get(
-          `http://localhost:8081/gigs/retrieveGigByGigId`,
+          `https://freelancing-web-application-production.up.railway.app/gigs/retrieveGigByGigId`,
           { 
             params: { Gig_Id: gigId },
             withCredentials: true 
@@ -236,7 +236,7 @@ const EditGig = () => {
 
         // Fetch packages for the gig
         const packagesResponse = await axios.get(
-          `http://localhost:8081/packages/retrieve`,
+          `https://freelancing-web-application-production.up.railway.app/packages/retrieve`,
           { 
             params: { Gig_Id: gigId },
             withCredentials: true 
@@ -522,7 +522,7 @@ const EditGig = () => {
       // Since there's no specific update endpoint, attempt to create a PUT route manually
       try {
         // First, check if we have a update endpoint
-        const response = await axios.put(`http://localhost:8081/gigs/updateGig/${gigId}`, data, {
+        const response = await axios.put(`https://freelancing-web-application-production.up.railway.app/gigs/updateGig/${gigId}`, data, {
           headers: {
             'Content-Type': 'multipart/form-data',
           },
@@ -634,7 +634,7 @@ const EditGig = () => {
                     {formData.image && !(formData.image instanceof File) && (
                       <div className="current-image">
                         <img 
-                          src={formData.image.startsWith('http') ? formData.image : `http://localhost:8081${formData.image}`} 
+                          src={formData.image.startsWith('http') ? formData.image : `https://freelancing-web-application-production.up.railway.app${formData.image}`} 
                           alt="Current Gig" 
                           style={{ maxWidth: '100%', maxHeight: '200px', marginBottom: '10px' }} 
                         />

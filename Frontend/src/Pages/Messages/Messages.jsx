@@ -5,13 +5,25 @@ import Navbar from '../../Components/Navbar Client/Navbar';
 import {io} from 'socket.io-client'
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+import { getImageUrl, DEFAULT_USER_IMAGE } from '../../utils/imageUtils';
 
 // Default avatar image
 const DEFAULT_AVATAR = "https://placehold.co/100/e9ecef/495057?text=User";
 
+// <<<<<<< HEAD
 // Create socket reference to be initialized inside the component
 // This ensures proper cleanup and prevents memory leaks
 let socket = null;
+// =======
+// // Create socket outside component to prevent multiple connections
+// const socket = io('https://freelancing-web-application-production.up.railway.app', { 
+//   reconnection: true,
+//   reconnectionAttempts: 5,
+//   reconnectionDelay: 1000,
+//   transports: ['websocket', 'polling'], // Support both WebSocket and polling for better compatibility
+//   withCredentials: true
+// });
+// >>>>>>> Ui-Fixtures
 
 // Utility function to format timestamps
 const formatMessageTime = (timestamp) => {
@@ -143,6 +155,7 @@ const Messages = () => {
       return;
     }
 
+// <<<<<<< HEAD
     // Initialize socket connection
     console.log("Setting up socket connection for user:", currentUser.current.id);
     
@@ -157,14 +170,38 @@ const Messages = () => {
     });
     
     const socket = socketRef.current;
+// =======
+//     // Setup socket connection
+//     console.log("Setting up socket connection for user:", currentUser.current.id);
+    
+//     // Connect socket if not already connected
+//     if (!socket.connected) {
+//       socket.connect();
+//     }
+    
+//     // Join user's room and get online users
+//     socket.emit('join', { userId: currentUser.current.id });
+//     socket.emit('get_online_users');
+// >>>>>>> Ui-Fixtures
     
     // Handle connection events
     socket.on('connect', () => {
+// <<<<<<< HEAD
       console.log("Socket connected, ID:", socket.id);
       
       // Join user room and request online users after successful connection
       socket.emit('join', { userId: currentUser.current.id });
       socket.emit('get_online_users');
+// =======
+//       console.log("Socket connected with ID:", socket.id);
+//       // Join user's room and get online users
+//       socket.emit('join', { userId: currentUser.current.id });
+//       socket.emit('get_online_users');
+//     });
+    
+//     socket.on('connect', () => {
+//       // console.log("Socket connected, ID:", socket.id);
+// >>>>>>> Ui-Fixtures
     });
     
     socket.on('connect_error', (error) => {
@@ -237,16 +274,13 @@ const Messages = () => {
   useEffect(() => {
     const retriving_conversations = async () => {
       try {
-        // console.log("Fetching conversations for user:", currentUser.current.id);
         const response = await axios.get(
-          "http://localhost:8081/conversations/retrieve",
+          "https://freelancing-web-application-production.up.railway.app/conversations/retrieve",
           {
             params: { User_Id: currentUser.current.id },
             withCredentials: true
           }
         );
-        
-        // console.log("Conversations API response:", response.data);
         
         if (Array.isArray(response.data)) {
           const processedConversations = response.data.map(conv => {
@@ -258,32 +292,40 @@ const Messages = () => {
               user: {
                 id: otherUserId,
                 name: conv.Name || "Unknown User",
-                avatar: conv.Image || DEFAULT_AVATAR,
+                avatar: getImageUrl(conv.Image, DEFAULT_USER_IMAGE),
                 status: onlineUsers.has(otherUserId.toString()) ? 'online' : 'offline'
               },
               lastMessage: conv.Last_message || "",
               timestamp: conv.Last_message_time || null,
               formattedTime: formatMessageTime(conv.Last_message_time),
-              unread: conv.User_one_id === currentUser.current.id ? 
-                conv.Unread_count_user_one : conv.Unread_count_user_two
+              unreadCount: conv.unread_count || 0
             };
           });
+
           setConversations(processedConversations);
-        } else {
-          console.error("Unexpected conversations response format:", response.data);
-          setConversations([]);
+          
+          // If URL has conversation parameter, select that conversation
+          const urlParams = new URLSearchParams(window.location.search);
+          const conversationId = urlParams.get('conversation');
+          if (conversationId) {
+            const conversation = processedConversations.find(c => c.id === parseInt(conversationId));
+            if (conversation) {
+              setSelectedConversation(conversation);
+            }
+          }
         }
+        
         setLoading(false);
       } catch (error) {
         console.error("Error fetching conversations:", error);
         setLoading(false);
       }
     };
-    
+
     if (currentUser.current?.id) {
       retriving_conversations();
     }
-  }, []);
+  }, [onlineUsers]);
 
   // Create a separate effect to update online status when onlineUsers changes
   useEffect(() => {
@@ -298,9 +340,31 @@ const Messages = () => {
         }
       }))
     );
-  }, [onlineUsers]);
-
-  // Listen for new messages
+  }, [onlineUsers]); // Remove conversations from dependency array to prevent infinite loop
+  
+  // Set up socket connection and global handlers
+  useEffect(() => {
+    // Ensure socket is connected
+    if (!socket.connected) {
+      socket.connect();
+    }
+    
+    // Handle connection establishment
+    const handleConnectionEstablished = (data) => {
+      console.log("Socket connection established:", data.socketId);
+    };
+    
+    // Remove any existing listeners to prevent duplicates
+    socket.off('connection_established');
+    socket.on('connection_established', handleConnectionEstablished);
+    
+    // Clean up on unmount
+    return () => {
+      socket.off('connection_established', handleConnectionEstablished);
+    };
+  }, []); // Empty dependency array - only run once on mount
+  
+  // Global socket event handler for all messages
   useEffect(() => {
     if (!socketRef.current) {
       console.error('Socket not initialized');
@@ -312,14 +376,18 @@ const Messages = () => {
     
     // Socket listener for receiving messages - COMPLETELY REVISED
     const handleReceiveMessage = (data) => {
+// <<<<<<< HEAD
       console.log("🔴 Received message via socket:", data);
+// =======
+//       console.log("Received message via socket:", data);
+// >>>>>>> Ui-Fixtures
       
       if (!data || !data.conversationId) {
         console.error("Invalid message data received:", data);
         return;
       }
       
-      // Create a standardized message object
+
       const msgTimestamp = data.timestamp || new Date().toISOString();
       const newMessage = {
         senderId: data.senderId,
@@ -331,6 +399,7 @@ const Messages = () => {
         attachmentUrl: data.attachmentUrl,
         fileName: data.fileName || (data.attachmentUrl ? data.attachmentUrl.split('/').pop() : null)
       };
+// <<<<<<< HEAD
       
       // CRITICAL FIX: Directly update chat if this is the currently selected conversation
       const isCurrentConversation = selectedConversation && 
@@ -362,18 +431,65 @@ const Messages = () => {
           [data.conversationId]: [...conversationMessages, newMessage]
         };
       });
+// =======
+// >>>>>>> Ui-Fixtures
       
-      // Update conversations list with latest message
+      // Process for currently selected conversation
+      if (selectedConversation && parseInt(data.conversationId) === parseInt(selectedConversation.id)) {
+        // Add message to chat if it doesn't already exist
+        setChat(prevChat => {
+          // Check if message already exists
+          const msgExists = prevChat.some(msg => 
+            msg.senderId === newMessage.senderId &&
+            msg.message === newMessage.message &&
+            Math.abs(new Date(msg.timestamp) - new Date(msgTimestamp)) < 1000
+          );
+          
+          if (!msgExists) {
+            console.log("Adding new message to chat:", newMessage);
+            
+            // Update the local storage cache with the new message
+            const updatedChat = [...prevChat, newMessage];
+            try {
+              localStorage.setItem(`chat_${selectedConversation.id}`, JSON.stringify(updatedChat));
+            } catch (e) {
+              console.error('Error caching messages:', e);
+            }
+            
+            // Scroll to bottom after adding new message
+            setTimeout(() => {
+              if (chatEndRef.current) {
+                chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
+              }
+            }, 100);
+            
+            return updatedChat;
+          }
+          return prevChat;
+        });
+      }
+      
+      // Always update conversation list with latest message regardless of selected conversation
       setConversations(prevConversations => {
         return prevConversations.map(conv => {
+// <<<<<<< HEAD
           if (conv.id.toString() === data.conversationId.toString()) {
             console.log('Updating conversation list item with latest message');
+// =======
+//           if (parseInt(conv.id) === parseInt(data.conversationId)) {
+// >>>>>>> Ui-Fixtures
             return {
               ...conv,
               lastMessage: data.lastMessagePreview || data.message || 'New message',
               timestamp: msgTimestamp,
               formattedTime: formatMessageTime(msgTimestamp),
+// <<<<<<< HEAD
               unread: conv.user.id.toString() === data.senderId.toString() ? conv.unread : conv.unread + 1
+// =======
+//               unread: selectedConversation && parseInt(selectedConversation.id) === parseInt(data.conversationId) ? 
+//                 conv.unread || 0 : 
+//                 (conv.user.id === data.senderId ? (conv.unread || 0) + 1 : (conv.unread || 0))
+// >>>>>>> Ui-Fixtures
             };
           }
           return conv;
@@ -418,6 +534,7 @@ const Messages = () => {
       }
     };
     
+// <<<<<<< HEAD
     // CRITICAL FIX: Remove all existing listeners before adding new ones
     socket.removeAllListeners('receive_message');
     
@@ -501,6 +618,31 @@ const Messages = () => {
       }, 100);
     }
   }, [selectedConversation.id, receivedMessages]);
+// =======
+//     // Handle user joining conversation
+//     const handleUserJoinedConversation = (data) => {
+//       console.log(`User ${data.userId} joined conversation ${data.conversationId}`);
+//     };
+    
+//     // Remove any existing listeners to prevent duplicates
+//     socket.off('receive_message');
+//     socket.off('user_joined_conversation');
+    
+//     // Register for socket events
+//     socket.on('receive_message', handleReceiveMessage);
+//     socket.on('user_joined_conversation', handleUserJoinedConversation);
+    
+//     console.log("Registered global socket event handlers");
+    
+//     return () => {
+//       socket.off('receive_message', handleReceiveMessage);
+//       socket.off('user_joined_conversation', handleUserJoinedConversation);
+//     };
+//   }, [selectedConversation]); // Only re-run when selected conversation changes
+  
+//   // We're removing this effect to prevent infinite loops
+//   // The message handling is now done in the socket event handler and fetch messages effect
+// >>>>>>> Ui-Fixtures
 
   // Create a separate memo for selected conversation ID for message filtering
   const selectedConversationId = selectedConversation?.id;
@@ -512,31 +654,29 @@ const Messages = () => {
     }
   }, [chat.length]);
 
-  // Function to handle file attachment
-  /**
-   * Handle file selection from the file input
-   * Creates a preview for image files
-   * @param {Event} e - The file input change event
-   */
+  // Function to handle file attachments
   const handleAttachment = (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    
+
+    // Check file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('File size should be less than 5MB');
+      return;
+    }
+
     setAttachment(file);
-    
-    // Create preview based on file type
+
+    // Create preview for images
     if (file.type.startsWith('image/')) {
       createImagePreview(file);
     } else {
-      // For non-image files, clear image preview
-      setAttachmentPreview(null);
+      // For non-image files, just show the filename
+      setAttachmentPreview(file.name);
     }
   };
 
-  /**
-   * Create a preview image for image attachments using FileReader
-   * @param {File} imageFile - The image file to preview
-   */
+  // Function to create image preview
   const createImagePreview = (imageFile) => {
     const reader = new FileReader();
     reader.onloadend = () => {
@@ -580,6 +720,7 @@ const Messages = () => {
     }
     
     const msgTimestamp = new Date().toISOString();
+    console.log("Sending message at timestamp:", msgTimestamp);
     
     try {
       // ===== Prepare message data =====
@@ -607,36 +748,46 @@ const Messages = () => {
         ? createTemporaryAttachmentUrl(attachment, attachmentPreview)
         : null;
       
-      // ===== Update UI immediately for responsiveness =====
-      
-      // Add message to chat display
-      addMessageToChat({
+      // ===== Create message object for immediate display =====
+      const messageObj = {
         senderId: currentUser.current.id,
         message: messageInput,
         timestamp: msgTimestamp,
-        attachmentUrl: temporaryAttachmentUrl,
+        formattedTime: formatMessageTime(msgTimestamp),
+        status: 'sent',
         type: messageType,
+        attachmentUrl: temporaryAttachmentUrl,
         fileName: attachment?.name
+      };
+      
+      // ===== Update UI immediately for responsiveness =====
+      
+      // Add message directly to chat display
+      setChat(prevChat => {
+        const updatedChat = [...prevChat, messageObj];
+        
+        // Cache the messages in localStorage
+        try {
+          localStorage.setItem(`chat_${selectedConversation.id}`, JSON.stringify(updatedChat));
+        } catch (e) {
+          console.error('Error caching messages:', e);
+        }
+        
+        return updatedChat;
       });
       
       // Clear input fields
       setMessageInput('');
       clearAttachment();
       
-      // ===== Send to server =====
-      
-      // Submit to API
-      const response = await axios.post(
-        "http://localhost:8081/messages/upload",
-        formData,
-        { 
-          withCredentials: true,
-          headers: {
-            'Content-Type': 'multipart/form-data'
-          }
+      // Scroll to bottom after sending
+      setTimeout(() => {
+        if (chatEndRef.current) {
+          chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
         }
-      );
+      }, 100);
       
+// <<<<<<< HEAD
       // console.log("Message saved to database:", response.data);
       
       // ===== Update with server data =====
@@ -670,16 +821,93 @@ const Messages = () => {
         socketRef.current.emit('send_message', newMessage);
       } else {
         console.error('Socket connection not available');
+// =======
+//       // ===== Send to server =====
+//       try {
+//         // Submit to API
+//         const response = await axios.post(
+//           "https://freelancing-web-application-production.up.railway.app/messages/upload",
+//           formData,
+//           { 
+//             withCredentials: true,
+//             headers: {
+//               'Content-Type': 'multipart/form-data'
+//             }
+//           }
+//         );
+        
+//         console.log("Message saved to database:", response.data);
+        
+//         // ===== Update with server data =====
+        
+//         // Prepare socket message with all necessary fields
+//         const socketMessage = {
+//           conversationId: selectedConversation.id,
+//           senderId: currentUser.current.id,
+//           receiverId: selectedConversation.user.id,
+//           message: messageInput,
+//           timestamp: msgTimestamp,
+//           status: 'sent',
+//           attachmentUrl: response.data.attachmentUrl,
+//           type: response.data.type || messageType,
+//           fileName: attachment?.name,
+//           lastMessagePreview: messageInput.trim() || 'Sent an attachment'
+//         };
+        
+//         // Make sure socket is connected before emitting
+//         if (!socket.connected) {
+//           console.log("Socket reconnecting before sending message...");
+//           socket.connect();
+//         }
+        
+//         socket.emit('send_message', socketMessage);
+//         console.log("Emitted send_message event:", socketMessage);
+//       } catch (apiError) {
+//         console.error("API error when sending message:", apiError);
+        
+//         // Even if API fails, still try to send via socket
+//         if (socket.connected) {
+//           // Emit message via socket anyway for real-time updates
+//           socket.emit('send_message', {
+//             conversationId: selectedConversation.id,
+//             senderId: currentUser.current.id,
+//             receiverId: selectedConversation.user.id,
+//             message: messageInput,
+//             timestamp: msgTimestamp,
+//             type: messageType,
+//             attachmentUrl: temporaryAttachmentUrl
+//           });
+//         }
+// >>>>>>> Ui-Fixtures
       }
       
       // Update conversation list with latest message
       updateConversationList(
         selectedConversation.id, 
-        response.data.lastMessagePreview || messageInput,
+        messageInput.trim() || 'Sent an attachment',
         msgTimestamp
       );
     } catch(err) {
       console.error("Error sending message:", err);
+      
+      // Update message status to show error
+      setChat(prevChat => {
+        const updatedChat = prevChat.map(msg => {
+          if (msg.timestamp === msgTimestamp && msg.senderId === currentUser.current.id) {
+            return { ...msg, status: 'error' };
+          }
+          return msg;
+        });
+        
+        // Update cache with error status
+        try {
+          localStorage.setItem(`chat_${selectedConversation.id}`, JSON.stringify(updatedChat));
+        } catch (e) {
+          console.error('Error updating cached messages:', e);
+        }
+        
+        return updatedChat;
+      });
     }
   };
 
@@ -756,14 +984,30 @@ const Messages = () => {
     }
   };
 
-  // Fetch messages for selected conversation
+  // Fetch messages for selected conversation and join the conversation room
   useEffect(() => {
-    if (!selectedConversationId) return;
+    // Store the current conversation ID to prevent stale closures
+    const currentConversationId = selectedConversationId;
+    if (!currentConversationId) return;
+    
+    let isMounted = true; // Flag to prevent state updates after unmount
+    
+    // Join the conversation room via socket
+    if (socket.connected && currentUser.current?.id) {
+      const roomData = {
+        userId: currentUser.current.id,
+        conversationId: currentConversationId
+      };
+      
+      console.log(`Joining conversation room for conversation ${currentConversationId}`);
+      socket.emit('join_conversation', roomData);
+    }
     
     console.log('🔄 Fetching messages for conversation:', selectedConversationId);
     
     const fetchMessages = async () => {
       try {
+// <<<<<<< HEAD
         const response = await axios.get(
           "http://localhost:8081/messages/retrieve",
           {
@@ -824,15 +1068,248 @@ const Messages = () => {
         } else {
           console.error("Unexpected response format:", response.data);
           setChat([]);
+// =======
+//         console.log("Fetching messages for conversation:", currentConversationId);
+        
+//         // Only clear chat if component is still mounted
+//         if (isMounted) {
+//           // Instead of clearing chat immediately, show a loading message
+//           setChat([{
+//             senderId: 'system',
+//             message: 'Loading messages...',
+//             timestamp: new Date().toISOString(),
+//             formattedTime: formatMessageTime(new Date().toISOString()),
+//             status: 'pending',
+//             type: 'text'
+//           }]);
+// >>>>>>> Ui-Fixtures
         }
+        
+        // Check if we should use the API or fallback to local storage
+        const cachedMessages = localStorage.getItem(`chat_${currentConversationId}`);
+        
+        if (cachedMessages) {
+          console.log("Using cached messages for conversation:", currentConversationId);
+          try {
+            const parsedMessages = JSON.parse(cachedMessages);
+            
+            if (isMounted) {
+              setChat(parsedMessages);
+              // Scroll to bottom after messages are loaded
+              setTimeout(() => {
+                if (chatEndRef.current && isMounted) {
+                  chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
+                }
+              }, 100);
+            }
+          } catch (parseError) {
+            console.error("Error parsing cached messages:", parseError);
+            // If we can't parse the cached messages, we'll try the API
+          }
+        }
+        
+        // Always try to get fresh messages from the API, even if we have cached messages
+        try {
+          console.log("Attempting to fetch messages from API for conversation:", currentConversationId);
+          
+          // Set a longer timeout for the request
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 20000); // 20 seconds timeout
+          
+          const response = await axios.get(
+            "https://freelancing-web-application-production.up.railway.app/messages/retrieve",
+            {
+              params: { conversation_id: currentConversationId },
+              withCredentials: true,
+              signal: controller.signal
+            }
+          );
+          
+          // Clear the timeout since the request completed
+          clearTimeout(timeoutId);
+          
+          // Only process response if component is still mounted and conversation hasn't changed
+          if (isMounted && currentConversationId === selectedConversationId && Array.isArray(response.data)) {
+            console.log("Successfully fetched messages from API:", response.data.length);
+            handleApiMessagesResponse(response.data, currentConversationId, isMounted);
+          }
+        } catch (error) {
+          console.log("API fetch failed, using cached messages if available:", error.message);
+          
+          // If we don't have cached messages or couldn't parse them, show an error message
+          if (!cachedMessages && isMounted) {
+            setChat([{
+              senderId: 'system',
+              message: 'Unable to load messages. Please check your connection and try again.',
+              timestamp: new Date().toISOString(),
+              formattedTime: formatMessageTime(new Date().toISOString()),
+              status: 'error',
+              type: 'text'
+            }]);
+          }
+        }
+        
+        // Helper function to process API response
+        function handleApiMessagesResponse(data, convId, mounted) {
+          // Map messages and sort by timestamp to ensure correct order
+          const messages = data.map(msg => ({
+            senderId: msg.Sender_Id,
+            message: msg.Content,
+            timestamp: msg.Created_at,
+            formattedTime: formatMessageTime(msg.Created_at),
+            status: msg.Status,
+            type: msg.Type || 'text',
+            attachmentUrl: msg.Attachment_url,
+            fileName: msg.Attachment_url ? msg.Attachment_url.split('/').pop() : null
+          }));
+          
+          // Sort messages by timestamp
+          messages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+          
+          console.log("Loaded", messages.length, "messages for conversation", convId);
+          
+          // Cache the messages for future use
+          localStorage.setItem(`chat_${convId}`, JSON.stringify(messages));
+          
+          if (mounted) {
+            setChat(messages);
+            // Scroll to bottom after messages are loaded
+            setTimeout(() => {
+              if (chatEndRef.current && mounted) {
+                chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
+              }
+            }, 100);
+          }
+        }
+        
+        // This block has been removed as it's now handled in the try/catch block above
       } catch (error) {
         console.error("Error fetching messages:", error);
-        setChat([]);
+        
+        // Only show error message if we don't have cached messages and component is mounted
+        if (isMounted && (!cachedMessages || cachedMessages.length === 0)) {
+          let errorMessage = 'An error occurred while loading messages. Please try again later.';
+          
+          // Customize error message based on error type
+          if (error.name === 'AbortError') {
+            errorMessage = 'Request timed out. The server might be busy. Please try again later.';
+          } else if (error.response && error.response.status === 500) {
+            errorMessage = 'Unable to load messages. There might be an issue with the server or database. You can still send new messages.';
+          } else if (error.code === 'ERR_NETWORK') {
+            errorMessage = 'Network error. Please check your internet connection and try again.';
+          }
+          
+          // Show error message in chat
+          setChat([{
+            senderId: 'system',
+            message: errorMessage,
+            timestamp: new Date().toISOString(),
+            formattedTime: formatMessageTime(new Date().toISOString()),
+            status: 'error',
+            type: 'text'
+          }]);
+        }
       }
     };
     
     fetchMessages();
+// <<<<<<< HEAD
   }, [selectedConversationId, receivedMessages]);
+// =======
+    
+//     // Make sure socket is connected when viewing a conversation
+//     if (!socket.connected) {
+//       socket.connect();
+//     }
+    
+//     // Cleanup function to prevent state updates after unmount
+//     return () => {
+//       isMounted = false;
+//     };
+//   }, [selectedConversationId]); // Only depend on selectedConversationId
+
+//   // Function to handle message with attachment
+//   const handleMessageWithAttachment = async (messageData) => {
+//     try {
+//       const formData = new FormData();
+//       formData.append('file', attachment);
+//       formData.append('message', messageData.message);
+//       formData.append('conversation_id', messageData.conversation_id);
+//       formData.append('sender_id', messageData.sender_id);
+//       formData.append('receiver_id', messageData.receiver_id);
+
+//       const response = await axios.post('https://freelancing-web-application-production.up.railway.app/messages/send-with-attachment', 
+//         formData,
+//         {
+//           headers: {
+//             'Content-Type': 'multipart/form-data'
+//           },
+//           withCredentials: true
+//         }
+//       );
+
+//       if (response.data && response.data.message) {
+//         const attachmentUrl = response.data.attachment_path;
+        
+//         // Add message to chat with attachment
+//         addMessageToChat({
+//           ...messageData,
+//           id: response.data.message_id,
+//           attachment: attachmentUrl,
+//           attachment_type: attachment.type.startsWith('image/') ? 'image' : 'file',
+//           timestamp: new Date().toISOString()
+//         });
+
+//         // Update conversation list
+//         updateConversationList(
+//           messageData.conversation_id,
+//           messageData.message,
+//           new Date().toISOString()
+//         );
+
+//         // Clear attachment and input
+//         setAttachment(null);
+//         setAttachmentPreview(null);
+//         setMessageInput('');
+//       }
+//     } catch (error) {
+//       console.error('Error sending message with attachment:', error);
+//       alert('Failed to send message with attachment');
+//     }
+//   };
+
+//   // Function to render message attachment
+//   const renderAttachment = (message) => {
+//     if (!message.attachment) return null;
+
+//     if (message.attachment_type === 'image') {
+//       return (
+//         <div className="image-attachment">
+//           <img 
+//             src={getImageUrl(message.attachment)} 
+//             alt="Attachment"
+//             onError={(e) => {
+//               console.error('Error loading image attachment:', message.attachment);
+//               e.target.style.display = 'none';
+//             }}
+//             onClick={() => window.open(getImageUrl(message.attachment), '_blank')}
+//           />
+//         </div>
+//       );
+//     } else {
+//       return (
+//         <div className="file-attachment">
+//           <FaFile className="file-icon" />
+//           <span className="file-name">{message.attachment.split('/').pop()}</span>
+//           <FaDownload 
+//             className="download-icon" 
+//             onClick={() => handleDownload(message.attachment)}
+//           />
+//         </div>
+//       );
+//     }
+//   };
+// >>>>>>> Ui-Fixtures
 
   if (loading) {
     return (
@@ -879,7 +1356,7 @@ const Messages = () => {
                       onError={(e) => {
                         console.log("Avatar load error, using default");
                         e.target.onerror = null;
-                        e.target.src = DEFAULT_AVATAR;
+                        e.target.src = DEFAULT_USER_IMAGE;
                       }}
                     />
                     <span className={`status-indicator ${conversation.user?.status || 'offline'}`} />
@@ -891,8 +1368,8 @@ const Messages = () => {
                     </div>
                     <div className="conversation-preview">
                       <p>{conversation.lastMessage || "No messages yet"}</p>
-                      {conversation.unread > 0 && (
-                        <span className="unread-badge">{conversation.unread}</span>
+                      {conversation.unreadCount > 0 && (
+                        <span className="unread-badge">{conversation.unreadCount}</span>
                       )}
                     </div>
                   </div>
@@ -920,7 +1397,7 @@ const Messages = () => {
                     className="chat-avatar"
                     onError={(e) => {
                       e.target.onerror = null;
-                      e.target.src = DEFAULT_AVATAR;
+                      e.target.src = DEFAULT_USER_IMAGE;
                     }}
                   />
                   <div>
@@ -953,13 +1430,13 @@ const Messages = () => {
                             <img 
                               src={message.attachmentUrl.startsWith('data:') 
                                 ? message.attachmentUrl  // Local preview URL
-                                : `http://localhost:8081${message.attachmentUrl}`} // Server URL
+                                : `https://freelancing-web-application-production.up.railway.app${message.attachmentUrl}`} // Server URL
                               alt="Image attachment" 
                               className="message-image" 
                               onClick={() => window.open(
                                 message.attachmentUrl.startsWith('data:') 
                                   ? message.attachmentUrl 
-                                  : `http://localhost:8081${message.attachmentUrl}`, 
+                                  : `https://freelancing-web-application-production.up.railway.app${message.attachmentUrl}`, 
                                 '_blank'
                               )}
                             />
@@ -974,7 +1451,7 @@ const Messages = () => {
                               {message.fileName || message.attachmentUrl.split('/').pop()}
                             </span>
                             <a 
-                              href={`http://localhost:8081${message.attachmentUrl}`} 
+                              href={`https://freelancing-web-application-production.up.railway.app${message.attachmentUrl}`} 
                               target="_blank" 
                               rel="noopener noreferrer"
                               download

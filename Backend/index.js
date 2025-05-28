@@ -100,6 +100,25 @@ function configureRoutes(app) {
     res.status(200).json({ status: 'ok', message: 'Backend server is running' });
   });
   
+  app.get('/', (req, res) => {
+    res.status(200).json({
+      message: 'Welcome to the Freelancing Web Application Backend API!',
+      status: 'Server is operational. Access specific endpoints for data.',
+      availableEndpoints: [
+        '/health-check',
+        '/messages',
+        '/conversations',
+        '/authentication',
+        '/gigs',
+        '/packages',
+        '/reviews',
+        '/profile',
+        '/orders',
+        '/notifications'
+        // ... and any other specific endpoints you might have
+      ]
+    });
+  });
   // API endpoints
   app.use('/messages', messageRouter);
   app.use('/conversations', conversationRouter);

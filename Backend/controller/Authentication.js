@@ -4,6 +4,10 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
+import jwt from 'jsonwebtoken';
+
+// JWT Secret Key
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-for-jwt-tokens';
 
 //Hashing Password
 import bcrypt from 'bcrypt';
@@ -230,26 +234,36 @@ const login = async (req, res) => {
             Image: user.Image
         };
 
+        // Create user object to store in session and token
+        const userData = {
+            id: user.id,
+            email: user.Email,
+            name: user.Name,
+            User_Type: user.User_Type,
+            Image: user.Image
+        };
+        
+        // Generate JWT token
+        const token = jwt.sign(
+            { user: userData },
+            JWT_SECRET,
+            { expiresIn: '7d' } // Token expires in 7 days
+        );
+        
         // Save session
+        req.session.user = userData;
         req.session.save((err) => {
             if (err) {
                 console.error('Session save error:', err);
-                return res.status(500).json({
-                    Authenticate: false,
-                    message: "Error saving session"
-                });
+                // Continue with token-based auth even if session fails
+                console.log('Falling back to token-only authentication');
             }
 
             return res.status(200).json({
                 Authenticate: true,
                 message: "Login successful",
-                user: {
-                    id: user.id,
-                    email: user.Email,
-                    name: user.Name,
-                    User_Type: user.User_Type,
-                    Image: user.Image
-                }
+                token: token,
+                user: userData
             });
         });
 
@@ -262,20 +276,8 @@ const login = async (req, res) => {
     }
 };
 
-// Check authentication status
-const checkAuthentication=(req, res) => {
-    if (req.session.user) {
-        res.json({
-            authenticated: true,
-            user: req.session.user
-        });
-    } else {
-        res.json({ authenticated: false });
-    }
-}
-
 // Logout route
-const logout=(req, res) => {
+const logout = (req, res) => {
     req.session.destroy((err) => {
         if (err) {
             return res.status(500).json({
@@ -290,5 +292,17 @@ const logout=(req, res) => {
         });
     });
 }
+
+// Check authentication status
+const checkAuthentication = (req, res) => {
+    if (req.session.user) {
+        res.json({
+            authenticated: true,
+            user: req.session.user
+        });
+    } else {
+        res.json({ authenticated: false });
+    }
+};
 
 export {signup,login,logout,checkAuthentication}

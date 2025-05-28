@@ -5,7 +5,8 @@ import Navbar from '../../Components/Navbar Client/Navbar';
 import Footer from '../../Components/Footer/Footer';
 import './Orders.css';
 import { FaClock, FaCheckCircle, FaTimesCircle, FaHourglassHalf, FaSpinner, FaDownload, FaFile, FaThumbsUp, FaThumbsDown, FaTimes, FaStar } from 'react-icons/fa';
-import ReviewForm from '../../components/ReviewForm/ReviewForm';
+import ReviewForm from '../../Components/ReviewForm/ReviewForm';
+import { getImageUrl, DEFAULT_USER_IMAGE } from '../../utils/imageUtils';
 
 const ClientOrders = () => {
   const { user } = useContext(AuthContext);
@@ -28,7 +29,7 @@ const ClientOrders = () => {
           return;
         }
 
-        const response = await axios.get("http://localhost:8081/orders/client", {
+        const response = await axios.get("https://freelancing-web-application-production.up.railway.app/orders/client", {
           params: { User_Id: user.id },
           withCredentials: true
         });
@@ -61,7 +62,7 @@ const ClientOrders = () => {
       setActionLoading(orderId);
       
       // Get the file as a blob
-      const response = await axios.get(`http://localhost:8081/orders/download/${orderId}`, {
+      const response = await axios.get(`https://freelancing-web-application-production.up.railway.app/orders/download/${orderId}`, {
         responseType: 'blob', // Important for handling file downloads
         withCredentials: true
       });
@@ -115,7 +116,7 @@ const ClientOrders = () => {
     try {
       setActionLoading(orderId);
       
-      const response = await axios.put(`http://localhost:8081/orders/approve/${orderId}`, {}, {
+      const response = await axios.put(`https://freelancing-web-application-production.up.railway.app/orders/approve/${orderId}`, {}, {
         withCredentials: true
       });
 
@@ -148,7 +149,7 @@ const ClientOrders = () => {
     try {
       setActionLoading(currentOrderId);
       
-      const response = await axios.put(`http://localhost:8081/orders/disapprove/${currentOrderId}`, {
+      const response = await axios.put(`https://freelancing-web-application-production.up.railway.app/orders/disapprove/${currentOrderId}`, {
         feedback: feedbackText
       }, {
         withCredentials: true
@@ -461,12 +462,12 @@ const ClientOrders = () => {
                   <h3 className="order-title">{order.Title}</h3>
                   <div className="order-freelancer">
                     <img 
-                      src={order.FreelancerImage || "https://dummyimage.com/50/e9ecef/495057&text=User"} 
+                      src={getImageUrl(order.FreelancerImage, DEFAULT_USER_IMAGE)} 
                       alt={order.FreelancerName} 
                       className="freelancer-avatar"
                       onError={(e) => {
                         e.target.onerror = null;
-                        e.target.src = "https://dummyimage.com/50/e9ecef/495057&text=User";
+                        e.target.src = DEFAULT_USER_IMAGE;
                       }}
                     />
                     <span>{order.FreelancerName}</span>

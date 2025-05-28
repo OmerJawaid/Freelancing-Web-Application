@@ -8,7 +8,7 @@ export const DEFAULT_GIG_IMAGE = "https://dummyimage.com/800x450/e9ecef/495057&t
 export const DEFAULT_REVIEW_IMAGE = "https://dummyimage.com/50/e9ecef/495057&text=User";
 
 // Backend server URL
-const BACKEND_URL = 'http://localhost:8081';
+const BACKEND_URL = 'https://freelancing-web-application-production.up.railway.app';
 
 /**
  * Converts a database image path to a valid frontend path

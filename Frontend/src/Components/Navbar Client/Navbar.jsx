@@ -19,7 +19,8 @@ import {
 } from 'react-icons/fa';
 
 // Default image to use when user profile image is not available
-const DEFAULT_USER_IMAGE = "https://dummyimage.com/100/e9ecef/495057&text=User";
+//const DEFAULT_USER_IMAGE = "https://dummyimage.com/100/e9ecef/495057&text=User";
+const DEFAULT_USER_IMAGE = "/profileImages/default-user.png";
 
 /**
  * Navbar component that adapts based on authentication state
@@ -59,6 +60,13 @@ const Navbar = () => {
   const handleDashboardClick = () => {
     if (isAuthenticated && user?.User_Type) {
       const path = user.User_Type === 'freelancer' ? '/freelancer-dashboard' : '/client-dashboard';
+      navigate(path);
+    }
+  };
+
+  const handleGigsClick = () => {
+    if(isAuthenticated && user?.User_Type){
+      const path = user.User_Type === 'freelancer' ? '/freelancer-gigs' : '/client-gigs';
       navigate(path);
     }
   };
@@ -136,16 +144,16 @@ const Navbar = () => {
       imageUrl = `${window.location.origin}${Image.replace('/src', '')}`;
     } else if (Image.startsWith('/public/')) {
       // Backend public directory
-      imageUrl = `http://localhost:8081${Image}`;
+      imageUrl = `https://freelancing-web-application-production.up.railway.app${Image}`;
     } else if (Image.startsWith('/profileImages/')) {
       // Legacy format
-      imageUrl = `http://localhost:8081/public${Image}`;
+      imageUrl = `https://freelancing-web-application-production.up.railway.app/public${Image}`;
     } else if (Image.startsWith('/assets/')) {
       // Frontend assets
       imageUrl = `${window.location.origin}${Image}`;
     } else {
       // Fallback to backend path
-      imageUrl = `http://localhost:8081${Image.startsWith('/') ? '' : '/'}${Image}`;
+      imageUrl = `https://freelancing-web-application-production.up.railway.app${Image.startsWith('/') ? '' : '/'}${Image}`;
     }
     
     setDebugInfo(`User ID: ${user.id}, Image path: ${Image}, Resolved URL: ${imageUrl}`);
@@ -243,6 +251,9 @@ const Navbar = () => {
             <>
               <button className="nav-button dashboard-button" onClick={handleDashboardClick}>
                 <FaHome className="nav-icon" /> {user.User_Type === 'client' ? 'Home' : 'Dashboard'}
+              </button>
+              <button className="nav-button" onClick={handleGigsClick}>
+              <FaEnvelope className="nav-icon" />{user.User_Type === 'freelancer' ? 'My Gigs' : 'Browse Gigs'}
               </button>
               <button className="nav-button" onClick={() => navigate('/messages')}>
                 <FaEnvelope className="nav-icon" /> Messages

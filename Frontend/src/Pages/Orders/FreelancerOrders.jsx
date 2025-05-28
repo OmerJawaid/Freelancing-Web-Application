@@ -5,6 +5,7 @@ import Navbar from '../../Components/Navbar Client/Navbar';
 import Footer from '../../Components/Footer/Footer';
 import './Orders.css';
 import { FaClock, FaCheckCircle, FaTimesCircle, FaHourglassHalf, FaSpinner, FaCheck, FaTimes, FaPlay, FaUpload, FaFile } from 'react-icons/fa';
+import { getImageUrl, DEFAULT_USER_IMAGE } from '../../utils/imageUtils';
 
 const FreelancerOrders = () => {
   const { user } = useContext(AuthContext);
@@ -24,7 +25,7 @@ const FreelancerOrders = () => {
           return;
         }
 
-        const response = await axios.get("http://localhost:8081/orders/freelancer", {
+        const response = await axios.get("https://freelancing-web-application-production.up.railway.app/orders/freelancer", {
           params: { Freelancer_Id: user.id },
           withCredentials: true
         });
@@ -54,7 +55,7 @@ const FreelancerOrders = () => {
   const handleStatusUpdate = async (orderId, newStatus) => {
     try {
       setUpdateLoading(orderId);
-      const response = await axios.put(`http://localhost:8081/orders/status/${orderId}`, {
+      const response = await axios.put(`https://freelancing-web-application-production.up.railway.app/orders/status/${orderId}`, {
         Status: newStatus
       }, { withCredentials: true });
 
@@ -96,7 +97,7 @@ const FreelancerOrders = () => {
       document.body.appendChild(uploadMessage);
 
       const response = await axios.post(
-        `http://localhost:8081/orders/upload/${orderId}`,
+        `https://freelancing-web-application-production.up.railway.app/orders/upload/${orderId}`,
         formData,
         {
           headers: {
@@ -420,12 +421,12 @@ const FreelancerOrders = () => {
                   <h3 className="order-title">{order.Title}</h3>
                   <div className="order-client">
                     <img 
-                      src={order.ClientImage || "https://dummyimage.com/50/e9ecef/495057&text=User"} 
+                      src={getImageUrl(order.ClientImage, DEFAULT_USER_IMAGE)} 
                       alt={order.ClientName} 
                       className="client-avatar"
                       onError={(e) => {
                         e.target.onerror = null;
-                        e.target.src = "https://dummyimage.com/50/e9ecef/495057&text=User";
+                        e.target.src = DEFAULT_USER_IMAGE;
                       }}
                     />
                     <span>Client: {order.ClientName}</span>

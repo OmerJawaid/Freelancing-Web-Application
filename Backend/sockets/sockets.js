@@ -22,7 +22,22 @@ function configureSocket(server) {
     pingTimeout: 30000,
     pingInterval: 10000,
     cookie: false
+// =======
+//       methods: ['GET', 'POST'],
+//       credentials: true
+//     },
+//     // Ensure reliable connections with proper transport options
+//     transports: ['websocket', 'polling'],
+//     pingTimeout: 60000,
+//     pingInterval: 25000,
+//     upgradeTimeout: 30000,
+//     maxHttpBufferSize: 1e8 // 100MB for file transfers
+// >>>>>>> Ui-Fixtures
   });
+
+  // Store io instance globally for notification system
+  global.io = io;
+  global.users = userConnections;
 
   // Handle socket connections
   io.on('connection', (socket) => {
@@ -31,7 +46,11 @@ function configureSocket(server) {
     // Register event handlers
     registerUserEvents(socket, io);
     registerMessageEvents(socket, io);
+    registerNotificationEvents(socket, io);
     registerDisconnectEvents(socket, io);
+    
+    // Send immediate confirmation to client
+    socket.emit('connection_established', { socketId: socket.id });
   });
 
   return io;
@@ -109,9 +128,35 @@ function registerMessageEvents(socket, io) {
     
     console.log(`Message from ${senderId} to ${receiverId} in conversation ${conversationId}`);
     
-    // Get receiver's socket ID if they're online
-    const receiverSocketId = userConnections[receiverId];
+    // Prepare the message object with all necessary fields
+    const messageObject = {
+      senderId,
+      conversationId,
+      receiverId,
+      message,
+      timestamp: timestamp || new Date().toISOString(),
+      status: status || 'sent',
+      type: data.type || 'text',
+      attachmentUrl: data.attachmentUrl,
+      fileName: data.fileName,
+      lastMessagePreview: data.lastMessagePreview || message
+    };
+    
+    // Log the full message object for debugging
+    console.log('Broadcasting message object:', JSON.stringify(messageObject));
+    
+    // Broadcast to the conversation room - this ensures all clients viewing this conversation get the message
+    const roomName = `conversation_${conversationId}`;
+    io.to(roomName).emit('receive_message', messageObject);
+    
+    // Also send directly to sender and receiver sockets as a backup
+    const senderSocketId = userConnections[senderId];
+    if (senderSocketId) {
+      console.log(`Emitting message to sender ${senderId} via socket ${senderSocketId}`);
+      io.to(senderSocketId).emit('receive_message', messageObject);
+    }
 
+// <<<<<<< HEAD
     // Create message payload with all necessary data
     const messagePayload = {
       senderId,
@@ -137,6 +182,12 @@ function registerMessageEvents(socket, io) {
       
       // Log delivery attempt
       console.log(`Message delivered to ${receiverId} via socket ${receiverSocketId}`);
+// =======
+//     const receiverSocketId = userConnections[receiverId];
+//     if (receiverSocketId) {
+//       console.log(`Emitting message to receiver ${receiverId} via socket ${receiverSocketId}`);
+//       io.to(receiverSocketId).emit('receive_message', messageObject);
+// >>>>>>> Ui-Fixtures
     } else {
       console.log(`Receiver ${receiverId} is not currently connected`);
     }
@@ -153,6 +204,58 @@ function registerMessageEvents(socket, io) {
       io.to(conversationRoom).emit('receive_message', messagePayload);
       console.log(`Message broadcast to conversation room: ${conversationRoom}`);
     }
+  });
+  
+  // User joins a conversation - add them to the conversation room
+  socket.on('join_conversation', (data) => {
+    const { userId, conversationId } = data;
+    
+    if (!userId || !conversationId) {
+      console.warn('Invalid join_conversation data:', data);
+      return;
+    }
+    
+    const roomName = `conversation_${conversationId}`;
+    socket.join(roomName);
+    console.log(`User ${userId} joined conversation room ${roomName}`);
+    
+    // Notify the room that a user has joined
+    socket.to(roomName).emit('user_joined_conversation', { userId, conversationId });
+  });
+  
+  // User leaves a conversation
+  socket.on('leave_conversation', (data) => {
+    const { userId, conversationId } = data;
+    
+    if (!userId || !conversationId) return;
+    
+    const roomName = `conversation_${conversationId}`;
+    socket.leave(roomName);
+    console.log(`User ${userId} left conversation room ${roomName}`);
+  });
+}
+
+/**
+ * Register notification-specific socket events
+ * @param {Object} socket - Socket instance
+ * @param {Object} io - Socket.IO server instance
+ */
+function registerNotificationEvents(socket, io) {
+  // User subscribes to notifications
+  socket.on('subscribe_to_notifications', (userId) => {
+    if (!userId) return;
+    
+    const roomName = `notifications_${userId}`;
+    socket.join(roomName);
+    console.log(`User ${userId} subscribed to notifications`);
+    
+    // Store the user's socket ID for direct messaging
+    userConnections[userId] = socket.id;
+  });
+
+  // Handle notification acknowledgment
+  socket.on('notification_received', (data) => {
+    console.log('Notification acknowledged by user:', data);
   });
 }
 

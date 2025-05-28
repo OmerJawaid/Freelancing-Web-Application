@@ -5,14 +5,16 @@
   "type": "module",
   "scripts": {
     "start": "node index.js",
-    "server": "nodemon ./index.js",
-    "client": "npm run dev --prefix ../Frontend",
-    "dev": "concurrently \"npm run server\" \"npm run client\""
+    "build": "npm install",
+    "dev": "nodemon index.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": "",
+  "description": "Backend server for Freelancing Web Application",
+  "engines": {
+    "node": "18.x"
+  },
   "dependencies": {
     "bcrypt": "^6.0.0",
     "cookie-parser": "^1.4.7",
