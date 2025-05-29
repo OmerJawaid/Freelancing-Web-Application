@@ -1,28 +1,14 @@
 import { database_pool } from '../config/dbconnection.js';
+import { NotificationFactory } from '../utils/NotificationFactory.js';
 
-// Create a new notification
+// Create a new notification using the appropriate strategy based on user preferences
 const createNotification = async (userId, type, title, message, relatedId = null) => {
     try {
-        await database_pool.query(
-            `INSERT INTO notifications (User_Id, Type, Title, Message, Related_Id) 
-             VALUES (?, ?, ?, ?, ?)`,
-            [userId, type, title, message, relatedId]
-        );
+        // Get the appropriate notification strategy for this user
+        const notificationStrategy = await NotificationFactory.getStrategyForUser(userId);
         
-        // If socket is available, emit notification to the user
-        const io = global.io;
-        if (io) {
-            const users = global.users || {};
-            const socketId = users[userId];
-            if (socketId) {
-                io.to(socketId).emit('new_notification', {
-                    type,
-                    title,
-                    message,
-                    relatedId
-                });
-            }
-        }
+        // Send notification using the strategy
+        await notificationStrategy.sendNotification(userId, type, title, message, relatedId);
     } catch (err) {
         console.error("Error creating notification:", err);
     }

@@ -1,0 +1,70 @@
+@startuml
+
+!define ACTIVITY_BG #ADD8E6
+!define ACTIVITY_BORDER #2196F3
+!define DECISION_BG white
+!define DECISION_BORDER #2196F3
+
+skinparam backgroundColor white
+skinparam handwritten false
+
+skinparam ActivityBackgroundColor ACTIVITY_BG
+skinparam ActivityBorderColor ACTIVITY_BORDER
+skinparam ActivityBorderThickness 1
+skinparam ActivityFontName Arial
+skinparam ActivityFontSize 12
+skinparam ActivityFontColor black
+skinparam ActivityDiamondBackgroundColor DECISION_BG
+skinparam ActivityDiamondBorderColor DECISION_BORDER
+skinparam ActivityArrowColor black
+
+skinparam ActivityStartColor black
+skinparam ActivityEndColor black
+
+skinparam maxMessageSize 150
+skinparam wrapWidth 150
+
+start
+
+:Freelancer navigates to Create Gig page;
+
+if (User authenticated?) then (yes)
+  if (User is freelancer?) then (yes)
+    :Display gig creation form;
+    
+    :Enter gig title, description, and category;
+    :Upload gig images;
+    
+    :Configure package options;
+    note right: Set prices and delivery times
+for Basic, Standard, Premium packages
+    
+    :Submit gig form;
+    
+    if (Form is valid?) then (yes)
+      :Save gig to database;
+      :Process and store images;
+      :Save packages to database;
+      
+      if (Save successful?) then (yes)
+        :Update freelancer profile;
+        :Redirect to dashboard;
+      else (no)
+        :Show save error message;
+        :Return to form;
+      endif
+    else (no)
+      :Show validation errors;
+      :Return to form;
+    endif
+  else (no)
+    :Show error message;
+    :Redirect to home page;
+  endif
+else (no)
+  :Redirect to login page;
+endif
+
+stop
+
+@enduml

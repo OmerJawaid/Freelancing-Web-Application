@@ -25,6 +25,7 @@ import { orderRouter } from './router/orderRouter.js';
 import { setSocketIo } from './controller/Order.js';
 import { notificationRouter } from './router/notificationRoutes.js';
 import dashboardRouter from './router/dashboardRouter.js';
+import userPreferencesRouter from './router/userPreferencesRouter.js';
 
 // Get current dirname
 const __filename = fileURLToPath(import.meta.url);
@@ -116,6 +117,7 @@ function configureRoutes(app) {
   app.use('/orders', orderRouter);
   app.use('/notifications', notificationRouter);
   app.use('/dashboard', dashboardRouter);
+  app.use('/user-preferences', userPreferencesRouter);
   
   // Legacy endpoint for backward compatibility
   app.post('/create-conversation', (req, res) => {
