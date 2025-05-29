@@ -28,6 +28,7 @@ const Gig = () => {
   const [showAllReviews, setShowAllReviews] = useState(false);
   const [showFullDescription, setShowFullDescription] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState(false);
+  const [randomGigs, setRandomGigs] = useState([]);
   const reviewsRef = useRef(null);
   
   console.log("GigDisplay mounted with ID:", id);
@@ -211,9 +212,15 @@ const Gig = () => {
             day: 'numeric'
           });
           
+          // Normalize the rating property to ensure it's available for the StarRating component
+          // Check all possible property names for rating
+          const rating = review.Rating || review.rating || review.Stars || review.stars || 0;
+          
           return {
             ...review,
-            date: formattedDate
+            date: formattedDate,
+            rating: rating, // Ensure a consistent 'rating' property is available
+            Rating: rating  // Also set uppercase version for compatibility
           };
         });
         
@@ -253,9 +260,29 @@ const Gig = () => {
   const updateGigViews = async (gigId) => {
     try {
       await axios.put(`http://localhost:8081/gigs/updateViews/${gigId}`);
-      console.log(`Views updated for gig ${gigId}`);
     } catch (error) {
-      console.error(`Error updating views for gig ${gigId}:`, error);
+      console.error("Error updating gig views:", error);
+    }
+  };
+  
+  // Function to fetch random gigs
+  const fetchRandomGigs = async () => {
+    if (!id) return;
+    
+    try {
+      const response = await axios.get('http://localhost:8081/gigs/random', {
+        params: {
+          excludeId: id,
+          limit: 4
+        },
+        withCredentials: true
+      });
+      
+      if (response.data && Array.isArray(response.data)) {
+        setRandomGigs(response.data);
+      }
+    } catch (error) {
+      console.error("Error fetching random gigs:", error);
     }
   };
 
@@ -393,6 +420,13 @@ const Gig = () => {
     
     fetchGigData();
   }, [id]);
+
+  // Fetch random gigs when main gig data is loaded
+  useEffect(() => {
+    if (!loading && gig) {
+      fetchRandomGigs();
+    }
+  }, [loading, gig]);
 
   const handleImageChange = (index) => {
     setActiveImage(index);
@@ -1310,7 +1344,6 @@ const Gig = () => {
                     <small style={{ color: '#666', display: 'block', marginBottom: '5px' }}>
                       Reviews will appear here after clients complete orders and leave feedback.
                     </small>
-                    
                   </div>
                 </div>
               )}
@@ -1509,6 +1542,112 @@ const Gig = () => {
           </div>
         </div>
       </div>
+      {/* Random Gigs Section - You might also like */}
+      {randomGigs.length > 0 && (
+        <div className="random-gigs-section" style={{
+          padding: '2rem 0',
+          backgroundColor: '#f9fafb',
+          marginTop: '2rem'
+        }}>
+          <div className="container" style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 1rem' }}>
+            <h2 style={{
+              fontSize: '1.75rem',
+              fontWeight: '700',
+              color: '#1f2937',
+              marginBottom: '1.5rem',
+              textAlign: 'center'
+            }}>You Might Also Like</h2>
+            
+            <div className="random-gigs-grid" style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))',
+              gap: '1.5rem'
+            }}>
+              {randomGigs.map(randomGig => (
+                <div 
+                  key={randomGig.Id} 
+                  className="random-gig-card" 
+                  onClick={() => navigate(`/client/${randomGig.Id}`)}
+                  style={{
+                    backgroundColor: 'white',
+                    borderRadius: '8px',
+                    overflow: 'hidden',
+                    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)',
+                    transition: 'transform 0.2s, box-shadow 0.2s',
+                    cursor: 'pointer'
+                  }}
+                  onMouseOver={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-5px)';
+                    e.currentTarget.style.boxShadow = '0 10px 15px rgba(0, 0, 0, 0.1)';
+                  }}
+                  onMouseOut={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.05)';
+                  }}
+                >
+                  <div style={{ height: '160px', overflow: 'hidden' }}>
+                    <img 
+                      src={getImageUrl(randomGig.Image, DEFAULT_GIG_IMAGE)} 
+                      alt={randomGig.Title} 
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    />
+                  </div>
+                  
+                  <div style={{ padding: '1rem' }}>
+                    <h3 style={{ 
+                      fontSize: '1rem', 
+                      fontWeight: '600',
+                      marginBottom: '0.5rem',
+                      color: '#111827',
+                      display: '-webkit-box',
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: 'vertical',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      height: '2.5rem'
+                    }}>
+                      {randomGig.Title}
+                    </h3>
+                    
+                    <div style={{ 
+                      display: 'flex', 
+                      alignItems: 'center',
+                      marginBottom: '0.5rem'
+                    }}>
+                      <div style={{ 
+                        display: 'flex', 
+                        alignItems: 'center',
+                        color: '#f59e0b'
+                      }}>
+                        <StarRating rating={randomGig.Rating || randomGig.rating || 0} />
+                      </div>
+                      <span style={{ 
+                        marginLeft: '0.25rem',
+                        fontSize: '0.875rem',
+                        color: '#6b7280'
+                      }}>
+                        {randomGig.Rating || randomGig.rating ? 
+                          `(${(randomGig.Rating || randomGig.rating).toFixed(1)})` : 
+                          '(New)'}
+
+                      </span>
+                    </div>
+                    
+                    <div style={{ 
+                      fontWeight: '700',
+                      color: '#10b981',
+                      fontSize: '1.125rem'
+                    }}>
+                      Starting at ${randomGig.Price || randomGig.BasicPrice || 0}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+      
       <Footer/>
     </div>
   );

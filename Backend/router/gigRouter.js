@@ -1,5 +1,5 @@
 import express from'express';
-import {fetchGig,fetchGigByFreelancerIdForGigDisplay,fetchGigByGigId,fetchGigForFreelancer, updateGigViews, toggleGigState, createGig, updateGig} from "../controller/Gig.js";
+import {fetchGig,fetchGigByFreelancerIdForGigDisplay,fetchGigByGigId,fetchGigForFreelancer, updateGigViews, toggleGigState, createGig, updateGig, fetchRandomGigs} from "../controller/Gig.js";
 import multer from 'multer';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -28,6 +28,7 @@ gigRouter.get('/retrieveAllGigs',fetchGig)
 gigRouter.get('/retrieveGigForGigDisplay',fetchGigByFreelancerIdForGigDisplay)
 gigRouter.get('/retrieveGigByGigId',fetchGigByGigId)
 gigRouter.get('/retrieveGigForFreelancer',fetchGigForFreelancer)
+gigRouter.get('/random', fetchRandomGigs);
 gigRouter.put('/updateViews/:gigId', updateGigViews);
 gigRouter.put('/toggleState/:gigId', toggleGigState);
 gigRouter.post('/createGig', upload.single('image'), createGig);

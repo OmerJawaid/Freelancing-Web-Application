@@ -426,4 +426,32 @@ const updateGig = async (req, res) => {
     }
 };
 
-export {fetchGig,fetchGigByFreelancerIdForGigDisplay,fetchGigByGigId,fetchGigForFreelancer, updateGigViews, toggleGigState, createGig, updateGig}
+// Fetch random gigs excluding the current gig
+const fetchRandomGigs = async (req, res) => {
+  try {
+    const { excludeId, limit = 4 } = req.query;
+    
+    // Query to get random active gigs excluding the current one
+    const [result] = await database_pool.query(
+      'SELECT gigs.Id, gigs.Freelancer_Id, gigs.Title, gigs.Description, ' +
+      'gigs.Category, gigs.Image, gigs.State, gigs.Views, ' +
+      'freelancers.Id as freelancer_id, freelancers.Name, freelancers.Rating, ' +
+      'freelancers.Image as freelancerimage, ' +
+      '(SELECT MIN(price) FROM packages WHERE packages.Gig_Id = gigs.Id) as Price ' +
+      'FROM gigs ' +
+      'JOIN freelancers ON gigs.Freelancer_Id = freelancers.Id ' +
+      'WHERE gigs.State = 1 ' +
+      (excludeId ? 'AND gigs.Id != ? ' : '') +
+      'ORDER BY RAND() ' +
+      'LIMIT ?',
+      excludeId ? [excludeId, Number(limit)] : [Number(limit)]
+    );
+    
+    return res.status(200).json(result);
+  } catch (err) {
+    console.error("Error fetching random gigs:", err);
+    return res.status(500).json({ message: "Error retrieving random gigs", error: err.message });
+  }
+};
+
+export {fetchGig, fetchGigByFreelancerIdForGigDisplay, fetchGigByGigId, fetchGigForFreelancer, updateGigViews, toggleGigState, createGig, updateGig, fetchRandomGigs}

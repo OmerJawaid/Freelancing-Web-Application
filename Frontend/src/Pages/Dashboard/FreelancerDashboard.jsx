@@ -150,6 +150,18 @@ const FreelancerDashboard = () => {
       return filterType === 'active' ? gig.State === 1 : gig.State === 0;
     });
   };
+  
+  // Get top 4 gigs by views for dashboard display
+  const getTopViewedGigs = () => {
+    // Create a copy of the gigs array to avoid modifying the original
+    const sortedGigs = [...gigs];
+    
+    // Sort gigs by views in descending order
+    sortedGigs.sort((a, b) => (b.Views || 0) - (a.Views || 0));
+    
+    // Return only the top 4 gigs
+    return sortedGigs.slice(0, 4);
+  };
 
   // Handle filter button click with transition
   const handleFilterChange = (newFilter) => {
@@ -563,28 +575,21 @@ const FreelancerDashboard = () => {
         {/* Main Content */}
         <main className="main-content">
           <div className="section-header">
-            <h2>My Gigs</h2>
+            <h2>Top Performing Gigs</h2>
             <div className="gigs-actions">
-              <div className="filter-buttons">
-                <button 
-                  className={`filter-button ${filterType === 'all' ? 'active' : ''}`}
-                  onClick={() => handleFilterChange('all')}
-                >
-                  All
-                </button>
-                <button 
-                  className={`filter-button ${filterType === 'active' ? 'active' : ''}`}
-                  onClick={() => handleFilterChange('active')}
-                >
-                  Active
-                </button>
-                <button 
-                  className={`filter-button ${filterType === 'paused' ? 'active' : ''}`}
-                  onClick={() => handleFilterChange('paused')}
-                >
-                  Paused
-                </button>
-              </div>
+              <button 
+                className="create-new-gig-btn"
+                onClick={() => navigate('/my-gigs')}
+              >
+                View All Gigs
+              </button>
+            </div>
+          </div>
+          
+          {gigs.length === 0 ? (
+            <div className="no-gigs-message">
+              <h3>You don't have any gigs yet</h3>
+              <p>Create your first gig to start offering your services.</p>
               <button 
                 className="create-new-gig-btn"
                 onClick={() => navigate('/create-gig')}
@@ -592,43 +597,14 @@ const FreelancerDashboard = () => {
                 Create New Gig
               </button>
             </div>
-          </div>
-          
-          {filteredGigs().length === 0 ? (
-            <div className="no-gigs-message">
-              {filterType === 'all' ? (
-                <>
-                  <h3>You don't have any gigs yet</h3>
-                  <p>Create your first gig to start offering your services to clients</p>
-                  <button 
-                    className="create-gig-button"
-                    onClick={() => navigate('/create-gig')}
-                  >
-                    Create New Gig
-                  </button>
-                </>
-              ) : (
-                <>
-                  <h3>No {filterType} gigs found</h3>
-                  <p>You don't have any {filterType} gigs at the moment.</p>
-                  <button 
-                    className="filter-button"
-                    onClick={() => handleFilterChange('all')}
-                  >
-                    View All Gigs
-                  </button>
-                </>
-              )}
-            </div>
           ) : (
             <div 
               className="gigs-grid" 
-              key={`gigs-grid-${filterType}`}
-              data-filtering={isFiltering}
+              key="top-gigs-grid"
             >
-              {filteredGigs().map((gig) => (
+              {getTopViewedGigs().map((gig) => (
                 <div 
-                  key={`${gig.Id}-${filterType}`} 
+                  key={`${gig.Id}-top`} 
                   className={`gig-card freelancer-gig ${
                     animatingGigId === gig.Id ? 'state-transition' : ''
                   }`}
@@ -648,7 +624,7 @@ const FreelancerDashboard = () => {
                           : gig.Description)
                         : "No description available"}
                     </p>
-                    <div className="gig-stats">
+                    <div className="gig-stats" style={{borderTop: 'none', borderBottom: 'none', boxShadow: 'none'}}>
                       <div className="stat">
                         <span className="stat-label">Orders</span>
                         <span className="stat-value">{gig.orders}</span>

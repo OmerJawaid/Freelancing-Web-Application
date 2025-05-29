@@ -157,7 +157,7 @@ const ClientDashboard = () => {
                 }
 
                 return filteredGigs.map((gig) => (
-                  <div key={gig.Id} className="gig-card">
+                  <div key={gig.Id} className="gig-card" >
                     <div className="gig-image">
                       <img 
                         src={gig.Image || defaultGigImage} 
@@ -183,8 +183,10 @@ const ClientDashboard = () => {
                         <div className="freelancer-details">
                           <span className="freelancer-name">{gig.Name}</span>
                           <div className="rating">
-                            <span className="stars">{'⭐'.repeat(Math.floor(gig.Rating))}</span>
-                            <span className="rating-number">({gig.Rating})</span>
+                            <span className="stars">{'⭐'.repeat(Math.floor(gig.Rating || gig.rating || 0))}</span>
+                            <span className="rating-number">
+                              {gig.Rating || gig.rating ? `(${(gig.Rating || gig.rating).toFixed(1)})` : '(New)'}
+                            </span>
                           </div>
                         </div>
                       </div>

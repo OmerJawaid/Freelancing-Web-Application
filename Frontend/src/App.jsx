@@ -20,6 +20,7 @@ import Settings from './Pages/Settings/Settings.jsx';
 import ClientOrders from './Pages/Orders/ClientOrders.jsx';
 import FreelancerOrders from './Pages/Orders/FreelancerOrders.jsx';
 import Notification from './Pages/Notification/Notification.jsx';
+import AllGigs from './Pages/AllGigs/AllGigs.jsx';
 
 // Wrapper component for transitions
 const TransitionWrapper = ({ children }) => {
@@ -153,6 +154,15 @@ function App() {
       element: (
         <ProtectedRoute userType="freelancer">
           <FreelancerOrders />
+        </ProtectedRoute>
+      )
+    },
+    // All Gigs Page (Protected for Freelancers)
+    {
+      path: '/my-gigs',
+      element: (
+        <ProtectedRoute userType="freelancer">
+          <AllGigs />
         </ProtectedRoute>
       )
     },

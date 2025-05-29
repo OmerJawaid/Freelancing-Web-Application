@@ -14,8 +14,8 @@ import {
   FaSignInAlt,  // Login
   FaUserPlus,   // Sign Up
   FaShoppingBag, // Orders
-  FaUser        // User profile
-
+  FaUser,       // User profile
+  FaListAlt     // My Gigs
 } from 'react-icons/fa';
 
 // Default image to use when user profile image is not available
@@ -179,6 +179,11 @@ const Navbar = () => {
       <button className="nav-button" onClick={handleOrdersClick}>
         <FaShoppingBag className="nav-icon" /> {user.User_Type === 'client' ? 'My Orders' : 'Manage Orders'}
       </button>
+      {user.User_Type === 'freelancer' && (
+        <button className="nav-button" onClick={() => navigate('/my-gigs')}>
+          <FaListAlt className="nav-icon" /> My Gigs
+        </button>
+      )}
       <button className="nav-button icon-only" onClick={handleOpenSettings} title="Settings">
         <FaCog className="nav-icon" />
       </button>
@@ -250,6 +255,11 @@ const Navbar = () => {
               <button className="nav-button" onClick={handleOrdersClick}>
                 <FaShoppingBag className="nav-icon" /> {user.User_Type === 'client' ? 'My Orders' : 'Manage Orders'}
               </button>
+              {user.User_Type === 'freelancer' && (
+                <button className="nav-button" onClick={() => navigate('/my-gigs')}>
+                  <FaListAlt className="nav-icon" /> My Gigs
+                </button>
+              )}
             </>
           )}
         </div>
