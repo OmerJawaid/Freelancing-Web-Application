@@ -32,7 +32,9 @@ const fetchGigForFreelancer=async(req,res)=>{
       if (!freelancer_Id) {
          return res.status(400).json({ message: "freelancer_Id is required" });
        }
-      const [result]= await database_pool.query(
+      
+      // Query to fetch gigs with basic info
+      const [gigs]= await database_pool.query(
          'SELECT gigs.*, freelancers.Name, freelancers.bio, freelancers.Rating, ' +
          'freelancers.Image as UserImage, ' +
          '(SELECT Price FROM packages WHERE packages.Gig_Id = gigs.Id AND packages.Type = 1) as BasicPrice ' +
@@ -40,10 +42,26 @@ const fetchGigForFreelancer=async(req,res)=>{
          'WHERE Freelancer_id = ?',
          [freelancer_Id]
       )
-      if(!result|| result.length === 0){
+      
+      if(!gigs || gigs.length === 0){
          return res.status(404).json({ message: "No gigs found for this freelancer" });
       }
-      return res.json(result)
+      
+      // For each gig, fetch the order count
+      const gigsWithOrderCounts = await Promise.all(gigs.map(async (gig) => {
+         const [orderResult] = await database_pool.query(
+            'SELECT COUNT(*) as orderCount FROM orders WHERE Package_Id IN ' +
+            '(SELECT ID FROM packages WHERE Gig_Id = ?)',
+            [gig.Id]
+         );
+         
+         return {
+            ...gig,
+            orders: orderResult[0].orderCount || 0
+         };
+      }));
+      
+      return res.json(gigsWithOrderCounts);
    }
    catch(err){
       console.error(err);

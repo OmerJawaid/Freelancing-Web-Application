@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { FaStar, FaSpinner } from 'react-icons/fa';
+import { FaStar, FaSpinner, FaTimes } from 'react-icons/fa';
 import './ReviewForm.css';
 
 const ReviewForm = ({ orderId, onReviewSubmitted }) => {
@@ -101,10 +101,15 @@ const ReviewForm = ({ orderId, onReviewSubmitted }) => {
 
   return (
     <div className="review-form-container">
-      <h2>Rate Your Experience</h2>
-      <p className="review-form-subtitle">
-        Share your experience with <strong>{orderDetails?.freelancer_Name}</strong> for gig <strong>{orderDetails?.gig_Title}</strong>
-      </p>
+      <div className="review-form-header">
+        <h2>Rate Your Experience</h2>
+        <p className="review-form-subtitle">
+          Share your experience with <strong>{orderDetails?.freelancer_Name}</strong> for gig <strong>{orderDetails?.gig_Title}</strong>
+        </p>
+        <button className="close-button" onClick={onReviewSubmitted}>
+          <FaTimes />
+        </button>
+      </div>
       
       <form onSubmit={handleSubmit} className="review-form">
         <div className="rating-container">

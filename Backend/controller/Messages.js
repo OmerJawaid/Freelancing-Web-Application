@@ -152,7 +152,7 @@ const retrieveMessages = async (req, res) => {
 
         // Fetch messages from database
         const [messages] = await database_pool.query(
-            `SELECT * FROM skillify.messages 
+            `SELECT * FROM messages 
              WHERE Conversation_Id = ? 
              ORDER BY Created_at ASC;`,
             [conversation_id]

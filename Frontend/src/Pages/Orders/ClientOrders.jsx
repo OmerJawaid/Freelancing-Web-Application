@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useContext } from 'react';
+import React, { useEffect, useState, useContext, useRef } from 'react';
 import axios from 'axios';
 import { AuthContext } from '../../context/Authcontext';
 import Navbar from '../../Components/Navbar Client/Navbar';
@@ -6,6 +6,7 @@ import Footer from '../../Components/Footer/Footer';
 import './Orders.css';
 import { FaClock, FaCheckCircle, FaTimesCircle, FaHourglassHalf, FaSpinner, FaDownload, FaFile, FaThumbsUp, FaThumbsDown, FaTimes, FaStar } from 'react-icons/fa';
 import ReviewForm from '../../components/ReviewForm/ReviewForm';
+import io from 'socket.io-client';
 
 const ClientOrders = () => {
   const { user } = useContext(AuthContext);
@@ -18,6 +19,9 @@ const ClientOrders = () => {
   const [currentOrderId, setCurrentOrderId] = useState(null);
   const [showReviewForm, setShowReviewForm] = useState(false);
   const [selectedOrderForReview, setSelectedOrderForReview] = useState(null);
+  
+  // Reference to socket.io connection
+  const socketRef = useRef(null);
 
   useEffect(() => {
     const fetchOrders = async () => {
@@ -43,6 +47,60 @@ const ClientOrders = () => {
     };
 
     fetchOrders();
+  }, [user]);
+  
+  // Set up real-time order updates with socket.io
+  useEffect(() => {
+    if (!user || !user.id) return;
+    
+    // Create socket connection
+    const socket = io('http://localhost:8081', {
+      withCredentials: true,
+      transports: ['websocket', 'polling']
+    });
+    
+    // Store socket in ref
+    socketRef.current = socket;
+    
+    // Connect and join order updates room
+    socket.on('connect', () => {
+      console.log('Socket connected for order updates');
+      
+      // Join order updates room with user ID
+      socket.emit('join_order_updates', { userId: user.id });
+    });
+    
+    // Handle join confirmation
+    socket.on('order_updates_joined', (data) => {
+      console.log('Joined order updates room successfully', data);
+    });
+    
+    // Listen for order status changes
+    socket.on('order_status_change', (data) => {
+      console.log('✅ CLIENT: Order status changed event received:', data);
+      
+      // Update local state with the new status
+      setOrders(prevOrders => {
+        console.log('Current orders before update:', prevOrders);
+        const updatedOrders = prevOrders.map(order => {
+          if (order.Id === parseInt(data.orderId)) {
+            console.log(`Updating order ${order.Id} status from ${order.Status} to ${data.status}`);
+            return { ...order, Status: data.status };
+          }
+          return order;
+        });
+        console.log('Updated orders:', updatedOrders);
+        return updatedOrders;
+      });
+    });
+    
+    // Clean up on component unmount
+    return () => {
+      console.log('Disconnecting socket for order updates');
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+      }
+    };
   }, [user]);
 
   // Function to get package name based on Type
@@ -347,9 +405,42 @@ const ClientOrders = () => {
   const FeedbackModal = () => {
     if (!showFeedbackModal) return null;
     
+    // Create a ref for the textarea to maintain focus
+    const textareaRef = useRef(null);
+    
+    // Focus the textarea when the modal opens
+    useEffect(() => {
+      if (showFeedbackModal && textareaRef.current) {
+        // Short timeout to ensure the DOM is ready
+        setTimeout(() => {
+          textareaRef.current.focus();
+        }, 50);
+      }
+    }, [showFeedbackModal]);
+
+    // Handle text change while preserving focus and cursor position
+    const handleTextChange = (e) => {
+      const cursorPosition = e.target.selectionStart;
+      const cursorEnd = e.target.selectionEnd;
+      
+      setFeedbackText(e.target.value);
+      
+      // Use requestAnimationFrame to wait for the next browser paint cycle
+      requestAnimationFrame(() => { 
+        if (textareaRef.current) {
+          textareaRef.current.focus();
+          textareaRef.current.setSelectionRange(cursorPosition, cursorEnd);
+        }
+      });
+    };
+    
     return (
       <div className="modal-overlay">
-        <div className="feedback-modal">
+        <div 
+          className="feedback-modal"
+          // Prevent clicks on the modal from causing focus loss
+          onClick={(e) => e.stopPropagation()}
+        >
           <div className="modal-header">
             <h3>Request Revisions</h3>
             <button className="close-button" onClick={() => setShowFeedbackModal(false)}>
@@ -359,10 +450,14 @@ const ClientOrders = () => {
           <div className="modal-body">
             <p>Please provide feedback for the freelancer to help them make necessary revisions:</p>
             <textarea 
+              ref={textareaRef}
               value={feedbackText}
-              onChange={(e) => setFeedbackText(e.target.value)}
+              onChange={handleTextChange}
               placeholder="Describe what needs to be improved or fixed..."
               rows={5}
+              autoFocus
+              // Prevent any potential click events from removing focus
+              onClick={(e) => e.stopPropagation()}
             />
           </div>
           <div className="modal-footer">
@@ -390,7 +485,6 @@ const ClientOrders = () => {
       <div className="modal-overlay">
         <div className="review-modal">
           <div className="modal-header">
-            <h3>Write a Review</h3>
             <button className="close-button" onClick={closeReviewForm}>
               <FaTimes />
             </button>

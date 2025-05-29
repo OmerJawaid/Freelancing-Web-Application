@@ -96,10 +96,12 @@
 }
 
 .conversation-avatar img {
-  width: 48px;
-  height: 48px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   object-fit: cover;
+  border: 2px solid #e5e7eb;
+  background-color: #f3f4f6; /* Light background for empty images */
 }
 
 .status-indicator {
@@ -202,10 +204,13 @@
 }
 
 .chat-avatar {
-  width: 40px;
-  height: 40px;
+  width: 45px;
+  height: 45px;
   border-radius: 50%;
   object-fit: cover;
+  border: 2px solid #e5e7eb;
+  background-color: #f3f4f6;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .chat-header h3 {
@@ -519,7 +524,17 @@
   100% { transform: rotate(360deg); }
 }
 
-/* Add these styles for file attachments */
+/* Additional avatar styling */
+.user-avatar-img {
+  display: block;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #e5e7eb;
+  background-color: #f3f4f6;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
 
 /* Message attachments */
 .message-attachment {

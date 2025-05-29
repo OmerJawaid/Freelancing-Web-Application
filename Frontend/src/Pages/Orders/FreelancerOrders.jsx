@@ -5,6 +5,7 @@ import Navbar from '../../Components/Navbar Client/Navbar';
 import Footer from '../../Components/Footer/Footer';
 import './Orders.css';
 import { FaClock, FaCheckCircle, FaTimesCircle, FaHourglassHalf, FaSpinner, FaCheck, FaTimes, FaPlay, FaUpload, FaFile } from 'react-icons/fa';
+import io from 'socket.io-client';
 
 const FreelancerOrders = () => {
   const { user } = useContext(AuthContext);
@@ -14,6 +15,9 @@ const FreelancerOrders = () => {
   const [updateLoading, setUpdateLoading] = useState(null);
   const [uploadLoading, setUploadLoading] = useState(null);
   const fileInputRef = useRef(null);
+
+  // Reference to socket.io connection
+  const socketRef = useRef(null);
 
   useEffect(() => {
     const fetchOrders = async () => {
@@ -39,6 +43,60 @@ const FreelancerOrders = () => {
     };
 
     fetchOrders();
+  }, [user]);
+
+  // Set up real-time order updates with socket.io
+  useEffect(() => {
+    if (!user || !user.id) return;
+
+    // Create socket connection
+    const socket = io('http://localhost:8081', {
+      withCredentials: true,
+      transports: ['websocket', 'polling']
+    });
+
+    // Store socket in ref
+    socketRef.current = socket;
+
+    // Connect and join order updates room
+    socket.on('connect', () => {
+      console.log('Socket connected for freelancer order updates');
+
+      // Join order updates room with user ID (freelancer ID)
+      socket.emit('join_order_updates', { userId: user.id });
+    });
+
+    // Handle join confirmation
+    socket.on('order_updates_joined', (data) => {
+      console.log('Joined freelancer order updates room successfully', data);
+    });
+
+    // Listen for order status changes
+    socket.on('order_status_change', (data) => {
+      console.log('✅ FREELANCER: Order status changed event received:', data);
+      
+      // Update local state with the new status
+      setOrders(prevOrders => {
+        console.log('Current freelancer orders before update:', prevOrders);
+        const updatedOrders = prevOrders.map(order => {
+          if (order.Id === parseInt(data.orderId)) {
+            console.log(`Updating freelancer order ${order.Id} status from ${order.Status} to ${data.status}`);
+            return { ...order, Status: data.status };
+          }
+          return order;
+        });
+        console.log('Updated freelancer orders:', updatedOrders);
+        return updatedOrders;
+      });
+    });
+
+    // Clean up on component unmount
+    return () => {
+      console.log('Disconnecting socket for freelancer order updates');
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+      }
+    };
   }, [user]);
 
   // Function to get package name based on Type

@@ -4,6 +4,13 @@ import path from "path";
 import fs from "fs";
 import { createNotification } from './Notification.js';
 
+// Socket.io instance reference - will be set by the main application
+let io = null;
+
+// Function to set the Socket.io instance
+const setSocketIo = (socketIo) => {
+  io = socketIo;
+};
 
 // Configure multer for file storage
 const storage = multer.diskStorage({
@@ -56,13 +63,13 @@ const createOrder = async (req, res) => {
       [User_Id, Freelancer_Id, Gig_Id, Package_Id]
     );
 
-     await createNotification(
-            Freelancer_Id,
-            'order',
-            'New Order Received',
-            'You have received a new order. Check your orders page for details.',
-            result.insertId
-        );
+    await createNotification(
+      Freelancer_Id,
+      'order',
+      'New Order Received',
+      'You have received a new order. Check your orders page for details.',
+      result.insertId
+    );
 
     return res.status(201).json({ 
       message: "Order created successfully", 
@@ -148,6 +155,7 @@ const updateOrderStatus = async (req, res) => {
       return res.status(400).json({ message: "Invalid status value" });
     }
 
+    // Update the order status
     const [result] = await database_pool.query(
       'UPDATE orders SET Status = ? WHERE Id = ?',
       [Status, Id]
@@ -155,6 +163,41 @@ const updateOrderStatus = async (req, res) => {
 
     if (result.affectedRows === 0) {
       return res.status(404).json({ message: "Order not found" });
+    }
+
+    // Get the order to notify the right users
+    const [order] = await database_pool.query(
+      'SELECT User_Id, Freelancer_Id FROM orders WHERE Id = ?',
+      [Id]
+    );
+
+    if (order && order.length > 0) {
+      const { User_Id, Freelancer_Id } = order[0];
+      
+      // Send real-time update via socket.io if available
+      if (io) {
+        io.emit('order_status_change', {
+          orderId: Id,
+          status: Status,
+          userId: User_Id,
+          freelancerId: Freelancer_Id
+        });
+        console.log(`Socket: Order status update for order ${Id} emitted to users ${User_Id} and ${Freelancer_Id}`);
+      }
+      
+      // Create notification based on status
+      let notificationType = 'order_update';
+      let notificationTitle = 'Order Status Updated';
+      let notificationMessage = `Your order status has been updated to: ${Status}`;
+      
+      // Create notification for client
+      await createNotification(
+        User_Id,
+        notificationType,
+        notificationTitle,
+        notificationMessage,
+        Id
+      );
     }
 
     return res.status(200).json({ message: "Order status updated successfully" });
@@ -186,21 +229,34 @@ const uploadCompletedWork = async (req, res) => {
       return res.status(404).json({ message: "Order not found" });
     }
 
-     const [order] = await database_pool.query(
-            'SELECT User_Id FROM orders WHERE Id = ?',
-            [Id]
-        );
+    const [order] = await database_pool.query(
+      'SELECT User_Id, Freelancer_Id FROM orders WHERE Id = ?',
+      [Id]
+    );
         
-        if (order && order.length > 0) {
-            // Create notification for the client
-            await createNotification(
-                order[0].User_Id,
-                'order_work',
-                'Work Uploaded',
-                'A freelancer has uploaded work for your order. Check your orders page for details.',
-                Id
-            );
-        }
+    if (order && order.length > 0) {
+      const { User_Id, Freelancer_Id } = order[0];
+      
+      // Send real-time update via socket.io if available
+      if (io) {
+        io.emit('order_status_change', {
+          orderId: Id,
+          status: "completed",
+          userId: User_Id,
+          freelancerId: Freelancer_Id
+        });
+        console.log(`Socket: Order ${Id} file uploaded and marked as completed - update sent to users`);
+      }
+      
+      // Create notification for the client
+      await createNotification(
+        User_Id,
+        'order_work',
+        'Work Uploaded',
+        'A freelancer has uploaded work for your order. Check your orders page for details.',
+        Id
+      );
+    }
 
     return res.status(200).json({ 
       message: "File uploaded successfully",
@@ -274,21 +330,34 @@ const approveCompletedWork = async (req, res) => {
       return res.status(404).json({ message: "Order not found" });
     }
 
-       const [order] = await database_pool.query(
-            'SELECT Freelancer_Id FROM orders WHERE Id = ?',
-            [Id]
-        );
+    const [order] = await database_pool.query(
+      'SELECT User_Id, Freelancer_Id FROM orders WHERE Id = ?',
+      [Id]
+    );
         
-        if (order && order.length > 0) {
-            // Create notification for the freelancer
-            await createNotification(
-                order[0].Freelancer_Id,
-                'order_approved',
-                'Work Approved',
-                'A client has approved your work. Check your orders page for details.',
-                Id
-            );
-        }
+    if (order && order.length > 0) {
+      const { User_Id, Freelancer_Id } = order[0];
+      
+      // Send real-time update via socket.io if available
+      if (io) {
+        io.emit('order_status_change', {
+          orderId: Id,
+          status: "completed",
+          userId: User_Id,
+          freelancerId: Freelancer_Id
+        });
+        console.log(`Socket: Order ${Id} approved and completed - update sent to users`);
+      }
+      
+      // Create notification for the freelancer
+      await createNotification(
+        Freelancer_Id,
+        'order_approved',
+        'Work Approved',
+        'A client has approved your work. Check your orders page for details.',
+        Id
+      );
+    }
 
     return res.status(200).json({ 
       message: "Work approved successfully and order marked as completed"
@@ -316,20 +385,33 @@ const disapproveCompletedWork = async (req, res) => {
     }
 
     const [order] = await database_pool.query(
-            'SELECT Freelancer_Id FROM orders WHERE Id = ?',
-            [Id]
-        );
+      'SELECT User_Id, Freelancer_Id FROM orders WHERE Id = ?',
+      [Id]
+    );
         
-        if (order && order.length > 0) {
-            // Create notification for the freelancer
-            await createNotification(
-                order[0].Freelancer_Id,
-                'order_revision',
-                'Revision Requested',
-                'A client has requested revisions for your work. Check your orders page for details.',
-                Id
-            );
-        }
+    if (order && order.length > 0) {
+      const { User_Id, Freelancer_Id } = order[0];
+      
+      // Send real-time update via socket.io if available
+      if (io) {
+        io.emit('order_status_change', {
+          orderId: Id,
+          status: "in_progress",
+          userId: User_Id,
+          freelancerId: Freelancer_Id
+        });
+        console.log(`Socket: Order ${Id} disapproved with revision request - update sent to users`);
+      }
+      
+      // Create notification for the freelancer
+      await createNotification(
+        Freelancer_Id,
+        'order_revision',
+        'Revision Requested',
+        'A client has requested revisions for your work. Check your orders page for details.',
+        Id
+      );
+    }
 
     return res.status(200).json({ 
       message: "Work marked for revision and sent back to freelancer"
@@ -348,5 +430,6 @@ export {
   uploadCompletedWork, 
   downloadCompletedWork, 
   approveCompletedWork,
-  disapproveCompletedWork
-}; 
+  disapproveCompletedWork,
+  setSocketIo
+};
