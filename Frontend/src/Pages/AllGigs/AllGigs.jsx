@@ -312,9 +312,6 @@ const AllGigs = () => {
                   
                   <div className="gig-meta">
                     <span className="gig-category">{gig.Category || 'Uncategorized'}</span>
-                    <span className="gig-date">
-                      {gig.Created_At ? new Date(gig.Created_At).toLocaleDateString() : 'Unknown date'}
-                    </span>
                   </div>
                   
                   <p className="gig-description" title={gig.Description}>
