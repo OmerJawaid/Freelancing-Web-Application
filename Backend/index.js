@@ -22,7 +22,9 @@ import { packageRouter } from './router/packageRouter.js';
 import { reviewRouter } from './router/reviewRouter.js';
 import profileRouter from './router/profileRouter.js';
 import { orderRouter } from './router/orderRouter.js';
+import { setSocketIo } from './controller/Order.js';
 import { notificationRouter } from './router/notificationRoutes.js';
+import dashboardRouter from './router/dashboardRouter.js';
 
 // Get current dirname
 const __filename = fileURLToPath(import.meta.url);
@@ -35,8 +37,11 @@ function initializeApp() {
   const app = express();
   const server = http.createServer(app);
   
-  // Initialize Socket.IO
-  configureSocket(server);
+  // Initialize Socket.IO and get the instance
+  const io = configureSocket(server);
+  
+  // Pass Socket.IO instance to Order controller
+  setSocketIo(io);
   
   return { app, server };
 }
@@ -110,6 +115,7 @@ function configureRoutes(app) {
   app.use('/profile', profileRouter);
   app.use('/orders', orderRouter);
   app.use('/notifications', notificationRouter);
+  app.use('/dashboard', dashboardRouter);
   
   // Legacy endpoint for backward compatibility
   app.post('/create-conversation', (req, res) => {
