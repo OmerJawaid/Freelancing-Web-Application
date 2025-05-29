@@ -1310,9 +1310,7 @@ const Gig = () => {
                     <small style={{ color: '#666', display: 'block', marginBottom: '5px' }}>
                       Reviews will appear here after clients complete orders and leave feedback.
                     </small>
-                    <small style={{ color: '#666', display: 'block' }}>
-                      Gig ID: {gig.Id || '(unknown)'} | Reviews state: {reviews ? reviews.length : 'undefined'} reviews
-                    </small>
+                    
                   </div>
                 </div>
               )}

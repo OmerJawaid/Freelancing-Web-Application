@@ -328,7 +328,7 @@ const Messages = () => {
       console.log(`[SOCKET EVENT] ${event}`, event === 'receive_message' ? 'MESSAGE DATA RECEIVED' : args);
     });
     
-    // Socket listener for receiving messages - COMPLETELY REVISED
+    // Socket listener for receiving messages - IMPROVED FOR DEDUPLICATION
     const handleReceiveMessage = (data) => {
       console.log("🔴 Received message via socket:", data);
       
@@ -341,13 +341,15 @@ const Messages = () => {
       const msgTimestamp = data.timestamp || new Date().toISOString();
       const newMessage = {
         senderId: data.senderId,
+        conversationId: data.conversationId, // Add conversation ID for better tracking
         message: data.message || '',
         timestamp: msgTimestamp,
         formattedTime: formatMessageTime(msgTimestamp),
         status: data.status || 'delivered',
         type: data.type || 'text',
         attachmentUrl: data.attachmentUrl,
-        fileName: data.fileName || (data.attachmentUrl ? data.attachmentUrl.split('/').pop() : null)
+        fileName: data.fileName || (data.attachmentUrl ? data.attachmentUrl.split('/').pop() : null),
+        source: 'socket' // Mark as coming from socket for debugging
       };
       
       // CRITICAL FIX: Directly update chat if this is the currently selected conversation
@@ -356,21 +358,22 @@ const Messages = () => {
                                    selectedConversation.id.toString() === data.conversationId.toString();
       
       console.log(`Message for conversation ${data.conversationId}, current conversation: ${selectedConversation.id}`);
-      console.log(`Is current conversation: ${isCurrentConversation}`);
+      
+      // Create a deterministic message ID for deduplication
+      const messageKey = `${data.senderId}_${data.message}_${Math.floor(new Date(msgTimestamp).getTime() / 1000)}`;
       
       // Store received message by conversation ID - this happens regardless of which conversation is active
       setReceivedMessages(prev => {
         const conversationMessages = prev[data.conversationId] || [];
         
-        // Check if message already exists
-        const messageExists = conversationMessages.some(msg => 
-          msg.message === data.message && 
-          msg.senderId === data.senderId &&
-          Math.abs(new Date(msg.timestamp || new Date()) - new Date(data.timestamp || new Date())) < 1000
-        );
+        // Improved duplicate detection using our message key approach
+        const existingMessages = conversationMessages.filter(msg => {
+          const existingKey = `${msg.senderId}_${msg.message}_${Math.floor(new Date(msg.timestamp).getTime() / 1000)}`;
+          return existingKey === messageKey;
+        });
         
-        if (messageExists) {
-          console.log('Message already exists in received messages, not adding duplicate');
+        if (existingMessages.length > 0) {
+          console.log('Message already exists in receivedMessages with key:', messageKey);
           return prev;
         }
         
@@ -385,7 +388,6 @@ const Messages = () => {
       setConversations(prevConversations => {
         const updatedConversations = prevConversations.map(conv => {
           if (conv.id.toString() === data.conversationId.toString()) {
-            console.log('Updating conversation list item with latest message');
             return {
               ...conv,
               lastMessage: data.lastMessagePreview || data.message || 'New message',
@@ -410,15 +412,20 @@ const Messages = () => {
         
         // Force update the chat state with the new message
         setChat(prevChat => {
-          // Check if message already exists in chat
-          const messageExists = prevChat.some(msg => 
-            msg.message === newMessage.message && 
-            msg.senderId === newMessage.senderId &&
-            Math.abs(new Date(msg.timestamp || new Date()) - new Date(newMessage.timestamp || new Date())) < 1000
-          );
+          // Improved duplicate detection using our message key approach
+          const existingMessages = prevChat.filter(msg => {
+            // If the message doesn't have a conversationId, it's likely from before our fix
+            const msgConvId = msg.conversationId || selectedConversation.id;
+            // Only check messages from the same conversation
+            if (msgConvId.toString() !== data.conversationId.toString()) return false;
+            
+            // Generate key for existing message
+            const existingKey = `${msg.senderId}_${msg.message}_${Math.floor(new Date(msg.timestamp).getTime() / 1000)}`;
+            return existingKey === messageKey;
+          });
           
-          if (messageExists) {
-            console.log('Message already exists in chat, not adding duplicate');
+          if (existingMessages.length > 0) {
+            console.log('Message already exists in chat with key:', messageKey);
             return prevChat;
           }
           
@@ -488,21 +495,38 @@ const Messages = () => {
     };
   }, [selectedConversation.id]);
 
-  // Update chat when selectedConversation or receivedMessages changes
+  // Update chat when selectedConversation changes - removed receivedMessages dependency
   useEffect(() => {
     if (!selectedConversation.id) return;
     
-    console.log('Selected conversation changed or received messages updated');
+    console.log('Selected conversation changed');
     console.log('Selected conversation ID:', selectedConversation.id);
     console.log('Available received messages:', Object.keys(receivedMessages));
     
-    // Add received messages for this conversation to the chat
+    // We'll handle this differently now - we'll only use this effect for initial loading
+    // and for handling conversation changes, not for every receivedMessages update
     const conversationMessages = receivedMessages[selectedConversation.id] || [];
-    console.log('Messages for this conversation:', conversationMessages.length);
+    console.log('Messages for this conversation in cache:', conversationMessages.length);
     
-    if (conversationMessages.length > 0) {
+    // Only process these messages if we don't already have messages loaded (initial load)
+    // or if we've switched conversations
+    const isNewConversation = !chat.length || 
+      (chat.length > 0 && chat[0].conversationId !== selectedConversation.id);
+    
+    if (isNewConversation && conversationMessages.length > 0) {
+      console.log('New conversation selected, adding cached socket messages');
+      
       setChat(prevChat => {
-        // Filter out messages that are already in the chat
+        // If it's a new conversation, just use the cached messages directly
+        // Otherwise, do deduplication
+        if (prevChat.length === 0 || isNewConversation) {
+          const sortedMessages = [...conversationMessages].sort(
+            (a, b) => new Date(a.timestamp) - new Date(b.timestamp)
+          );
+          return sortedMessages;
+        }
+        
+        // For existing conversations, do deduplication
         const newMessages = conversationMessages.filter(newMsg => 
           !prevChat.some(existingMsg => 
             existingMsg.senderId === newMsg.senderId &&
@@ -511,26 +535,20 @@ const Messages = () => {
           )
         );
         
-        console.log('New messages to add:', newMessages.length);
-        
         if (newMessages.length === 0) return prevChat;
         
-        // Sort messages by timestamp to ensure proper order
         const updatedChat = [...prevChat, ...newMessages];
-        const sortedChat = updatedChat.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-        
-        console.log('Updated chat with new messages, total:', sortedChat.length);
-        return sortedChat;
+        return updatedChat.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
       });
       
-      // Force scroll to bottom after messages are added
+      // Scroll to bottom after messages are added
       setTimeout(() => {
         if (chatEndRef.current) {
           chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
         }
       }, 100);
     }
-  }, [selectedConversation.id, receivedMessages]);
+  }, [selectedConversation.id]); // Only trigger when conversation changes, not on receivedMessages updates
 
   // Create a separate memo for selected conversation ID for message filtering
   const selectedConversationId = selectedConversation?.id;
@@ -809,34 +827,50 @@ const Messages = () => {
           // Process messages from the API
           const apiMessages = response.data.map(msg => ({
             senderId: msg.Sender_Id,
+            conversationId: selectedConversationId, // Add conversation ID to each message
             message: msg.Content,
             timestamp: msg.Created_at,
             formattedTime: formatMessageTime(msg.Created_at),
             status: msg.Status,
             type: msg.Type || 'text',
             attachmentUrl: msg.Attachment_url,
-            fileName: msg.Attachment_url ? msg.Attachment_url.split('/').pop() : null
+            fileName: msg.Attachment_url ? msg.Attachment_url.split('/').pop() : null,
+            source: 'database' // Mark the source for debugging
           }));
           
-          // Get any recent messages from the receivedMessages state
+          // Get any recent messages from the receivedMessages state for this conversation
           const recentMessages = receivedMessages[selectedConversationId] || [];
           
-          // Combine both sources and remove duplicates
-          const allMessages = [...apiMessages];
+          if (recentMessages.length > 0) {
+            console.log('Found socket messages for this conversation:', recentMessages.length);
+          }
           
-          // Add recent messages that aren't already in the API response
-          recentMessages.forEach(recentMsg => {
-            const isDuplicate = apiMessages.some(apiMsg => 
-              apiMsg.message === recentMsg.message && 
-              apiMsg.senderId === recentMsg.senderId &&
-              Math.abs(new Date(apiMsg.timestamp || 0) - new Date(recentMsg.timestamp || 0)) < 1000
-            );
-            
-            if (!isDuplicate) {
-              console.log('Adding recent message not found in API response:', recentMsg);
-              allMessages.push(recentMsg);
-            }
+          // Create a lookup map from API messages for faster deduplication
+          const apiMessageMap = new Map();
+          apiMessages.forEach(msg => {
+            // Create a unique key based on sender, content and approximate timestamp
+            const timestampKey = new Date(msg.timestamp).getTime();
+            const key = `${msg.senderId}_${msg.message}_${Math.floor(timestampKey / 1000)}`;
+            apiMessageMap.set(key, msg);
           });
+          
+          // Filter recent socket messages to only include those not in the API response
+          const uniqueSocketMessages = recentMessages.filter(socketMsg => {
+            const timestampKey = new Date(socketMsg.timestamp).getTime();
+            const key = `${socketMsg.senderId}_${socketMsg.message}_${Math.floor(timestampKey / 1000)}`;
+            return !apiMessageMap.has(key);
+          }).map(msg => ({
+            ...msg,
+            conversationId: selectedConversationId,
+            source: 'socket' // Mark the source for debugging
+          }));
+          
+          if (uniqueSocketMessages.length > 0) {
+            console.log('Adding unique socket messages not in DB:', uniqueSocketMessages.length);
+          }
+          
+          // Combine API messages with unique socket messages
+          const allMessages = [...apiMessages, ...uniqueSocketMessages];
           
           // Sort all messages by timestamp
           const sortedMessages = allMessages.sort((a, b) => 
