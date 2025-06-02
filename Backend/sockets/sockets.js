@@ -53,8 +53,9 @@ function registerUserEvents(socket, io) {
       return;
     }
     
-    // Associate userId with socket ID
+    // Associate userId with socket ID in both local and global storage
     userConnections[userId] = socket.id;
+    global.users[userId] = socket.id; // This is critical for notifications
     
     // Join both a user-specific room and a general room
     socket.join(`user_${userId}`);
@@ -192,6 +193,7 @@ function registerDisconnectEvents(socket, io) {
       // Mark user as offline
       onlineUsers.delete(userId);
       delete userConnections[userId];
+      delete global.users[userId]; // Clean up global reference for notifications
       
       // Notify all clients about user going offline
       io.to('all_users').emit('user_status_change', { userId, status: 'offline' });

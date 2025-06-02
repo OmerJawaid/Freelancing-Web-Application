@@ -41,6 +41,10 @@ function initializeApp() {
   // Initialize Socket.IO and get the instance
   const io = configureSocket(server);
   
+  // Make socket.io instance available globally
+  global.io = io;
+  global.users = {};
+  
   // Pass Socket.IO instance to Order controller
   setSocketIo(io);
   

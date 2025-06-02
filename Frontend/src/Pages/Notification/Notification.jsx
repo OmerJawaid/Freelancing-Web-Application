@@ -216,27 +216,51 @@ const NotificationComponent = () => {
     // Fetch initial notifications
     fetchNotifications();
     
-    // Set up socket connection
+    // Set up socket connection with proper configuration
     try {
-      socket.current = io('http://localhost:8081');
+      // Disconnect existing socket if it exists
+      if (socket.current) {
+        socket.current.disconnect();
+      }
       
-      // Join user's room for personalized notifications
-      socket.current.emit('join', { userId: user.id });
+      // Connect with proper transport options
+      socket.current = io('http://localhost:8081', {
+        transports: ['websocket', 'polling'],
+        reconnection: true,
+        reconnectionAttempts: 5,
+        reconnectionDelay: 1000,
+        timeout: 20000
+      });
       
-      // Listen for new notifications
+      console.log('Socket connection attempt initiated');
+      
+      // Handle connection events
+      socket.current.on('connect', () => {
+        console.log('Socket connected successfully with ID:', socket.current.id);
+        
+        // Join user's room for personalized notifications
+        socket.current.emit('join', { userId: user.id });
+        console.log('Join event emitted for user:', user.id);
+      });
+      
+      socket.current.on('connect_error', (error) => {
+        console.error('Socket connection error:', error);
+      });
+      
+      // Listen for new notifications with proper event handling
       socket.current.on('new_notification', (data) => {
         console.log('New notification received:', data);
         
-        // Add the new notification to the state
+        // Add the new notification to the state with proper ID handling
         setNotifications(prev => [{
-          Id: Date.now(), // Temporary ID until refresh
+          Id: data.id || Date.now(), // Use server-provided ID if available
           User_Id: user.id,
           Type: data.type,
           Title: data.title,
           Message: data.message,
           Related_Id: data.relatedId,
           Is_Read: false,
-          Created_At: new Date().toISOString()
+          Created_At: data.createdAt || new Date().toISOString()
         }, ...prev]);
         
         // Increment unread count

@@ -1,14 +1,10 @@
-import { database_pool } from '../config/dbconnection.js';
-import { NotificationFactory } from '../utils/NotificationFactory.js';
+import notificationService from '../utils/NotificationService.js';
 
-// Create a new notification using the appropriate strategy based on user preferences
+// Create a new notification using the simplified notification service
 const createNotification = async (userId, type, title, message, relatedId = null) => {
     try {
-        // Get the appropriate notification strategy for this user
-        const notificationStrategy = await NotificationFactory.getStrategyForUser(userId);
-        
-        // Send notification using the strategy
-        await notificationStrategy.sendNotification(userId, type, title, message, relatedId);
+        // Send notification using the service
+        await notificationService.sendNotification(userId, type, title, message, relatedId);
     } catch (err) {
         console.error("Error creating notification:", err);
     }
@@ -23,13 +19,7 @@ const getUserNotifications = async (req, res) => {
             return res.status(400).json({ message: "User ID is required" });
         }
         
-        const [notifications] = await database_pool.query(
-            `SELECT * FROM notifications 
-             WHERE User_Id = ? 
-             ORDER BY Created_At DESC 
-             LIMIT 50`,
-            [userId]
-        );
+        const notifications = await notificationService.getNotifications(userId);
         
         return res.status(200).json(notifications);
     } catch (err) {
@@ -47,12 +37,13 @@ const markNotificationAsRead = async (req, res) => {
             return res.status(400).json({ message: "Notification ID is required" });
         }
         
-        await database_pool.query(
-            `UPDATE notifications SET Is_Read = TRUE WHERE Id = ?`,
-            [notificationId]
-        );
+        const success = await notificationService.markAsRead(notificationId);
         
-        return res.status(200).json({ message: "Notification marked as read" });
+        if (success) {
+            return res.status(200).json({ message: "Notification marked as read" });
+        } else {
+            return res.status(500).json({ message: "Failed to mark notification as read" });
+        }
     } catch (err) {
         console.error("Error marking notification as read:", err);
         return res.status(500).json({ message: "Error marking notification as read", error: err.message });
@@ -68,12 +59,13 @@ const markAllNotificationsAsRead = async (req, res) => {
             return res.status(400).json({ message: "User ID is required" });
         }
         
-        await database_pool.query(
-            `UPDATE notifications SET Is_Read = TRUE WHERE User_Id = ?`,
-            [userId]
-        );
+        const success = await notificationService.markAllAsRead(userId);
         
-        return res.status(200).json({ message: "All notifications marked as read" });
+        if (success) {
+            return res.status(200).json({ message: "All notifications marked as read" });
+        } else {
+            return res.status(500).json({ message: "Failed to mark all notifications as read" });
+        }
     } catch (err) {
         console.error("Error marking all notifications as read:", err);
         return res.status(500).json({ message: "Error marking all notifications as read", error: err.message });
@@ -89,13 +81,9 @@ const getUnreadNotificationCount = async (req, res) => {
             return res.status(400).json({ message: "User ID is required" });
         }
         
-        const [result] = await database_pool.query(
-            `SELECT COUNT(*) as count FROM notifications 
-             WHERE User_Id = ? AND Is_Read = FALSE`,
-            [userId]
-        );
+        const count = await notificationService.getUnreadCount(userId);
         
-        return res.status(200).json({ count: result[0].count });
+        return res.status(200).json({ count });
     } catch (err) {
         console.error("Error fetching unread notification count:", err);
         return res.status(500).json({ message: "Error fetching unread notification count", error: err.message });
