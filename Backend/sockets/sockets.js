@@ -241,7 +241,7 @@ function registerOrderEvents(socket, io) {
     socket.emit('order_updates_joined', { userId });
   });
 
-  // Admin emits order status update event
+  // Handle order status updates from connected clients
   socket.on('order_status_updated', (data) => {
     const { orderId, status, userId, freelancerId } = data;
     
@@ -265,6 +265,7 @@ function registerOrderEvents(socket, io) {
     }
   });
   
+  // Handle order status updates triggered by server code
   // For direct server event emissions (non-socket events)
   io.on('order_status_updated', (data) => {
     const { orderId, status, userId, freelancerId } = data;

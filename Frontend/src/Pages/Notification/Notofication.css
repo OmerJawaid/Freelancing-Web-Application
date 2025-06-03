@@ -77,10 +77,9 @@
   cursor: pointer;
   font-size: 0.875rem;
   padding: 0;
-}
-
-.mark-all-read:hover {
-  text-decoration: underline;
+  &:hover {
+    background-color: white;
+  }
 }
 
 .notification-list {

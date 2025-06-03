@@ -74,8 +74,7 @@ const retriveConversation=async(req,res)=>{
             WHEN conversations.User_one_id = ? THEN conversations.User_two_id
             ELSE conversations.User_one_id 
         END
-        WHERE conversations.User_one_id = ? OR conversations.User_two_id = ?
-    `;
+        WHERE conversations.User_one_id = ? OR conversations.User_two_id = ?`;
     
 
         const [result] = await database_pool.query(query, [User_Id, User_Id, User_Id, User_Id]);

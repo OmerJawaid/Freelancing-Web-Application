@@ -917,11 +917,12 @@ const Messages = () => {
           <div className="conversations-header">
             <h2>Messages</h2>
             <div className="search-container">
-              <FaSearch className="search-icon" />
+              <FaSearch className="search-icon" style={{color:'black'}}/>
               <input 
                 type="text" 
                 placeholder="Search conversations..." 
                 className="search-input"
+                style={{color:'black'}}
               />
             </div>
           </div>

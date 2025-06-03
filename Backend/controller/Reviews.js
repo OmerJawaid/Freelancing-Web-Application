@@ -10,7 +10,6 @@ const fetchReviewsByGigId = async(req, res) => {
         
         console.log(`Attempting to fetch reviews for Gig_Id: ${Gig_Id}`);
         
-        // First, try a simple query without joins to see if we get any results
         const [reviewsOnly] = await database_pool.query(
             `SELECT * FROM reviews WHERE Gig_Id = ?`, 
             [Gig_Id]
@@ -23,8 +22,7 @@ const fetchReviewsByGigId = async(req, res) => {
             return res.status(200).json([]);
         }
         
-        // If we found reviews, now try with the join to get user details
-        try {
+       try {
             const [result] = await database_pool.query(
                 `SELECT r.*, u.name as client_Name, u.image as client_Image 
                  FROM reviews r 
