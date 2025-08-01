@@ -385,7 +385,7 @@
   background: none;
   padding: 8px;
   font-size: 0.95rem;
-  color: #1f2937;
+  color: #000000; /* Black text color */
 }
 
 .message-input:focus {

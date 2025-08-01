@@ -87,3 +87,8 @@ button:focus-visible {
   min-height: 100vh;
   position: relative;
 }
+
+/* Global input styling for black text */
+input, textarea, select {
+  color: #000000 !important; /* Black text color for all inputs */
+}

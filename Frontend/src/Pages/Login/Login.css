@@ -126,6 +126,7 @@
   transition: border-color 0.2s;
   background-color: transparent;
   box-sizing: border-box;
+  color: #000000; /* Black text color */
 } 
 
 .form-group input:focus {

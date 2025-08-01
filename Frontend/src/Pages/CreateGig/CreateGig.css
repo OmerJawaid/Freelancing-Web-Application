@@ -119,6 +119,7 @@
     font-size: 1rem;
     background-color: #f9fbfd;
     transition: all 0.3s ease;
+    color: #000000; /* Black text color */
 }
 
 .form-group input[type="text"]:focus,

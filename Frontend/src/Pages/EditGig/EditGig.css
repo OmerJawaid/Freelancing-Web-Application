@@ -1,5 +1,12 @@
 /* EditGig specific styles - inherits most styles from CreateGig.css */
 
+/* Input styling for black text */
+.form-group input,
+.form-group textarea,
+.form-group select {
+  color: #000000; /* Black text color */
+}
+
 .current-image {
   margin-bottom: 15px;
   padding: 10px;

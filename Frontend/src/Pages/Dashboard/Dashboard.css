@@ -70,6 +70,7 @@
   border-radius: 6px;
   width: 100%;
   transition: all 0.2s ease;
+  color: #000000; /* Black text color */
 }
 
 .price-input:focus {
@@ -106,6 +107,7 @@
   border: 1px solid #e5e7eb;
   border-radius: 6px;
   font-size: 1rem;
+  color: #000000; /* Black text color */
 }
 
 .search-button {
